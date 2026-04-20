@@ -1,0 +1,453 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+const mongoose = require('mongoose');
+require('dotenv').config();
+const connectDB = require('./config/db');
+const dns = require('node:dns');
+const Message = require('./models/Message');
+const Group = require('./models/Group');
+
+// Set DNS servers for better Atlas connectivity
+dns.setServers(['8.8.8.8', '8.8.4.4',]);
+
+// Connect to database
+connectDB();
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: true,
+    credentials: true
+  }
+});
+
+// Attach io to app for access in routes
+app.set('io', io);
+const PORT = process.env.PORT || 5005;
+
+// Middleware - Allow all origins for CORS   
+app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
+}));
+
+app.use(express.json());
+
+// Serve uploaded files statically
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+
+// Debug: Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Tech Project API',
+      version: '1.0.0',
+      description: 'API documentation for the Tech Project backend',
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 5005}`,
+        description: 'Local server',
+      },
+    ],
+  },
+  apis: ['./routes/*.js', './controllers/*.js'],
+};
+
+const specs = swaggerJsdoc(swaggerOptions);
+
+// Swagger UI route
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+// Import routes
+const { loginController, adminLoginController } = require('./controllers/loginController');
+const { registerController } = require('./controllers/registerController');
+const employeeRoutes = require('./routes/employeeRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+const otpRoutes = require('./routes/otpRoutes');
+const tempRoutes = require('./routes/tempRoutes');
+const publicRoutes = require('./routes/publicRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+
+// Use routes
+app.post('/api/login', loginController);
+app.post('/api/admin/login', adminLoginController);
+app.post('/api/register', registerController);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/auth', otpRoutes);
+app.use('/api/temp', tempRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/groups', groupRoutes);
+
+// Socket.io real-time messaging
+const onlineUsers = new Map(); // userId -> { socketId, lastSeen }
+const typingUsers = new Map(); // userId -> { receiverId, timeout }
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // User joins with their userId
+  socket.on('join', async (userId) => {
+    if (userId) {
+      socket.userId = userId;
+      onlineUsers.set(userId, {
+        socketId: socket.id,
+        lastSeen: new Date(),
+        isOnline: true
+      });
+      console.log(`User ${userId} joined with socket ${socket.id}`);
+      
+      // Broadcast online status to all users
+      io.emit('user_status', {
+        userId: userId,
+        isOnline: true,
+        lastSeen: new Date()
+      });
+      
+      // Send current online users list to the new user
+      const onlineUserIds = Array.from(onlineUsers.keys());
+      socket.emit('online_users', onlineUserIds);
+      
+      // Auto-join all groups that the user is a member of
+      try {
+        const userGroups = await Group.find({ 'members.userId': userId }).select('_id');
+        userGroups.forEach(group => {
+          socket.join(`group:${group._id}`);
+          console.log(`User ${userId} auto-joined group:${group._id}`);
+        });
+        console.log(`User ${userId} auto-joined ${userGroups.length} groups`);
+      } catch (err) {
+        console.error('Error auto-joining groups:', err);
+      }
+    }
+  });
+
+  // Handle private message
+  socket.on('send_message', async (data) => {
+    const { id, tempId, receiverId, message, senderId, senderName, timestamp } = data;
+    
+    console.log(`Socket message from ${senderId} to ${receiverId}: ${message}`);
+    
+    try {
+      // Validate IDs
+      if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(receiverId)) {
+        console.error('Invalid senderId or receiverId');
+        socket.emit('message_error', { error: 'Invalid user IDs' });
+        return;
+      }
+
+      // The message should already be saved to DB via API
+      // We just need to broadcast it to the receiver
+      const messageData = {
+        id: id || tempId,
+        tempId: tempId,
+        senderId,
+        senderName,
+        receiverId,
+        message,
+        timestamp: timestamp || new Date(),
+        read: false
+      };
+      
+      // Emit to receiver if online
+      const receiver = onlineUsers.get(receiverId);
+      if (receiver && receiver.isOnline) {
+        io.to(receiver.socketId).emit('receive_message', messageData);
+        console.log(`Message delivered to receiver ${receiverId}`);
+      }
+      
+      // Confirm to sender
+      socket.emit('message_sent', {
+        ...messageData,
+        status: 'sent'
+      });
+    } catch (error) {
+      console.error('Error handling socket message:', error);
+      socket.emit('message_error', {
+        error: 'Failed to send message',
+        originalData: data
+      });
+    }
+  });
+
+  // Handle typing indicator
+  socket.on('typing', (data) => {
+    const { receiverId, isTyping } = data;
+    const senderId = socket.userId;
+    
+    if (!senderId) return;
+    
+    const receiver = onlineUsers.get(receiverId);
+    if (receiver && receiver.isOnline) {
+      io.to(receiver.socketId).emit('typing', {
+        userId: senderId,
+        isTyping
+      });
+    }
+    
+    // Clear previous timeout if exists
+    const existingTimeout = typingUsers.get(senderId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
+    // Set new timeout to stop typing after 3 seconds
+    if (isTyping) {
+      const timeout = setTimeout(() => {
+        typingUsers.delete(senderId);
+        if (receiver && receiver.isOnline) {
+          io.to(receiver.socketId).emit('typing', {
+            userId: senderId,
+            isTyping: false
+          });
+        }
+      }, 3000);
+      typingUsers.set(senderId, timeout);
+    }
+  });
+
+  // Handle message read receipt
+  socket.on('mark_read', (data) => {
+    const { messageId, senderId } = data;
+    const receiverId = socket.userId;
+    
+    if (!receiverId) return;
+    
+    // Notify sender that message was read
+    const sender = onlineUsers.get(senderId);
+    if (sender && sender.isOnline) {
+      io.to(sender.socketId).emit('message_read', {
+        messageId,
+        readBy: receiverId,
+        readAt: new Date()
+      });
+    }
+  });
+
+  // ==================== GROUP CHAT SOCKET HANDLERS ====================
+  
+  // Join group room
+  socket.on('join_group', (groupId) => {
+    if (!socket.userId) return;
+    
+    socket.join(`group:${groupId}`);
+    console.log(`User ${socket.userId} joined group room: group:${groupId}`);
+    
+    // Notify other group members
+    socket.to(`group:${groupId}`).emit('user_joined_group', {
+      groupId,
+      userId: socket.userId
+    });
+  });
+
+  // Leave group room
+  socket.on('leave_group', (groupId) => {
+    if (!socket.userId) return;
+    
+    socket.leave(`group:${groupId}`);
+    console.log(`User ${socket.userId} left group room: group:${groupId}`);
+  });
+
+  // Handle group message
+  socket.on('send_group_message', async (data) => {
+    const { id, tempId, groupId, message, senderId, senderName, timestamp, messageType } = data;
+    
+    console.log(`Socket group message from ${senderId} to group ${groupId}: ${message}`);
+    
+    try {
+      // Validate IDs
+      if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(groupId)) {
+        console.error('Invalid senderId or groupId');
+        socket.emit('message_error', { error: 'Invalid IDs' });
+        return;
+      }
+
+      const messageData = {
+        id: id || tempId,
+        tempId: tempId,
+        groupId,
+        senderId,
+        senderName,
+        message,
+        messageType: messageType || 'text',
+        timestamp: timestamp || new Date(),
+        read: false
+      };
+      
+      // Broadcast to all members in the group room (including sender for confirmation)
+      io.to(`group:${groupId}`).emit('receive_group_message', messageData);
+      console.log(`Group message broadcasted to group:${groupId}`);
+      
+      // Confirm to sender
+      socket.emit('group_message_sent', {
+        ...messageData,
+        status: 'sent'
+      });
+
+      // Emit sidebar update event to all group members
+      const lastMessageData = {
+        groupId,
+        lastMessage: {
+          message: message,
+          senderId: { name: senderName },
+          timestamp: timestamp || new Date()
+        }
+      };
+      io.to(`group:${groupId}`).emit('group_last_message_updated', lastMessageData);
+      console.log(`Group last message updated broadcasted to group:${groupId}`);
+    } catch (error) {
+      console.error('Error handling group socket message:', error);
+      socket.emit('message_error', {
+        error: 'Failed to send group message',
+        originalData: data
+      });
+    }
+  });
+
+  // Handle group typing indicator
+  socket.on('group_typing', (data) => {
+    const { groupId, isTyping } = data;
+    const senderId = socket.userId;
+    
+    if (!senderId) return;
+    
+    // Broadcast typing status to all group members except sender
+    socket.to(`group:${groupId}`).emit('group_typing', {
+      groupId,
+      userId: senderId,
+      isTyping
+    });
+    
+    // Clear previous timeout if exists
+    const typingKey = `group:${groupId}:${senderId}`;
+    const existingTimeout = typingUsers.get(typingKey);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
+    // Set new timeout to stop typing after 3 seconds
+    if (isTyping) {
+      const timeout = setTimeout(() => {
+        typingUsers.delete(typingKey);
+        socket.to(`group:${groupId}`).emit('group_typing', {
+          groupId,
+          userId: senderId,
+          isTyping: false
+        });
+      }, 3000);
+      typingUsers.set(typingKey, timeout);
+    }
+  });
+
+  // Handle group message read receipt
+  socket.on('group_message_read', (data) => {
+    const { groupId, messageId, senderId } = data;
+    const readerId = socket.userId;
+    
+    if (!readerId || !groupId) return;
+    
+    console.log(`Group message read: ${messageId} in group ${groupId} by ${readerId}`);
+    
+    // Notify the sender that their message was read
+    if (senderId && senderId !== readerId) {
+      const sender = onlineUsers.get(senderId);
+      if (sender && sender.isOnline) {
+        io.to(sender.socketId).emit('group_message_read', {
+          messageId,
+          groupId,
+          readBy: readerId,
+          readAt: new Date()
+        });
+      }
+    }
+    
+    // Also broadcast to group room so all members can update read status if needed
+    socket.to(`group:${groupId}`).emit('group_message_read', {
+      messageId,
+      groupId,
+      readBy: readerId,
+      readAt: new Date()
+    });
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    
+    if (socket.userId) {
+      // Update online status
+      const userData = onlineUsers.get(socket.userId);
+      if (userData) {
+        userData.isOnline = false;
+        userData.lastSeen = new Date();
+        
+        // Keep in onlineUsers for a while to show "last seen"
+        setTimeout(() => {
+          if (onlineUsers.has(socket.userId) && !onlineUsers.get(socket.userId).isOnline) {
+            onlineUsers.delete(socket.userId);
+          }
+        }, 60000); // Remove after 1 minute
+      }
+      
+      // Broadcast offline status
+      io.emit('user_status', {
+        userId: socket.userId,
+        isOnline: false,
+        lastSeen: new Date()
+      });
+      
+      // Clear typing status
+      const typingTimeout = typingUsers.get(socket.userId);
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingUsers.delete(socket.userId);
+      }
+    }
+  });
+});
+
+// 404 handler - catches all unmatched routes
+app.use((req, res) => {
+  console.log(`404 Not Found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+httpServer.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+  console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
+});
