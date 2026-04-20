@@ -6,7 +6,7 @@ const employeeSchema = new mongoose.Schema({
     required: [true, 'Employee ID is required'],
     unique: true
   },
-  name: {  khguiguyoiyi
+  name: { 
     type: String,
     required: [true, 'Name is required'],
     trim: true
