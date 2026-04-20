@@ -1,0 +1,190 @@
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color, #3498db), var(--card-color-light, #5dade2));
+}
+
+.card-blue {
+    --card-color: #3498db;
+    --card-color-light: #5dade2;
+}
+
+.card-green {
+    --card-color: #27ae60;
+    --card-color-light: #52be80;
+}
+
+.card-purple {
+    --card-color: #8e44ad;
+    --card-color-light: #a569bd;
+}
+
+.card-yellow {
+    --card-color: #f39c12;
+    --card-color-light: #f5b041;
+}
+
+.card-red {
+    --card-color: #e74c3c;
+    --card-color-light: #ec7063;
+}
+
+.card-content {
+    position: relative;
+    z-index: 1;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-icon {
+    font-size: 24px;
+    opacity: 0.7;
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card-value {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.2;
+}
+
+.card-trend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.card-trend.positive {
+    color: #27ae60;
+}
+
+.card-trend.negative {
+    color: #e74c3c;
+}
+
+.trend-icon {
+    font-size: 12px;
+}
+
+.trend-value {
+    font-size: 12px;
+}
+
+/* Loading skeleton */
+.card.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.card-skeleton {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.skeleton-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+.skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skeleton-title {
+    width: 60%;
+    height: 12px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+.skeleton-value {
+    width: 40%;
+    height: 24px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .card {
+        padding: 20px;
+    }
+    
+    .card-value {
+        font-size: 24px;
+    }
+    
+    .card-icon {
+        font-size: 20px;
+    }
+}

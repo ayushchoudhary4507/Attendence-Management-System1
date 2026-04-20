@@ -1,0 +1,57 @@
+.attendance-button-container {
+  display: inline-block;
+}
+
+.attendance-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.attendance-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.attendance-btn.check-in {
+  background: #10b981;
+  color: white;
+}
+
+.attendance-btn.check-in:hover:not(:disabled) {
+  background: #059669;
+}
+
+.attendance-btn.check-out {
+  background: #ef4444;
+  color: white;
+}
+
+.attendance-btn.check-out:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+/* Dark Mode Styles */
+body.dark-theme .attendance-btn {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-theme .attendance-btn.check-in {
+  background: #059669;
+}
+
+body.dark-theme .attendance-btn.check-in:hover:not(:disabled) {
+  background: #047857;
+}
+
+body.dark-theme .attendance-btn.check-out {
+  background: #dc2626;
+}
+
+body.dark-theme .attendance-btn.check-out:hover:not(:disabled) {
+  background: #b91c1c;
+}

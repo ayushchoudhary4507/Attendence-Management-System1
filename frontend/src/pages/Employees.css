@@ -1,0 +1,343 @@
+/* Employees.css */
+
+/* Simple Loading Spinner - Analytics Style */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #f8f9fa;
+}
+
+.loading-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Simple circular spinner */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #4F46E5;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  flex-direction: column;
+}
+
+.error-message {
+  color: red;
+  margin-bottom: 20px;
+}
+
+.retry-btn {
+  padding: 10px 20px;
+  background: #4F46E5;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* View Only Badge for non-admin users */
+.view-only-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Connection Status */
+.connection-status {
+  padding: 10px 15px;
+  background: #d1fae5;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: #065f46;
+  font-size: 14px;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn {
+  color: #3B82F6;
+}
+
+.delete-btn {
+  color: #EF4444;
+}
+
+/* No Results */
+.no-results-container {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.no-results-btn {
+  margin-top: 20px;
+}
+
+/* Form Info */
+.form-info-box {
+  background: #dbeafe;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  color: #1e40af;
+  font-size: 14px;
+}
+
+/* Sticky Table Header */
+.employees-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+}
+
+.employees-table thead tr {
+  background: #F9FAFB;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Status Badge Styles */
+.status-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.active, .status-badge.Active {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.status-badge.inactive, .status-badge.Inactive {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+/* Role Badge Styles */
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Action Dropdown */
+.action-dropdown button:hover {
+  background: #F3F4F6 !important;
+}
+
+/* Bulk Actions Bar */
+.bulk-actions-bar {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pagination */
+.pagination button:hover:not(:disabled) {
+  background: #EEF2FF !important;
+  border-color: #4F46E5 !important;
+}
+
+/* Avatar */
+.employee-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #E5E7EB;
+}
+
+/* Table Container */
+.table-container {
+  max-height: 600px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+}
+
+/* No Results */
+.no-results-container {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Delete Modal */
+.delete-modal {
+  max-width: 400px;
+}
+
+.delete-modal-content {
+  padding: 20px;
+}
+
+.delete-modal-text {
+  color: #666;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.delete-btn-danger {
+  background: #ef4444;
+}
+
+/* Animations */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Dark Theme - Matching Landing Page */
+body.dark-theme .loading-container {
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+}
+
+body.dark-theme .loading-text {
+  color: #94a3b8;
+}
+
+body.dark-theme .employees-table thead {
+  background: rgba(30, 30, 46, 0.8);
+}
+
+body.dark-theme .employees-table thead tr {
+  background: rgba(30, 30, 46, 0.8);
+  box-shadow: 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .employees-table th {
+  background: rgba(30, 30, 46, 0.8);
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .employees-table td {
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+
+body.dark-theme .employees-table tbody tr:hover {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+body.dark-theme .table-container {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 30, 46, 0.5);
+}
+
+body.dark-theme .view-only-badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+body.dark-theme .connection-status {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+body.dark-theme .form-info-box {
+  background: rgba(79, 70, 229, 0.2);
+  color: #c7d2fe;
+}
+
+body.dark-theme .status-badge.active,
+body.dark-theme .status-badge.Active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+body.dark-theme .status-badge.inactive,
+body.dark-theme .status-badge.Inactive {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+body.dark-theme .role-badge {
+  background: rgba(79, 70, 229, 0.2);
+  color: #c7d2fe;
+}
+
+body.dark-theme .employee-avatar {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .action-dropdown button:hover {
+  background: rgba(79, 70, 229, 0.2) !important;
+}
+
+body.dark-theme .pagination button:hover:not(:disabled) {
+  background: rgba(79, 70, 229, 0.2) !important;
+  border-color: #4F46E5 !important;
+}
+
+body.dark-theme .no-results-container {
+  color: #94a3b8;
+}
+
+body.dark-theme .delete-modal-text {
+  color: #94a3b8;
+}
+
+body.dark-theme .error-container {
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+}
+
+body.dark-theme .error-message {
+  color: #fca5a5;
+}
