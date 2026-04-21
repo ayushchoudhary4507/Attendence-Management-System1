@@ -9,7 +9,7 @@ import '../components/TaskManager.css';
 import '../components/MyTasks.css';
 import './Dashboard.css';
 
-const API_URL = '/api';  // Use relative URL for Vite proxy
+const API_URL = 'https://attendence-management-system1.onrender.com/api';
 
 const Dashboard = ({ onLogout, userRole }) => {
   const navigate = useNavigate();

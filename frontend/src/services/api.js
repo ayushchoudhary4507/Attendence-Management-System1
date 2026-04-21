@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Direct backend URL - bypass Vite proxy
-const API_BASE_URL = 'http://localhost:5005/api';
+const API_BASE_URL = 'https://attendence-management-system1.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -487,4 +487,5 @@ export const groupAPI = {
   }
 };
 
+export { API_BASE_URL };
 export default api;

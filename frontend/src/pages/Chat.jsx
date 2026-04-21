@@ -5,7 +5,7 @@ import CreateGroupModal from '../components/CreateGroupModal';
 import GroupMembersModal from '../components/GroupMembersModal';
 import './Chat.css';
 
-const SOCKET_URL = 'http://localhost:5005';
+const SOCKET_URL = 'https://attendence-management-system1.onrender.com/api';
 
 const Chat = ({ user }) => {
   const [socket, setSocket] = useState(null);

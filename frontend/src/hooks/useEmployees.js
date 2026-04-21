@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const API_URL = 'http://localhost:5002/api';
+const API_URL = 'https://attendence-management-system1.onrender.com/api';
 
 export const useEmployees = () => {
   const [employees, setEmployees] = useState([]);

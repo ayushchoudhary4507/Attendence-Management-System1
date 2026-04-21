@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../services/api';
 import './Attendance.css';
 
 const Attendance = () => {
@@ -56,7 +57,7 @@ const Attendance = () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       
-      const response = await fetch('/api/attendance/leave/apply-auto', {
+      const response = await fetch(`${API_BASE_URL}/attendance/leave/apply-auto`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,7 +102,7 @@ const Attendance = () => {
         return;
       }
       
-      const response = await fetch('/api/attendance/my-today', {
+      const response = await fetch(`${API_BASE_URL}/attendance/my-today`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -170,7 +171,7 @@ const Attendance = () => {
     
     setLoading(true);
     try {
-      const response = await fetch('/api/attendance/mark', {
+      const response = await fetch(`${API_BASE_URL}/attendance/mark`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +211,7 @@ const Attendance = () => {
     
     setLoading(true);
     try {
-      const response = await fetch('/api/attendance/checkout', {
+      const response = await fetch(`${API_BASE_URL}/attendance/checkout`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${currentToken}`
@@ -242,7 +243,7 @@ const Attendance = () => {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) return;
       
-      const response = await fetch('/api/attendance/leave/my-leaves', {
+      const response = await fetch(`${API_BASE_URL}/attendance/leave/my-leaves`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

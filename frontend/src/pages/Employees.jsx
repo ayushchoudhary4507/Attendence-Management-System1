@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import '../components/EmployeeDashboard.css';
 import './Employees.css';
-import { attendanceAPI } from '../services/api';
+import { attendanceAPI, API_BASE_URL } from '../services/api';
 
-const API_URL = 'http://localhost:5005/api';
+const API_URL = 'https://attendence-management-system1.onrender.com/api';
 
 // Role badge colors
 const ROLE_COLORS = {
@@ -112,18 +112,10 @@ const Employees = ({ onLogout, userRole }) => {
       if (employees.length === 0) return;
       
       try {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const [attendanceRes, leavesRes] = await Promise.all([
-          fetch('/api/attendance/today-status', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch('/api/attendance/leave/all?status=Approved', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
+        const [attendanceData, leavesData] = await Promise.all([
+          attendanceAPI.getTodayAttendanceStatus(),
+          attendanceAPI.getAllLeaves('Approved')
         ]);
-        
-        const attendanceData = await attendanceRes.json();
-        const leavesData = await leavesRes.json();
         
         // Create a map of employee ID to leave status
         const leaveMap = {};
@@ -495,26 +487,13 @@ const Employees = ({ onLogout, userRole }) => {
 
   const handleMarkAttendance = async (employee) => {
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user'));
       
       // Check if user is marking their own attendance
       const isOwnAttendance = currentUser?.email === employee.email;
       
       // Mark attendance
-      const response = await fetch('/api/attendance/admin-mark', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          employeeId: employee._id || employee.id, 
-          status: 'Present' 
-        })
-      });
-
-      const data = await response.json();
+      const data = await attendanceAPI.markAttendance('Present', '');
       
       if (data.success) {
         // Show different message for own attendance vs admin marking

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminAPI, attendanceAPI, taskAPI, projectsAPI } from '../services/api';
+import { adminAPI, attendanceAPI, taskAPI, projectsAPI, API_BASE_URL } from '../services/api';
 import {
   BarChart,
   Bar,
@@ -81,18 +81,18 @@ const Analytics = ({ userRole }) => {
       if (isAdmin) {
         // Admin - fetch all data
         [employeesRes, attendanceRes, projectsRes, leavesRes] = await Promise.all([
-          fetch('/api/employees', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-          fetch('/api/attendance/today-status', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+          fetch(`${API_BASE_URL}/employees`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+          fetch(`${API_BASE_URL}/attendance/today-status`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
           projectsAPI.getAllProjects(),
-          fetch('/api/attendance/leave/all', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+          fetch(`${API_BASE_URL}/attendance/leave/all`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
         ]);
       } else {
         // Employee - fetch accessible data including their own employee info
         [employeesRes, attendanceRes, projectsRes, leavesRes] = await Promise.all([
-          fetch('/api/employees', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-          fetch('/api/attendance/today-status', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+          fetch(`${API_BASE_URL}/employees`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+          fetch(`${API_BASE_URL}/attendance/today-status`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
           projectsAPI.getAllProjects(),
-          fetch('/api/attendance/leave/all', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+          fetch(`${API_BASE_URL}/attendance/leave/all`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
         ]);
       }
 

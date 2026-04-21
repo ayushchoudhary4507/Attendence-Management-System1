@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './AdminDashboard.css';
-import { attendanceAPI } from '../services/api';
+import { attendanceAPI, adminAPI } from '../services/api';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
@@ -39,22 +39,10 @@ const AdminDashboard = () => {
     document.body.classList.add(newDarkMode ? 'dark-theme' : 'light-theme');
   };
 
-  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-
   // Fetch dashboard stats
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/admin/dashboard/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch stats');
-      }
-
-      const data = await response.json();
+      const data = await adminAPI.getDashboardStats();
       setStats(data.stats);
     } catch (err) {
       setError(err.message);
@@ -65,17 +53,7 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-
-      const data = await response.json();
+      const data = await adminAPI.getAllUsers();
       setUsers(data.users);
     } catch (err) {
       setError(err.message);
@@ -97,19 +75,7 @@ const AdminDashboard = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create user');
-      }
-
+      await adminAPI.createUser(formData);
       setIsModalOpen(false);
       setFormData({ name: '', email: '', password: '', role: 'user' });
       fetchUsers();
@@ -123,23 +89,11 @@ const AdminDashboard = () => {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`/api/admin/users/${selectedUser._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          role: formData.role
-        })
+      await adminAPI.updateUser(selectedUser._id, {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update user');
-      }
-
       setIsModalOpen(false);
       setSelectedUser(null);
       setIsEditMode(false);
@@ -157,17 +111,7 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete user');
-      }
-
+      await adminAPI.deleteUser(userId);
       fetchUsers();
       fetchStats();
     } catch (err) {
@@ -199,19 +143,7 @@ const AdminDashboard = () => {
   // Update user role
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ role: newRole })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update role');
-      }
-
+      await adminAPI.updateUserRole(userId, newRole);
       fetchUsers();
     } catch (err) {
       setError(err.message);
@@ -222,23 +154,7 @@ const AdminDashboard = () => {
   const handleMarkPresent = async (employeeId) => {
     try {
       setAttendanceLoading(true);
-      const response = await fetch('/api/attendance/admin-mark', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          employeeId,
-          status: 'Present',
-          date: new Date().toISOString().split('T')[0]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark attendance');
-      }
-
+      await attendanceAPI.markAttendance('Present', '');
       alert('✅ Employee marked as Present Today!');
       setIsAttendanceModalOpen(false);
     } catch (err) {
@@ -259,19 +175,7 @@ const AdminDashboard = () => {
   const fetchTodaysPresentEmployees = async () => {
     try {
       setAttendanceLoading(true);
-      const today = new Date().toISOString().split('T')[0];
-      
-      const response = await fetch(`/api/attendance/today?date=${today}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch today\'s attendance');
-      }
-      
-      const data = await response.json();
+      const data = await attendanceAPI.getTodayAllAttendance();
       
       // Filter only PRESENT employees from today's attendance data
       // Backend returns employees with attendanceToday object
@@ -303,18 +207,8 @@ const AdminDashboard = () => {
   // Fetch employees for attendance
   const fetchEmployeesForAttendance = async () => {
     try {
-      const response = await fetch('/api/employees', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch employees');
-      }
-      
-      const data = await response.json();
-      setEmployees(data.data || []);
+      const data = await adminAPI.getAllUsers();
+      setEmployees(data.users || []);
     } catch (err) {
       setError(err.message);
     }
