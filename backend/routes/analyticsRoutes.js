@@ -3,7 +3,7 @@ const router = express.Router();
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
 const Project = require('../models/Project');
-const { authMiddleware: auth } = require('../Middleware/authMiddleware');
+const { authMiddleware: auth } = require('../middleware/authMiddleware');
 
 // Get analytics dashboard data
 router.get('/dashboard', auth, async (req, res) => {

@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider nodemon server.js",
+    "tunnel": "ngrok http 5005",
+    "tunnel:prod": "ngrok http 5005",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -28,6 +30,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "cross-env": "^10.1.0"
+    "cross-env": "^10.1.0",
+    "ngrok": "^5.0.0-beta.2"
   }
 }
