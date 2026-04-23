@@ -80,9 +80,9 @@
 }
 
 .logo-text {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
 }
 
 .sidebar-nav {
@@ -767,12 +767,7 @@
   .sidebar .nav-item span,
   .sidebar .support-btn span 
    
-  
-
-  .main-content {
-    margin-left: 70px;
-  }
-
+ 
   .form-row {
     grid-template-columns: 1fr;
   }
