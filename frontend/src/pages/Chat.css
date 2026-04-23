@@ -1199,3 +1199,349 @@ body.dark-theme .group-avatar .group-indicator {
 body.dark-theme .create-group-link:hover {
   background: rgba(99, 102, 241, 0.2);
 }
+
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .chat-container {
+    height: calc(100vh - 60px);
+  }
+
+  .chat-sidebar {
+    width: 280px;
+  }
+
+  .chat-header h2 {
+    font-size: 16px;
+  }
+
+  .message-content {
+    max-width: 75%;
+    padding: 10px 14px;
+  }
+
+  .chat-input-area {
+    padding: 12px 16px;
+  }
+
+  .chat-input {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .send-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .chat-container {
+    flex-direction: column;
+    height: calc(100vh - 56px);
+    position: relative;
+  }
+
+  /* Mobile Sidebar (Contacts List) */
+  .chat-sidebar {
+    width: 100%;
+    height: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--gray-200);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    transition: transform 0.3s ease;
+  }
+
+  .chat-sidebar.hidden {
+    transform: translateX(-100%);
+  }
+
+  .chat-sidebar.visible {
+    transform: translateX(0);
+  }
+
+  .chat-main {
+    width: 100%;
+  }
+
+  /* Mobile Chat Header with Back Button */
+  .chat-header {
+    padding: 10px 12px;
+    min-height: 56px;
+  }
+
+  .back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: none;
+    border: none;
+    color: var(--gray-600);
+    cursor: pointer;
+    margin-right: 8px;
+    border-radius: var(--radius);
+  }
+
+  .back-button:hover {
+    background: var(--gray-100);
+  }
+
+  .chat-header-info h3 {
+    font-size: 15px;
+  }
+
+  .chat-header-info p {
+    font-size: 12px;
+  }
+
+  /* Messages Area */
+  .chat-messages {
+    padding: 12px;
+  }
+
+  .message-content {
+    max-width: 85%;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .message-text {
+    font-size: 14px;
+  }
+
+  .message-meta {
+    font-size: 11px;
+  }
+
+  /* Input Area */
+  .chat-input-area {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .chat-input {
+    padding: 10px 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 44px;
+  }
+
+  .send-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+
+  /* Contact Items */
+  .contact-item {
+    padding: 10px 12px;
+    min-height: 64px;
+  }
+
+  .contact-avatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .contact-info h4 {
+    font-size: 14px;
+  }
+
+  .contact-info p {
+    font-size: 12px;
+  }
+
+  .contact-meta {
+    font-size: 11px;
+  }
+
+  /* Chat Tabs */
+  .chat-tabs {
+    padding: 0 8px;
+  }
+
+  .chat-tab {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  /* Typing Indicator */
+  .typing-indicator {
+    padding: 8px 12px;
+  }
+
+  .typing-text {
+    font-size: 12px;
+  }
+}
+
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .chat-container {
+    height: calc(100vh - 52px);
+  }
+
+  .chat-header {
+    padding: 8px 10px;
+    min-height: 52px;
+  }
+
+  .chat-header-info h3 {
+    font-size: 14px;
+  }
+
+  .chat-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .chat-messages {
+    padding: 10px;
+  }
+
+  .message-content {
+    max-width: 90%;
+    padding: 8px 10px;
+  }
+
+  .message-text {
+    font-size: 13px;
+  }
+
+  .message-meta {
+    font-size: 10px;
+  }
+
+  .chat-input-area {
+    padding: 8px 10px;
+  }
+
+  .chat-input {
+    padding: 8px 10px;
+    font-size: 16px;
+  }
+
+  .send-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Contact List Compact */
+  .contact-item {
+    padding: 8px 10px;
+    min-height: 56px;
+  }
+
+  .contact-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .contact-info h4 {
+    font-size: 13px;
+  }
+
+  .contact-info p {
+    font-size: 11px;
+  }
+
+  /* Empty State */
+  .empty-state {
+    padding: 40px 20px;
+  }
+
+  .empty-state-icon {
+    font-size: 48px;
+  }
+
+  .empty-state h3 {
+    font-size: 16px;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .chat-header-info h3 {
+    font-size: 13px;
+  }
+
+  .message-content {
+    padding: 6px 8px;
+  }
+
+  .message-text {
+    font-size: 12px;
+  }
+
+  .contact-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .contact-info h4 {
+    font-size: 12px;
+  }
+
+  .chat-tab {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .contact-item:hover,
+  .chat-tab:hover {
+    background: none;
+  }
+
+  .contact-item:active,
+  .chat-tab:active {
+    background: var(--gray-100);
+  }
+
+  body.dark-theme .contact-item:active,
+  body.dark-theme .chat-tab:active {
+    background: var(--gray-800);
+  }
+
+  .send-btn {
+    transform: none;
+  }
+
+  .send-btn:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Landscape Mode */
+@media (max-height: 500px) and (orientation: landscape) {
+  .chat-container {
+    height: 100vh;
+  }
+
+  .chat-header {
+    min-height: 48px;
+    padding: 6px 12px;
+  }
+
+  .chat-messages {
+    padding: 8px;
+  }
+
+  .chat-input-area {
+    padding: 8px 12px;
+  }
+}

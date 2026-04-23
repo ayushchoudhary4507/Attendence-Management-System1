@@ -579,3 +579,275 @@ body.dark-theme .work-hours-table tbody tr td {
   color: #e2e8f0 !important;
   border-bottom-color: rgba(255, 255, 255, 0.05) !important;
 }
+
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .work-hours-container {
+    padding: 16px;
+  }
+
+  .work-hours-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .work-hours-header h2 {
+    font-size: 20px;
+  }
+
+  .date-selector {
+    width: 100%;
+  }
+
+  .date-selector input {
+    flex: 1;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 20px 16px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 24px;
+  }
+
+  .work-hours-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .work-hours-table {
+    min-width: 800px;
+  }
+
+  .work-hours-table th,
+  .work-hours-table td {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .employee-info-cell {
+    min-width: 180px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .work-hours-container {
+    padding: 12px;
+  }
+
+  .work-hours-header h2 {
+    font-size: 18px;
+  }
+
+  .date-selector label {
+    font-size: 13px;
+  }
+
+  .date-selector input {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .stat-card .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .work-hours-table th,
+  .work-hours-table td {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  .employee-info-cell {
+    min-width: 160px;
+  }
+
+  .employee-name {
+    font-size: 13px;
+  }
+
+  .employee-id {
+    font-size: 11px;
+  }
+
+  .time-input {
+    width: 70px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .work-hours-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .status-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .attendance-status {
+    font-size: 11px;
+  }
+
+  .btn-save-hours {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .work-hours-container {
+    padding: 10px;
+  }
+
+  .work-hours-header h2 {
+    font-size: 16px;
+  }
+
+  .date-selector {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .date-selector input {
+    width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px 10px;
+    border-radius: 10px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 18px;
+  }
+
+  .stat-card .stat-label {
+    font-size: 9px;
+  }
+
+  .work-hours-table-container {
+    margin: 0 -10px;
+    width: calc(100% + 20px);
+    border-radius: 0;
+  }
+
+  .work-hours-table {
+    min-width: 700px;
+  }
+
+  .work-hours-table th,
+  .work-hours-table td {
+    padding: 8px;
+    font-size: 11px;
+  }
+
+  .employee-avatar-small {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .time-input {
+    width: 60px;
+    padding: 5px 6px;
+    font-size: 12px;
+  }
+
+  .empty-state {
+    padding: 30px 20px;
+  }
+
+  .empty-state-icon {
+    font-size: 40px;
+  }
+
+  .empty-state h3 {
+    font-size: 16px;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 16px;
+    margin: 0;
+  }
+
+  .stat-card .stat-label {
+    font-size: 10px;
+    margin: 0;
+  }
+
+  .work-hours-table th,
+  .work-hours-table td {
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  .employee-avatar-small {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .employee-name {
+    font-size: 11px;
+  }
+
+  .employee-id {
+    font-size: 9px;
+  }
+}

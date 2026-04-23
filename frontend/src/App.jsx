@@ -16,6 +16,7 @@ import EmployeeWorkHours from './components/EmployeeWorkHours';
 import Attendance from './components/Attendance';
 import { settingsAPI } from './services/api';
 import './App.css';
+import './styles/responsive.css';
 
 // Wrapper components for navigation
 const LoginPageWrapper = ({ onLoginSuccess }) => {
@@ -35,6 +36,32 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   const currentPath = location.pathname;
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 1024;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setMobileSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Handle click outside to close mobile sidebar
+  const handleOverlayClick = () => {
+    setMobileSidebarOpen(false);
+  };
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,8 +191,16 @@ const Layout = ({ children, onLogout, userRole, user }) => {
 
   return (
     <div className="dashboard-container">
+      {/* Mobile Sidebar Overlay */}
+      {isMobile && (
+        <div 
+          className={`mobile-sidebar-overlay ${mobileSidebarOpen ? 'active' : ''}`}
+          onClick={handleOverlayClick}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo">
             <div className="logo-icon">📋</div>
@@ -203,11 +238,29 @@ const Layout = ({ children, onLogout, userRole, user }) => {
         {/* Top Header */}
         <header className="top-header">
           <div className="header-left">
-            <button className="sidebar-toggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-              </svg>
-            </button>
+            {/* Mobile Menu Toggle */}
+            {isMobile && (
+              <button 
+                className={`mobile-menu-toggle ${mobileSidebarOpen ? 'active' : ''}`}
+                onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+                aria-label="Toggle menu"
+              >
+                <div className="hamburger-icon">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </button>
+            )}
+            
+            {/* Desktop Sidebar Toggle */}
+            {!isMobile && (
+              <button className="sidebar-toggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                </svg>
+              </button>
+            )}
             <nav className="breadcrumb">
               <Link to="/" className="breadcrumb-home">Home</Link>
               <span className="separator">›</span>

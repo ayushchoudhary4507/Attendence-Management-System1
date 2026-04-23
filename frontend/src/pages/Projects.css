@@ -667,3 +667,336 @@ body.dark-theme .btn-delete {
 body.dark-theme .btn-delete:hover {
   background: #b91c1c;
 }
+
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .projects-container {
+    padding: 20px;
+  }
+
+  .projects-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .projects-header h1 {
+    font-size: 24px;
+  }
+
+  .projects-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .project-card {
+    padding: 20px;
+  }
+
+  .project-header h3 {
+    font-size: 16px;
+  }
+
+  .project-description {
+    font-size: 13px;
+  }
+
+  .project-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .modal {
+    padding: 24px;
+    max-width: 90%;
+  }
+
+  .modal h2 {
+    font-size: 18px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .projects-container {
+    padding: 16px;
+  }
+
+  .projects-header h1 {
+    font-size: 20px;
+  }
+
+  .btn-add-project {
+    padding: 10px 16px;
+    font-size: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .projects-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .project-card {
+    padding: 16px;
+  }
+
+  .project-header {
+    gap: 12px;
+  }
+
+  .project-header h3 {
+    font-size: 15px;
+  }
+
+  .project-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .project-description {
+    font-size: 13px;
+  }
+
+  .project-stats {
+    gap: 12px;
+  }
+
+  .project-stat {
+    padding: 8px 12px;
+  }
+
+  .project-stat-value {
+    font-size: 16px;
+  }
+
+  .project-stat-label {
+    font-size: 11px;
+  }
+
+  .progress-bar {
+    height: 8px;
+  }
+
+  .project-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .project-actions button {
+    width: 100%;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .project-team {
+    gap: 6px;
+  }
+
+  .team-member {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  /* Modal mobile */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    animation: modalSlideUp 0.3s ease;
+  }
+
+  @keyframes modalSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .modal-footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  /* Tabs mobile */
+  .projects-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+
+  .tab-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* Search mobile */
+  .search-container {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+}
+
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .projects-container {
+    padding: 12px;
+  }
+
+  .projects-header h1 {
+    font-size: 18px;
+  }
+
+  .project-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .project-header h3 {
+    font-size: 14px;
+  }
+
+  .project-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .project-description {
+    font-size: 12px;
+  }
+
+  .project-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .project-stat {
+    padding: 8px;
+    text-align: center;
+  }
+
+  .project-stat-value {
+    font-size: 14px;
+  }
+
+  .project-stat-label {
+    font-size: 10px;
+  }
+
+  .modal {
+    padding: 16px;
+  }
+
+  .modal h2 {
+    font-size: 16px;
+  }
+
+  .empty-state {
+    padding: 40px 20px;
+  }
+
+  .empty-state-icon {
+    font-size: 40px;
+  }
+
+  .empty-state h3 {
+    font-size: 16px;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .projects-header h1 {
+    font-size: 16px;
+  }
+
+  .project-card {
+    padding: 12px;
+  }
+
+  .project-header h3 {
+    font-size: 13px;
+  }
+
+  .project-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .project-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+  }
+
+  .project-stat-value {
+    font-size: 14px;
+  }
+
+  .project-stat-label {
+    font-size: 11px;
+  }
+}

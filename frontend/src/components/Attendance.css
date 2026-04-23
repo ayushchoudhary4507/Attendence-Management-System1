@@ -463,3 +463,312 @@ body.dark-theme .no-leaves {
 body.dark-theme .no-leaves-icon {
   color: #475569;
 }
+
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .attendance-page {
+    padding: 16px;
+    max-width: 100%;
+  }
+
+  .attendance-header h1 {
+    font-size: 24px;
+  }
+
+  .today-status-card {
+    padding: 20px;
+  }
+
+  .time-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .time-value {
+    font-size: 20px;
+  }
+
+  .history-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .history-table {
+    min-width: 600px;
+  }
+
+  .leave-calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .calendar-day {
+    min-height: 60px;
+    padding: 6px;
+    font-size: 12px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .attendance-page {
+    padding: 12px;
+  }
+
+  .attendance-header h1 {
+    font-size: 20px;
+  }
+
+  .attendance-header p {
+    font-size: 13px;
+  }
+
+  .today-status-card {
+    padding: 16px;
+  }
+
+  .status-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .status-header h2 {
+    font-size: 18px;
+  }
+
+  .current-date {
+    font-size: 13px;
+  }
+
+  .status-badge {
+    font-size: 12px;
+    padding: 6px 16px;
+  }
+
+  .time-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .time-stat {
+    padding: 12px;
+  }
+
+  .time-value {
+    font-size: 18px;
+  }
+
+  .time-label {
+    font-size: 10px;
+  }
+
+  .attendance-note {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .btn-checkin,
+  .btn-checkout {
+    padding: 12px 32px;
+    font-size: 15px;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  /* History section mobile */
+  .history-section h3 {
+    font-size: 16px;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  /* Leave section mobile */
+  .leave-section {
+    padding: 16px;
+  }
+
+  .leave-section h3 {
+    font-size: 16px;
+  }
+
+  .leave-form {
+    gap: 12px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .leave-form input,
+  .leave-form select,
+  .leave-form textarea {
+    padding: 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .btn-submit-leave {
+    padding: 12px 24px;
+    font-size: 15px;
+    width: 100%;
+  }
+
+  /* Calendar mobile */
+  .leave-calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .calendar-header {
+    font-size: 11px;
+    padding: 8px 4px;
+  }
+
+  .calendar-day {
+    min-height: 50px;
+    padding: 4px;
+    font-size: 11px;
+  }
+
+  .leave-indicator {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* Leave cards mobile */
+  .leave-card {
+    padding: 12px;
+  }
+
+  .leave-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .leave-header h4 {
+    font-size: 14px;
+  }
+
+  .leave-type-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .leave-dates {
+    font-size: 12px;
+  }
+
+  .leave-reason {
+    font-size: 12px;
+  }
+
+  .no-leaves {
+    padding: 24px;
+  }
+
+  .no-leaves-icon {
+    font-size: 36px;
+  }
+}
+
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .attendance-page {
+    padding: 10px;
+  }
+
+  .attendance-header h1 {
+    font-size: 18px;
+  }
+
+  .today-status-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .time-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .time-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+  }
+
+  .time-value {
+    font-size: 16px;
+    margin: 0;
+  }
+
+  .time-label {
+    margin: 0;
+  }
+
+  .btn-checkin,
+  .btn-checkout {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+
+  .history-table-container {
+    margin: 0 -10px;
+    width: calc(100% + 20px);
+    border-radius: 0;
+  }
+
+  /* Calendar extra small */
+  .calendar-day {
+    min-height: 40px;
+    font-size: 10px;
+  }
+
+  .calendar-header {
+    font-size: 10px;
+    padding: 6px 2px;
+  }
+
+  /* Compact leave cards */
+  .my-leaves-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .attendance-header h1 {
+    font-size: 16px;
+  }
+
+  .status-badge {
+    font-size: 11px;
+    padding: 5px 12px;
+  }
+
+  .time-stat {
+    padding: 8px 10px;
+  }
+
+  .time-value {
+    font-size: 14px;
+  }
+
+  .calendar-day {
+    min-height: 35px;
+    font-size: 9px;
+  }
+}

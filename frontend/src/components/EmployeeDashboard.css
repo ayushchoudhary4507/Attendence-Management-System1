@@ -765,9 +765,9 @@
 
   .sidebar .logo-text,
   .sidebar .nav-item span,
-  .sidebar .support-btn span {
-    display: none;
-  }
+  .sidebar .support-btn span 
+   
+  
 
   .main-content {
     margin-left: 70px;
