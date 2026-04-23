@@ -464,17 +464,58 @@ const LandingPage = () => {
       {/* Footer */}
       <footer className="landing-footer">
         <div className="footer-content">
-          <div className="footer-logo">
-            <div className="logo-icon">📋</div>
-            <span>AttendancePro</span>
+          <div className="footer-columns">
+            <div className="footer-column">
+              <h4>Features</h4>
+              <ul>
+                <li><a href="#" onClick={() => navigate('/login')}>Attendance Tracking</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Leave Management</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Employee Directory</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Reports & Analytics</a></li>
+              </ul>
+            </div>
+            <div className="footer-column">
+              <h4>Solutions</h4>
+              <ul>
+                <li><a href="#" onClick={() => navigate('/login')}>Small Business</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Enterprise</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Remote Teams</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Shift Workers</a></li>
+              </ul>
+            </div>
+            <div className="footer-column">
+              <h4>Support</h4>
+              <ul>
+                <li><a href="#" onClick={() => navigate('/login')}>Help Center</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>User Guides</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Contact Us</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>FAQs</a></li>
+              </ul>
+            </div>
+            <div className="footer-column">
+              <h4>Legal</h4>
+              <ul>
+                <li><a href="#" onClick={() => navigate('/login')}>Privacy Policy</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Terms of Service</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>GDPR Compliance</a></li>
+                <li><a href="#" onClick={() => navigate('/login')}>Data Security</a></li>
+              </ul>
+            </div>
           </div>
-          <p className="footer-copyright">
-            © 2024 AttendancePro. All rights reserved.
-          </p>
-          <div className="footer-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">Support</a>
+          <div className="footer-bottom">
+            <div className="footer-brand">
+              <div className="logo-icon">📋</div>
+              <span>AttendancePro</span>
+            </div>
+            <p className="footer-copyright">
+              © 2024 AttendancePro. All rights reserved.
+            </p>
+            <div className="footer-social">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">Facebook</a>
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">Twitter</a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">LinkedIn</a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">Instagram</a>
+            </div>
           </div>
         </div>
       </footer>

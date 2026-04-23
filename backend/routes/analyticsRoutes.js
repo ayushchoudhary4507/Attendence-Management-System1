@@ -5,6 +5,145 @@ const Attendance = require('../models/Attendance');
 const Project = require('../models/Project');
 const { authMiddleware: auth } = require('../middleware/authMiddleware');
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     AnalyticsData:
+ *       type: object
+ *       properties:
+ *         stats:
+ *           type: object
+ *           properties:
+ *             totalEmployees:
+ *               type: integer
+ *             presentToday:
+ *               type: integer
+ *             absentToday:
+ *               type: integer
+ *             onLeaveToday:
+ *               type: integer
+ *             totalLeaves:
+ *               type: integer
+ *             activeProjects:
+ *               type: integer
+ *             avgWorkHours:
+ *               type: integer
+ *             growth:
+ *               type: string
+ *         monthlyData:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               present:
+ *                 type: integer
+ *               absent:
+ *                 type: integer
+ *               leave:
+ *                 type: integer
+ *               halfDay:
+ *                 type: integer
+ *         attendanceTypes:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               value:
+ *                 type: integer
+ *               color:
+ *                 type: string
+ *         recentActivity:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               action:
+ *                 type: string
+ *               time:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *     RealtimeStats:
+ *       type: object
+ *       properties:
+ *         present:
+ *           type: integer
+ *         absent:
+ *           type: integer
+ *         leave:
+ *           type: integer
+ *         late:
+ *           type: integer
+ *         lastUpdated:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/analytics/dashboard:
+ *   get:
+ *     summary: Get analytics dashboard data
+ *     description: Retrieve comprehensive dashboard analytics including employee stats, attendance data, charts, and recent activity
+ *     tags:
+ *       - Analytics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard analytics data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/AnalyticsData'
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/analytics/realtime:
+ *   get:
+ *     summary: Get real-time attendance stats
+ *     description: Retrieve real-time attendance statistics for today
+ *     tags:
+ *       - Analytics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Real-time attendance stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/RealtimeStats'
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+
 // Get analytics dashboard data
 router.get('/dashboard', auth, async (req, res) => {
   try {

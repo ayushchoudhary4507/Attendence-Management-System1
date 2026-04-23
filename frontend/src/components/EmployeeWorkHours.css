@@ -428,6 +428,7 @@ body.dark-theme .date-selector input {
   background: rgba(15, 15, 25, 0.6);
   border-color: rgba(255, 255, 255, 0.1);
   color: #e2e8f0;
+  color-scheme: dark;
 }
 
 body.dark-theme .stat-card {

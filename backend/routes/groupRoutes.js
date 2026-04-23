@@ -6,6 +6,111 @@ const GroupMessage = require('../models/GroupMessage');
 const User = require('../models/User');
 const { protect: auth } = require('../middleware/authMiddleware');
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Group:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         name:
+ *           type: string
+ *           description: Group name
+ *         description:
+ *           type: string
+ *           description: Group description
+ *         createdBy:
+ *           type: string
+ *           description: Creator user ID
+ *         members:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [admin, member]
+ *               joinedAt:
+ *                 type: string
+ *                 format: date-time
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *     GroupMessage:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         groupId:
+ *           type: string
+ *         senderId:
+ *           type: string
+ *         senderName:
+ *           type: string
+ *         message:
+ *           type: string
+ *         messageType:
+ *           type: string
+ *           enum: [text, file, image]
+ *         fileUrl:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
+ * /api/groups/create:
+ *   post:
+ *     summary: Create a new group
+ *     description: Create a new group chat with members
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - members
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Group name
+ *               description:
+ *                 type: string
+ *                 description: Group description
+ *               members:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to add as members
+ *     responses:
+ *       201:
+ *         description: Group created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Group'
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ */
+
 // @route   POST /api/groups/create
 // @desc    Create a new group
 // @access  Private
@@ -85,6 +190,34 @@ router.post('/create', auth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /groups:
+ *   get:
+ *     summary: Get all groups for logged-in user
+ *     description: Retrieve all groups where the current user is a member
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of groups
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 groups:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Group'
+ *       401:
+ *         description: Unauthorized
+ */
+
 // @route   GET /api/groups
 // @desc    Get all groups for logged-in user
 // @access  Private
@@ -108,6 +241,32 @@ router.get('/', auth, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch groups', error: error.message });
   }
 });
+
+/**
+ * @swagger
+ * /api/groups/unread-count:
+ *   get:
+ *     summary: Get unread message count for all groups
+ *     description: Get total count of unread messages across all groups
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Unread count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 unreadCount:
+ *                   type: integer
+ *       401:
+ *         description: Unauthorized
+ */
 
 // @route   GET /api/groups/unread-count
 // @desc    Get unread message count for all groups
@@ -164,6 +323,36 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{groupId}:
+ *   get:
+ *     summary: Get single group details
+ *     description: Retrieve details of a specific group
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     responses:
+ *       200:
+ *         description: Group details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Group'
+ *       404:
+ *         description: Group not found
+ *       401:
+ *         description: Unauthorized
+ */
+
 // @route   GET /api/groups/:groupId
 // @desc    Get single group details
 // @access  Private
@@ -198,6 +387,84 @@ router.get('/:groupId', auth, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch group', error: error.message });
   }
 });
+
+/**
+ * @swagger
+ * /api/groups/{groupId}/messages:
+ *   get:
+ *     summary: Get messages for a group
+ *     description: Retrieve all messages in a specific group
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     responses:
+ *       200:
+ *         description: List of group messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/GroupMessage'
+ *       404:
+ *         description: Group not found
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Send message to group
+ *     description: Send a message to a group (also handled via socket for real-time)
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *               messageType:
+ *                 type: string
+ *                 enum: [text, file, image]
+ *               fileUrl:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Message sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GroupMessage'
+ *       404:
+ *         description: Group not found
+ *       401:
+ *         description: Unauthorized
+ */
 
 // @route   GET /api/groups/:groupId/messages
 // @desc    Get messages for a group
@@ -325,6 +592,43 @@ router.post('/:groupId/messages', auth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{groupId}/mark-read:
+ *   patch:
+ *     summary: Mark all messages as read
+ *     description: Mark all messages in a group as read for current user
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     responses:
+ *       200:
+ *         description: Messages marked as read
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 markedCount:
+ *                   type: integer
+ *                 unreadCount:
+ *                   type: integer
+ *       404:
+ *         description: Group not found
+ *       401:
+ *         description: Unauthorized
+ */
+
 // @route   PATCH /api/groups/:groupId/mark-read
 // @desc    Mark all messages in a group as read for current user
 // @access  Private
@@ -378,6 +682,110 @@ router.patch('/:groupId/mark-read', auth, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to mark messages as read', error: error.message });
   }
 });
+
+/**
+ * @swagger
+ * /api/groups/{groupId}/members:
+ *   get:
+ *     summary: Get all members of a group
+ *     description: Retrieve all members in a specific group
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     responses:
+ *       200:
+ *         description: List of group members
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 members:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       role:
+ *                         type: string
+ *   post:
+ *     summary: Add members to group
+ *     description: Add new members to an existing group
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - members
+ *             properties:
+ *               members:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to add
+ *     responses:
+ *       200:
+ *         description: Members added successfully
+ *       404:
+ *         description: Group not found
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Remove member from group
+ *     description: Remove a specific member from the group
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *       - in: query
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Member user ID to remove
+ *     responses:
+ *       200:
+ *         description: Member removed successfully
+ *       404:
+ *         description: Group or member not found
+ *       401:
+ *         description: Unauthorized
+ */
 
 // @route   POST /api/groups/:groupId/members
 // @desc    Add members to group
@@ -453,6 +861,50 @@ router.post('/:groupId/members', auth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{groupId}/members/{memberId}/role:
+ *   put:
+ *     summary: Update member role
+ *     description: Change a member's role (admin/member)
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Member user ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [admin, member]
+ *     responses:
+ *       200:
+ *         description: Member role updated successfully
+ *       404:
+ *         description: Group or member not found
+ *       401:
+ *         description: Unauthorized
+ */
+
 // @route   DELETE /api/groups/:groupId/members/:memberId
 // @desc    Remove member from group
 // @access  Private
@@ -507,6 +959,34 @@ router.delete('/:groupId/members/:memberId', auth, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to remove member', error: error.message });
   }
 });
+
+/**
+ * @swagger
+ * /api/groups/{groupId}:
+ *   delete:
+ *     summary: Delete group
+ *     description: Delete a group (Admin only)
+ *     tags:
+ *       - Groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Group ID
+ *     responses:
+ *       200:
+ *         description: Group deleted successfully
+ *       404:
+ *         description: Group not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ */
 
 // @route   DELETE /api/groups/:groupId
 // @desc    Delete group

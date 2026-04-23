@@ -395,3 +395,207 @@ body.dark-theme .theme-card.active {
 body.dark-theme .theme-card span {
   color: #e2e8f0;
 }
+
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .settings-page {
+    flex-direction: column;
+  }
+
+  .settings-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 16px;
+  }
+
+  .settings-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .settings-content {
+    padding: 20px;
+  }
+
+  .settings-section h2 {
+    font-size: 20px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .settings-sidebar {
+    padding: 12px;
+  }
+
+  .settings-tabs {
+    gap: 6px;
+  }
+
+  .tab-btn {
+    min-width: 100px;
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  .settings-content {
+    padding: 16px;
+  }
+
+  .settings-section h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 12px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .toggle-item {
+    padding: 14px 0;
+  }
+
+  .toggle-item h4 {
+    font-size: 14px;
+  }
+
+  .toggle-item p {
+    font-size: 12px;
+  }
+
+  .toggle-switch {
+    min-width: 48px;
+    min-height: 28px;
+  }
+
+  .theme-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .theme-card {
+    padding: 16px;
+    min-height: 80px;
+  }
+
+  .theme-card span {
+    font-size: 12px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 14px;
+    width: 100%;
+  }
+
+  .settings-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .settings-sidebar {
+    padding: 10px;
+  }
+
+  .settings-tabs {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tab-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .settings-content {
+    padding: 12px;
+  }
+
+  .settings-section h2 {
+    font-size: 16px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 10px;
+    font-size: 16px;
+  }
+
+  .toggle-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .toggle-header {
+    width: 100%;
+  }
+
+  .theme-options {
+    grid-template-columns: 1fr;
+  }
+
+  .theme-card {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .security-info {
+    padding: 16px;
+  }
+
+  .info-item {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .info-item .label {
+    font-size: 11px;
+  }
+
+  .info-item .value {
+    font-size: 13px;
+  }
+}

@@ -341,3 +341,204 @@ body.dark-theme .error-container {
 body.dark-theme .error-message {
   color: #fca5a5;
 }
+
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .employees-container {
+    padding: 20px;
+  }
+
+  .employees-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .employees-header h1 {
+    font-size: 24px;
+  }
+
+  .employees-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .employees-table-container {
+    overflow-x: auto;
+  }
+
+  .employees-table {
+    min-width: 800px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .employees-container {
+    padding: 16px;
+  }
+
+  .employees-header h1 {
+    font-size: 20px;
+  }
+
+  .view-only-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .employees-actions {
+    gap: 10px;
+  }
+
+  .add-employee-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  .search-input {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .employees-table th,
+  .employees-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+
+  .employee-name {
+    font-size: 13px;
+  }
+
+  .employee-designation {
+    font-size: 11px;
+  }
+
+  .status-badge,
+  .role-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pagination button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .employees-container {
+    padding: 12px;
+  }
+
+  .employees-header h1 {
+    font-size: 18px;
+  }
+
+  .employees-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .add-employee-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .employees-table-container {
+    margin: 0 -12px;
+    width: calc(100% + 24px);
+    border-radius: 0;
+  }
+
+  .employees-table {
+    min-width: 700px;
+  }
+
+  .employees-table th,
+  .employees-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .employee-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .action-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .modal {
+    width: calc(100% - 24px);
+    max-height: 90vh;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 12px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .modal-footer {
+    padding: 16px;
+    flex-direction: column;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .pagination {
+    padding: 0;
+  }
+
+  .pagination button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .pagination span {
+    font-size: 12px;
+  }
+}

@@ -8,6 +8,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 15000, // 15 seconds timeout
+  timeoutErrorMessage: 'Request timed out. Server may be starting up, please try again.'
 });
 
 // Add token to requests if available
@@ -33,6 +35,19 @@ export const authAPI = {
         response: error.response,
         request: error.request
       });
+      
+      // Handle timeout specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        throw { 
+          message: 'Server is taking too long to respond. This usually happens when the server is starting up after being idle. Please wait 30 seconds and try again.', 
+          popup: {
+            type: 'warning',
+            title: 'Server Waking Up',
+            message: 'Our free server is starting up. Please try again in 30 seconds.'
+          }
+        };
+      }
+      
       throw error.response ? error.response.data : { message: 'Network error: ' + error.message };
     }
   },

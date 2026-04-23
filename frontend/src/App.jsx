@@ -4,7 +4,7 @@ import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import AdminLogin from './pages/AdminLogin';
 import EmployeeLogin from './pages/EmployeeLogin';
-import LandingPage from './pages/LandingPage';
+import LandingPage from './pages/landing/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 import Employees from './pages/Employees';
@@ -73,7 +73,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     setSearchResults([]);
     navigate(item.path);
   };
-
+  
   // Load theme and notifications on mount
   useEffect(() => {
     loadTheme();

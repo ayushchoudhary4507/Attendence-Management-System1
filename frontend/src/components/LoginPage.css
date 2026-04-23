@@ -259,12 +259,14 @@
 .login-container.light .brand-name-text {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .login-container.dark .brand-name-text {
   background: linear-gradient(135deg, #8b9dc3 0%, #dfe3ee 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -903,5 +905,217 @@
   
   .signup-link {
     color: #bdc3c7;
+  }
+}
+
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .login-container.light .login-card,
+  .login-container.dark .login-card {
+    padding: 40px 32px;
+    max-width: 420px;
+  }
+
+  .login-title {
+    font-size: 28px;
+  }
+
+  .login-subtitle {
+    font-size: 14px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 16px;
+  }
+
+  .login-container.light .login-card,
+  .login-container.dark .login-card {
+    padding: 32px 24px;
+    border-radius: 20px;
+    max-width: 100%;
+  }
+
+  .login-title {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .login-subtitle {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    padding: 12px 14px;
+    font-size: 16px; /* Prevent zoom on iOS */
+    border-radius: 10px;
+  }
+
+  .login-button {
+    padding: 14px 20px;
+    font-size: 15px;
+    border-radius: 10px;
+    min-height: 48px;
+  }
+
+  .role-button {
+    padding: 16px 20px;
+    min-height: 80px;
+  }
+
+  .role-icon {
+    font-size: 28px;
+  }
+
+  .role-text {
+    font-size: 15px;
+  }
+
+  .signup-link {
+    font-size: 13px;
+  }
+
+  .error-message,
+  .success-message {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
+
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 12px;
+  }
+
+  .login-container.light .login-card,
+  .login-container.dark .login-card {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+
+  .login-title {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .login-subtitle {
+    font-size: 12px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+
+  .form-input {
+    padding: 10px 12px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  .login-button {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-radius: 8px;
+    min-height: 44px;
+  }
+
+  .role-selection {
+    gap: 12px;
+  }
+
+  .role-button {
+    padding: 14px 16px;
+    min-height: 70px;
+    border-radius: 12px;
+  }
+
+  .role-icon {
+    font-size: 24px;
+  }
+
+  .role-text {
+    font-size: 14px;
+  }
+
+  .role-description {
+    font-size: 11px;
+  }
+
+  .signup-link {
+    font-size: 12px;
+  }
+
+  .back-button {
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+
+  .error-message,
+  .success-message {
+    padding: 8px 12px;
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  .divider {
+    margin: 20px 0;
+    font-size: 12px;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .login-container {
+    padding: 10px;
+  }
+
+  .login-container.light .login-card,
+  .login-container.dark .login-card {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .login-title {
+    font-size: 18px;
+  }
+
+  .login-subtitle {
+    font-size: 11px;
+  }
+
+  .role-button {
+    padding: 12px 14px;
+    min-height: 60px;
+  }
+
+  .role-icon {
+    font-size: 20px;
+  }
+
+  .role-text {
+    font-size: 13px;
   }
 }

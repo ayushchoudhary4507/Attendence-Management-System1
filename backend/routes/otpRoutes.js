@@ -13,6 +13,75 @@ console.log('✅ otpRoutes loaded - registering routes: /send, /verify, /resend,
 // In-memory OTP storage (use Redis in production)
 const otpStore = new Map();
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     OTPResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         message:
+ *           type: string
+ *         expiresIn:
+ *           type: integer
+ *           description: OTP expiry time in seconds
+ *     OTPVerifyResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         message:
+ *           type: string
+ *         token:
+ *           type: string
+ *           description: JWT token after successful verification
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *             email:
+ *               type: string
+ *             role:
+ *               type: string
+ */
+
+/**
+ * @swagger
+ * /api/otp/send:
+ *   post:
+ *     summary: Send OTP
+ *     description: Send OTP to email or mobile number
+ *     tags:
+ *       - OTP
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: User email for OTP
+ *               mobile:
+ *                 type: string
+ *                 description: User mobile number for OTP
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/OTPResponse'
+ *       400:
+ *         description: Email or mobile required
+ *       404:
+ *         description: User not found
+ */
+
 // Generate OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -110,6 +179,45 @@ router.post('/send', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/otp/verify:
+ *   post:
+ *     summary: Verify OTP
+ *     description: Verify OTP and login user
+ *     tags:
+ *       - OTP
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - otp
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: User email
+ *               mobile:
+ *                 type: string
+ *                 description: User mobile number
+ *               otp:
+ *                 type: string
+ *                 description: 6-digit OTP code
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully, returns JWT token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/OTPVerifyResponse'
+ *       400:
+ *         description: OTP required
+ *       401:
+ *         description: Invalid or expired OTP
+ */
+
 // Verify OTP and Login
 router.post('/verify', async (req, res) => {
   try {
@@ -191,6 +299,38 @@ router.post('/verify', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/otp/resend:
+ *   post:
+ *     summary: Resend OTP
+ *     description: Resend OTP to email or mobile
+ *     tags:
+ *       - OTP
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               mobile:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP resent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/OTPResponse'
+ *       400:
+ *         description: Email or mobile required
+ *       404:
+ *         description: User not found
+ */
+
 // Resend OTP
 router.post('/resend', async (req, res) => {
   try {
@@ -220,6 +360,39 @@ router.post('/resend', async (req, res) => {
     });
   }
 });
+
+/**
+ * @swagger
+ * /api/otp/send-mobile:
+ *   post:
+ *     summary: Send Mobile OTP
+ *     description: Send OTP via SMS to mobile number
+ *     tags:
+ *       - OTP
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobile
+ *             properties:
+ *               mobile:
+ *                 type: string
+ *                 description: Mobile number with country code
+ *     responses:
+ *       200:
+ *         description: OTP sent via SMS
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/OTPResponse'
+ *       400:
+ *         description: Mobile number required
+ *       404:
+ *         description: User not found
+ */
 
 // Send Mobile OTP
 router.post('/send-mobile', async (req, res) => {
@@ -295,6 +468,42 @@ router.post('/send-mobile', async (req, res) => {
     });
   }
 });
+
+/**
+ * @swagger
+ * /api/otp/verify-mobile:
+ *   post:
+ *     summary: Verify Mobile OTP
+ *     description: Verify SMS OTP and login
+ *     tags:
+ *       - OTP
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - mobile
+ *               - otp
+ *             properties:
+ *               mobile:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *                 description: 6-digit OTP code
+ *     responses:
+ *       200:
+ *         description: Mobile OTP verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/OTPVerifyResponse'
+ *       400:
+ *         description: Mobile and OTP required
+ *       401:
+ *         description: Invalid or expired OTP
+ */
 
 // Verify Mobile OTP
 router.post('/verify-mobile', async (req, res) => {

@@ -5,7 +5,9 @@ import CreateGroupModal from '../components/CreateGroupModal';
 import GroupMembersModal from '../components/GroupMembersModal';
 import './Chat.css';
 
-const SOCKET_URL = 'https://attendence-management-system1.onrender.com/api';
+const SOCKET_URL = import.meta.env.PROD 
+  ? 'https://attendence-management-system1.onrender.com'
+  : 'http://localhost:5005';
 
 const Chat = ({ user }) => {
   const [socket, setSocket] = useState(null);
@@ -117,6 +119,24 @@ const Chat = ({ user }) => {
       reconnectionDelay: 1000,
     });
 
+    // Debug socket connection
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected:', newSocket.id);
+      newSocket.emit('join', currentUserId);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('❌ Socket connection error:', err.message);
+    });
+
+    newSocket.on('online_users', (userIds) => {
+      console.log('🟢 Online users received:', userIds);
+    });
+
+    newSocket.on('user_status', (data) => {
+      console.log('👤 User status update:', data);
+    });
+
     setSocket(newSocket);
 
     return () => {
@@ -134,8 +154,11 @@ const Chat = ({ user }) => {
   useEffect(() => {
     if (!socket || !currentUserId) return;
 
-    // Join with user ID
-    socket.emit('join', currentUserId);
+    // Join with user ID (also done on connect event for reliability)
+    if (socket.connected) {
+      console.log('🔄 Emitting join for user:', currentUserId);
+      socket.emit('join', currentUserId);
+    }
 
     // Handle incoming messages - use ref to get current selectedUser
     const handleReceiveMessage = (data) => {

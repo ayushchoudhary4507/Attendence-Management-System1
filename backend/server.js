@@ -60,9 +60,9 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Tech Project API',
+      title: 'Attendence Management Systemnn1',
       version: '1.0.0',
-      description: 'API documentation for the Tech Project backend',
+      description: 'API documentation for the Attendence Management System backend',
     },
     servers: [
       {
@@ -82,6 +82,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 // Import routes
 const { loginController, adminLoginController } = require('./controllers/loginController');
 const { registerController } = require('./controllers/registerController');
+const loginRoutes = require('./routes/loginRoutes');
+const registerRoutes = require('./routes/registerRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const projectRoutes = require('./routes/projectRoutes');
@@ -97,9 +99,9 @@ const messageRoutes = require('./routes/messageRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 
 // Use routes
-app.post('/api/login', loginController);
+app.use('/api/login', loginRoutes);
 app.post('/api/admin/login', adminLoginController);
-app.post('/api/register', registerController);
+app.use('/api/register', registerRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/projects', projectRoutes);
