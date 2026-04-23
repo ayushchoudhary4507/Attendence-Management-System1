@@ -280,28 +280,33 @@ const Projects = ({ userRole }) => {
             <p className="project-description">{project.description}</p>
             
             <div className="project-progress">
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${project.progress}%`, backgroundColor: getStatusColor(project.status) }}></div>
+              <div className="progress-bar-container">
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${project.progress}%`, backgroundColor: getStatusColor(project.status) }}></div>
+                </div>
+                <span className="progress-text">{project.progress}%</span>
               </div>
-              <span className="progress-text">{project.progress}%</span>
             </div>
 
             <div className="project-details">
-              <div className="detail">
+              <div className="detail detail-team">
                 <span className="label">Team:</span>
                 <div className="team-avatars">
-                  {project.team.map((member, i) => (
-                    <span key={i} className="avatar">{member[0]}</span>
+                  {project.team.slice(0, 4).map((member, i) => (
+                    <span key={i} className="avatar" title={member}>{member[0]}</span>
                   ))}
+                  {project.team.length > 4 && (
+                    <span className="avatar avatar-more" title={`${project.team.length - 4} more members`}>+{project.team.length - 4}</span>
+                  )}
                 </div>
               </div>
               <div className="detail">
                 <span className="label">Deadline:</span>
                 <span>{project.deadline}</span>
               </div>
-              <div className="detail">
+              <div className="detail detail-priority">
                 <span className="label">Priority:</span>
-                <span className={`priority ${project.priority.toLowerCase()}`}>{project.priority}</span>
+                <span className={`priority ${project.priority?.toLowerCase() || 'medium'}`}>{project.priority || 'Medium'}</span>
               </div>
             </div>
           </div>

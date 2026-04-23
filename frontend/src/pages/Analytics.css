@@ -394,13 +394,10 @@
   color: #94a3b8;
 }
 
-@media (max-width: 768px) {
-  .chart-card.wide {
-    grid-column: span 1;
-  }
-}
+/* ============================================
+   ANALYTICS SECTION STYLES
+   ============================================ */
 
-/* Analytics Section */
 .analytics-section {
   background: white;
   border-radius: 12px;
@@ -830,40 +827,587 @@
   color: #94a3b8;
 }
 
-/* Responsive */
+/* ============================================
+   RESPONSIVE STYLES - Mobile & Tablet
+   ============================================ */
+
+/* Tablet styles (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .analytics-page {
+    padding: 20px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .charts-section {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .chart-card.wide {
+    grid-column: span 2;
+  }
+
+  .chart-container {
+    height: 280px;
+  }
+
+  .progress-cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+/* Mobile styles (max-width: 768px) */
 @media (max-width: 768px) {
   .analytics-page {
     padding: 16px;
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  .analytics-header {
+    flex-direction: column;
     gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .analytics-header h1 {
+    font-size: 22px;
+  }
+
+  .analytics-subtitle {
+    font-size: 13px;
+  }
+
+  .header-right {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .live-indicator {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .last-updated {
+    font-size: 11px;
+  }
+
+  /* Stats Grid - 2 columns on tablet */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 16px;
   }
 
   .stat-value {
     font-size: 24px;
   }
 
+  .stat-title {
+    font-size: 11px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  /* Charts Section - Single column */
   .charts-section {
     grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .chart-card.wide {
+    grid-column: span 1;
+  }
+
+  .chart-card {
+    padding: 16px;
+  }
+
+  .chart-card h3 {
+    font-size: 15px;
+    margin-bottom: 12px;
   }
 
   .chart-container {
     height: 250px;
   }
+
+  /* Analytics Section */
+  .analytics-section {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .analytics-section h3 {
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+
+  /* Progress Cards */
+  .progress-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .progress-card {
+    padding: 14px;
+  }
+
+  .progress-header {
+    margin-bottom: 10px;
+  }
+
+  .progress-label {
+    font-size: 13px;
+  }
+
+  .progress-value {
+    font-size: 18px;
+  }
+
+  .progress-bar {
+    height: 8px;
+  }
+
+  /* Activity Card */
+  .activity-card {
+    padding: 16px;
+  }
+
+  .activity-card h3 {
+    font-size: 15px;
+    margin-bottom: 14px;
+  }
+
+  .activity-list {
+    gap: 10px;
+  }
+
+  .activity-item {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .activity-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .activity-text {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .activity-time {
+    font-size: 11px;
+  }
+
+  /* Employee Profile Card */
+  .employee-profile-card {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .employee-profile-card .profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+  }
+
+  .employee-profile-card .profile-avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .employee-profile-card .profile-info h3 {
+    font-size: 18px;
+  }
+
+  .employee-profile-card .profile-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* Chart wide on mobile */
+  .chart-card.wide {
+    grid-column: span 1;
+  }
+
+  /* Error Display */
+  .analytics-error {
+    padding: 40px 16px;
+  }
+
+  .error-icon {
+    font-size: 40px;
+  }
+
+  .analytics-error h2 {
+    font-size: 20px;
+  }
 }
 
+/* Small mobile styles (max-width: 480px) */
 @media (max-width: 480px) {
+  .analytics-page {
+    padding: 12px;
+  }
+
+  .analytics-header {
+    margin-bottom: 16px;
+  }
+
+  .analytics-header h1 {
+    font-size: 20px;
+  }
+
+  .analytics-subtitle {
+    font-size: 12px;
+  }
+
+  /* Stats Grid - Single column on small mobile */
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 14px;
+    display: flex;
+    align-items: center;
   }
 
   .stat-content {
     flex-direction: row;
+    align-items: center;
+    width: 100%;
+  }
+
+  .stat-info {
+    flex: 1;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+
+  .stat-title {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    order: -1;
+    margin-right: 12px;
+  }
+
+  .stat-trend {
+    font-size: 12px;
+  }
+
+  .stat-subtitle {
+    font-size: 11px;
+  }
+
+  /* Charts */
+  .charts-section {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .chart-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .chart-card h3 {
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+
+  .chart-container {
+    height: 220px;
+  }
+
+  /* Analytics Section */
+  .analytics-section {
+    padding: 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  .analytics-section h3 {
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+
+  /* Progress Cards */
+  .progress-cards {
+    gap: 10px;
+  }
+
+  .progress-card {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .progress-header {
+    margin-bottom: 8px;
+  }
+
+  .progress-label {
+    font-size: 12px;
+  }
+
+  .progress-value {
+    font-size: 16px;
+  }
+
+  .progress-bar {
+    height: 6px;
+  }
+
+  /* Activity Card */
+  .activity-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .activity-card h3 {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .activity-list {
+    gap: 8px;
+  }
+
+  .activity-item {
+    padding: 10px 8px;
+    border-radius: 6px;
+  }
+
+  .activity-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .activity-content {
+    min-width: 0;
+  }
+
+  .activity-text {
+    font-size: 12px;
+    margin-bottom: 2px;
+    word-break: break-word;
+  }
+
+  .activity-time {
+    font-size: 10px;
+  }
+
+  .no-activity {
+    font-size: 13px;
+    padding: 16px;
+  }
+
+  /* Employee Profile Card */
+  .employee-profile-card {
+    padding: 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  .employee-profile-card .profile-header {
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+  }
+
+  .employee-profile-card .profile-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  .employee-profile-card .profile-info h3 {
+    font-size: 16px;
+  }
+
+  .employee-profile-card .profile-email {
+    font-size: 12px;
+  }
+
+  .employee-profile-card .profile-role {
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+
+  .employee-profile-card .profile-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .employee-profile-card .profile-stat {
+    gap: 2px;
+  }
+
+  .employee-profile-card .stat-label {
+    font-size: 10px;
+  }
+
+  .employee-profile-card .stat-value {
+    font-size: 14px;
+  }
+
+  .employee-profile-card .status-badge {
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+
+  /* Loading & Error */
+  .analytics-loading {
+    min-height: 50vh;
+  }
+
+  .spinner {
+    width: 36px;
+    height: 36px;
+    border-width: 2px;
+  }
+
+  .analytics-loading p {
+    font-size: 13px;
+  }
+
+  .analytics-error {
+    padding: 32px 16px;
+  }
+
+  .error-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  .analytics-error h2 {
+    font-size: 18px;
+  }
+
+  .analytics-error p {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .btn-primary {
+    padding: 10px 16px;
+    font-size: 13px;
+    width: 100%;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .analytics-page {
+    padding: 10px;
   }
 
   .analytics-header h1 {
-    font-size: 22px;
+    font-size: 18px;
+  }
+
+  /* Stats - Compact */
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-title {
+    font-size: 10px;
+  }
+
+  /* Charts - Smaller */
+  .chart-container {
+    height: 200px;
+  }
+
+  .chart-card h3 {
+    font-size: 13px;
+  }
+
+  /* Progress - Single column stack */
+  .progress-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-card {
+    padding: 10px;
+  }
+
+  .progress-label {
+    font-size: 11px;
+  }
+
+  .progress-value {
+    font-size: 15px;
+  }
+
+  /* Activity - Very compact */
+  .activity-item {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .activity-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .activity-text {
+    font-size: 11px;
+  }
+
+  .activity-time {
+    font-size: 9px;
+  }
+
+  /* Employee Profile - Stack all */
+  .employee-profile-card .profile-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .employee-profile-card .stat-value {
+    font-size: 13px;
   }
 }

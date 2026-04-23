@@ -442,6 +442,275 @@ body.dark-theme .error-message {
   }
 }
 
+/* ============================================
+   MOBILE CARDS VIEW STYLES
+   ============================================ */
+
+/* Mobile Cards Container - Hidden on Desktop */
+.mobile-cards-container {
+  display: none;
+}
+
+/* Employee Mobile Card */
+.employee-mobile-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  animation: fadeIn 0.3s ease-out;
+}
+
+body.dark-theme .employee-mobile-card {
+  background: rgba(30, 30, 46, 0.8);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.employee-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+body.dark-theme .employee-card-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.employee-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.employee-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.employee-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.dark-theme .employee-card-name {
+  color: #f1f5f9;
+}
+
+.employee-card-designation {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+body.dark-theme .employee-card-designation {
+  color: #94a3b8;
+}
+
+.employee-card-status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.employee-card-status.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.employee-card-status.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+body.dark-theme .employee-card-status.active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+body.dark-theme .employee-card-status.inactive {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.employee-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.employee-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.card-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+body.dark-theme .card-label {
+  color: #94a3b8;
+}
+
+.card-value {
+  color: #1e293b;
+  font-weight: 500;
+  text-align: right;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.dark-theme .card-value {
+  color: #e2e8f0;
+}
+
+.role-badge-mobile {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.attendance-badge-mobile {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.attendance-badge-mobile.present {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.attendance-badge-mobile.on-leave {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.attendance-badge-mobile.absent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+body.dark-theme .attendance-badge-mobile.present {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+body.dark-theme .attendance-badge-mobile.on-leave {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+body.dark-theme .attendance-badge-mobile.absent {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.employee-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+}
+
+body.dark-theme .employee-card-actions {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.card-action-btn {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.card-action-btn.edit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.card-action-btn.edit:hover {
+  background: #bfdbfe;
+}
+
+.card-action-btn.attendance {
+  background: #10b981;
+  color: white;
+}
+
+.card-action-btn.attendance:hover {
+  background: #059669;
+}
+
+.card-action-btn.reset {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.card-action-btn.reset:hover {
+  background: #e5e7eb;
+}
+
+.card-action-btn.delete {
+  background: #fee2e2;
+  color: #dc2626;
+  flex: 0 0 40px;
+}
+
+.card-action-btn.delete:hover {
+  background: #fecaca;
+}
+
+body.dark-theme .card-action-btn.edit {
+  background: rgba(79, 70, 229, 0.2);
+  color: #a5b4fc;
+}
+
+body.dark-theme .card-action-btn.reset {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+body.dark-theme .card-action-btn.delete {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
 /* Small mobile styles (max-width: 480px) */
 @media (max-width: 480px) {
   .employees-container {
@@ -468,31 +737,49 @@ body.dark-theme .error-message {
     width: 100%;
   }
 
-  .employees-table-container {
-    margin: 0 -12px;
-    width: calc(100% + 24px);
-    border-radius: 0;
+  /* Hide desktop table on mobile */
+  .desktop-table {
+    display: none !important;
   }
 
-  .employees-table {
-    min-width: 700px;
+  /* Show mobile cards on mobile */
+  .mobile-cards-container {
+    display: block;
   }
 
-  .employees-table th,
-  .employees-table td {
-    padding: 10px 12px;
+  .employee-mobile-card {
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+  }
+
+  .employee-card-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .employee-card-name {
+    font-size: 15px;
+  }
+
+  .employee-card-designation {
     font-size: 12px;
   }
 
-  .employee-avatar {
-    width: 32px;
-    height: 32px;
+  .employee-card-status {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+
+  .employee-card-row {
     font-size: 12px;
   }
 
-  .action-btn {
-    min-height: 44px;
-    min-width: 44px;
+  .card-action-btn {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 11px;
   }
 
   .modal {
@@ -531,14 +818,50 @@ body.dark-theme .error-message {
 
   .pagination {
     padding: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .pagination button {
     padding: 8px 12px;
     font-size: 12px;
+    min-height: 40px;
   }
 
   .pagination span {
     font-size: 12px;
+    width: 100%;
+    text-align: center;
+    order: -1;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .employee-mobile-card {
+    padding: 10px;
+  }
+
+  .employee-card-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .employee-card-name {
+    font-size: 14px;
+  }
+
+  .employee-card-row {
+    font-size: 11px;
+  }
+
+  .card-action-btn {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .card-action-btn.delete {
+    flex: 0 0 36px;
   }
 }

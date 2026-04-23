@@ -658,8 +658,8 @@ const Employees = ({ onLogout, userRole }) => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="table-container">
+      {/* Table - Desktop View */}
+      <div className="table-container desktop-table">
         <table className="employees-table">
           <thead>
             <tr>
@@ -787,6 +787,79 @@ const Employees = ({ onLogout, userRole }) => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards View */}
+      <div className="mobile-cards-container">
+        {currentEmployees.map((employee, index) => (
+          <div className="employee-mobile-card" key={employee._id || employee.id}>
+            <div className="employee-card-header">
+              <div className="employee-card-avatar" style={{
+                background: `linear-gradient(135deg, ${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`
+              }}>
+                {employee.name?.charAt(0).toUpperCase()}
+              </div>
+              <div className="employee-card-info">
+                <h4 className="employee-card-name">{employee.name}</h4>
+                <p className="employee-card-designation">{employee.designation}</p>
+              </div>
+              <span className={`employee-card-status ${attendanceStatus[employee._id] === 'Present' ? 'active' : 'inactive'}`}>
+                {attendanceStatus[employee._id] === 'Present' ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <div className="employee-card-details">
+              <div className="employee-card-row">
+                <span className="card-label">ID:</span>
+                <span className="card-value">{employee.id}</span>
+              </div>
+              <div className="employee-card-row">
+                <span className="card-label">Email:</span>
+                <span className="card-value">{employee.email}</span>
+              </div>
+              <div className="employee-card-row">
+                <span className="card-label">Role:</span>
+                <span className="card-value">
+                  <span className="role-badge-mobile" style={{background: ROLE_COLORS[employee.role]?.bg || '#DBEAFE', color: ROLE_COLORS[employee.role]?.text || '#1E40AF'}}>
+                    {employee.role || 'Employee'}
+                  </span>
+                </span>
+              </div>
+              <div className="employee-card-row">
+                <span className="card-label">Reports To:</span>
+                <span className="card-value">{employee.reportingTo || '-'}</span>
+              </div>
+              {attendanceStatus[employee._id] && (
+                <div className="employee-card-row">
+                  <span className="card-label">Attendance:</span>
+                  <span className={`attendance-badge-mobile ${attendanceStatus[employee._id].toLowerCase().replace(' ', '-')}`}>
+                    {attendanceStatus[employee._id] === 'Present' ? '✓ Present' : attendanceStatus[employee._id] === 'On Leave' ? 'On Leave' : '✗ Absent'}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="employee-card-actions">
+              {isAdmin ? (
+                <>
+                  <button className="card-action-btn edit" onClick={() => openEditModal(employee)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Edit
+                  </button>
+                  <button className="card-action-btn attendance" onClick={() => handleMarkAttendance(employee)}>
+                    Mark
+                  </button>
+                  <button className="card-action-btn reset" onClick={() => {setResetPasswordTarget(employee); setShowResetPasswordModal(true);}}>
+                    Reset
+                  </button>
+                  <button className="card-action-btn delete" onClick={() => setDeleteTarget(employee)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                  </button>
+                </>
+              ) : (
+                <span className="view-only-badge">View Only</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Pagination */}

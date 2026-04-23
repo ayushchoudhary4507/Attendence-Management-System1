@@ -1035,132 +1035,499 @@ body.dark-theme .notification-time,
     padding: 12px;
   }
 
+  /* Enhanced Welcome Section */
+  .dashboard-welcome {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+  }
+
+  body.dark-theme .dashboard-welcome {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-color: #334155;
+  }
+
+  .dashboard-title {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  body.dark-theme .dashboard-title {
+    background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  .dashboard-subtitle {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  /* Enhanced Stats Grid - Attractive Cards */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 14px 12px;
+    gap: 10px;
+    border-radius: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 100px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(20px, -20px);
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .stat-info {
+    width: 100%;
+  }
+
+  .stat-info h3 {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .stat-change {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.5);
+    display: inline-block;
+    margin-top: 4px;
+  }
+
+  /* Enhanced Quick Actions */
+  .quick-actions {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+  }
+
+  body.dark-theme .quick-actions {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .quick-actions-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  body.dark-theme .quick-actions-title {
+    color: #f1f5f9;
+    border-bottom-color: #334155;
+  }
+
+  .quick-actions-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .quick-actions-buttons .btn-primary,
+  .quick-actions-buttons .btn-secondary {
+    padding: 12px 10px;
+    font-size: 12px;
+    border-radius: 10px;
+    justify-content: center;
+    text-align: center;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 70px;
+  }
+
+  .quick-actions-buttons .btn-primary svg,
+  .quick-actions-buttons .btn-secondary svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Enhanced Recent Employees Section */
+  .recent-employees {
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body.dark-theme .recent-employees {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .recent-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  body.dark-theme .recent-header {
+    border-bottom-color: #334155;
+  }
+
+  .recent-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  body.dark-theme .recent-title {
+    color: #f1f5f9;
+  }
+
+  .view-all-link {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 12px;
+    background: #f3f4f6;
+    border-radius: 20px;
+    color: #4f46e5;
+  }
+
+  body.dark-theme .view-all-link {
+    background: #334155;
+    color: #818cf8;
+  }
+
+  /* Enhanced Employee Items */
+  .employee-list {
+    gap: 10px;
+  }
+
+  .employee-item {
+    padding: 14px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+  }
+
+  .employee-item:hover {
+    background: #f1f5f9;
+    transform: translateX(4px);
+  }
+
+  body.dark-theme .employee-item {
+    background: #0f172a;
+    border-color: #334155;
+  }
+
+  body.dark-theme .employee-item:hover {
+    background: #1e293b;
+  }
+
+  .employee-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .employee-info {
+    min-width: 0;
+  }
+
+  .employee-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  body.dark-theme .employee-name {
+    color: #f1f5f9;
+  }
+
+  .employee-designation {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  body.dark-theme .employee-designation {
+    color: #94a3b8;
+  }
+
+  .employee-status {
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Enhanced Notifications */
+  .notifications-section {
+    padding: 16px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+  }
+
+  .notifications-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .notifications-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .notifications-badge {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .mark-all-read-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 40px;
+    font-size: 12px;
+    border-radius: 10px;
+    background: #f3f4f6;
+    color: #374151;
+    border: none;
+    font-weight: 500;
+  }
+
+  .notification-item {
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .notification-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+
+  .notification-content h4 {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .notification-content p {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  /* Modal Mobile Optimization */
+  .modal-container {
+    width: 95%;
+    padding: 20px;
+    border-radius: 16px;
+    max-height: 85vh;
+  }
+
+  .modal-header {
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+  }
+
+  .modal-title {
+    font-size: 18px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .form-input,
+  .form-select {
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 10px;
+    min-height: 48px;
+  }
+
+  /* Theme Toggle */
+  .theme-toggle-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+  }
+
+  /* Chart Container */
+  .chart-container {
+    height: 220px;
+  }
+
+  /* Activity Items */
+  .activity-item {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .activity-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+}
+
+/* Extra small devices (max-width: 360px) */
+@media (max-width: 360px) {
+  .dashboard-home {
+    padding: 10px;
+  }
+
+  .dashboard-welcome {
+    padding: 14px;
+  }
+
   .dashboard-title {
     font-size: 18px;
   }
 
   .dashboard-subtitle {
-    font-size: 13px;
+    font-size: 12px;
   }
 
+  /* Stats - Single column on very small screens */
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: 8px;
   }
 
   .stat-card {
-    padding: 12px;
-    gap: 8px;
-    border-radius: 12px;
+    padding: 12px 14px;
+    flex-direction: row;
+    align-items: center;
+    min-height: auto;
   }
 
   .stat-icon {
     width: 36px;
     height: 36px;
-    font-size: 18px;
-  }
-
-  .stat-info h3 {
-    font-size: 11px;
+    font-size: 16px;
   }
 
   .stat-value {
-    font-size: 18px;
+    font-size: 20px;
   }
 
-  .stat-change {
-    font-size: 10px;
+  /* Quick Actions - Single column */
+  .quick-actions-buttons {
+    grid-template-columns: 1fr;
   }
 
-  .dashboard-card {
-    padding: 12px;
-    border-radius: 12px;
+  .quick-actions-buttons .btn-primary,
+  .quick-actions-buttons .btn-secondary {
+    flex-direction: row;
+    min-height: 50px;
   }
 
-  .card-title {
-    font-size: 14px;
-  }
-
-  .chart-container {
-    height: 200px;
-  }
-
-  .legend-item {
-    font-size: 11px;
-  }
-
-  .project-card {
+  /* Employee items more compact */
+  .employee-item {
     padding: 12px;
   }
 
-  .project-header {
-    gap: 10px;
+  .employee-avatar {
+    width: 40px;
+    height: 40px;
   }
 
-  .project-header h3 {
+  .employee-name {
     font-size: 13px;
   }
 
-  .project-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
-  }
-
-  .project-description {
-    font-size: 12px;
-  }
-
-  .project-progress span {
+  .employee-designation {
     font-size: 11px;
   }
 
-  .progress-bar {
-    height: 6px;
-  }
-
-  .project-team {
-    gap: 6px;
-  }
-
-  .team-member {
-    width: 24px;
-    height: 24px;
+  .employee-status {
+    padding: 4px 10px;
     font-size: 10px;
   }
 
-  .activity-item {
+  /* Modal even smaller */
+  .modal-container {
+    width: 96%;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .modal-title {
+    font-size: 16px;
+  }
+
+  .form-input,
+  .form-select {
     padding: 10px;
-    gap: 10px;
-  }
-
-  .activity-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-  }
-
-  .notification-item {
-    padding: 10px;
-    gap: 10px;
-  }
-
-  .notification-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-  }
-
-  .notification-content h4 {
-    font-size: 12px;
-  }
-
-  .notification-content p {
-    font-size: 11px;
-  }
-
-  .mark-read-btn {
-    padding: 3px 6px;
-    font-size: 10px;
+    font-size: 15px;
+    min-height: 44px;
   }
 }

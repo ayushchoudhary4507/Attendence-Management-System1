@@ -900,70 +900,319 @@ body.dark-theme .btn-delete:hover {
     padding: 12px;
   }
 
+  .projects-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .projects-header h1 {
     font-size: 18px;
   }
 
-  .project-card {
-    padding: 14px;
-    border-radius: 10px;
+  .projects-stats-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
   }
 
-  .project-header h3 {
+  .projects-stats-row .btn-add {
+    width: 100%;
+    padding: 12px;
     font-size: 14px;
+    order: -1;
+    margin-right: 0;
+    margin-bottom: 0;
   }
 
-  .project-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
-  }
-
-  .project-description {
-    font-size: 12px;
-  }
-
-  .project-stats {
+  .projects-stats-row .stat-card {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
+    padding: 0;
+    min-width: auto;
+    background: none;
+    border: none;
+    box-shadow: none;
   }
 
-  .project-stat {
-    padding: 8px;
+  .projects-stats-row .stat-value {
+    font-size: 20px;
+    display: block;
     text-align: center;
+    padding: 8px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
   }
 
-  .project-stat-value {
+  .projects-stats-row .stat-label {
+    font-size: 10px;
+    text-align: center;
+    display: block;
+    margin-top: 4px;
+  }
+
+  body.dark-theme .projects-stats-row .stat-value {
+    background: rgba(30, 30, 46, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Filters - Horizontal scroll */
+  .projects-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    padding: 4px 0;
+    margin: 0 -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .projects-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-height: 36px;
+  }
+
+  /* Project Cards */
+  .projects-grid {
+    gap: 10px;
+  }
+
+  .project-card {
+    padding: 14px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .project-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .project-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    word-break: break-word;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .status-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    width: 32px;
+    height: 32px;
     font-size: 14px;
   }
 
-  .project-stat-label {
+  .project-description {
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    color: #64748b;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    box-orient: vertical;
+    overflow: hidden;
+  }
+
+  body.dark-theme .project-description {
+    color: #94a3b8;
+  }
+
+  /* Progress bar */
+  .project-progress {
+    margin-bottom: 12px;
+  }
+
+  .progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .progress-bar {
+    height: 6px;
+    border-radius: 3px;
+    flex: 1;
+  }
+
+  .progress-text {
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 35px;
+    text-align: right;
+  }
+
+  /* Project Details */
+  .project-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  body.dark-theme .project-details {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    gap: 10px;
+  }
+
+  .detail .label {
+    color: #64748b;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  body.dark-theme .detail .label {
+    color: #94a3b8;
+  }
+
+  .detail-team {
+    align-items: flex-start;
+  }
+
+  .team-avatars {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 70%;
+  }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .avatar-more {
+    background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%);
     font-size: 10px;
   }
 
+  .detail-priority .priority {
+    flex-shrink: 0;
+  }
+
+  .priority {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* Modal */
   .modal {
-    padding: 16px;
+    padding: 20px 16px;
+    max-height: 90vh;
   }
 
   .modal h2 {
-    font-size: 16px;
+    font-size: 18px;
+    margin-bottom: 16px;
   }
 
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    min-height: 44px;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    padding: 12px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  /* Empty State */
   .empty-state {
     padding: 40px 20px;
   }
 
   .empty-state-icon {
-    font-size: 40px;
+    font-size: 48px;
+    margin-bottom: 16px;
   }
 
   .empty-state h3 {
     font-size: 16px;
+    margin-bottom: 8px;
   }
 
   .empty-state p {
     font-size: 13px;
+    color: #64748b;
+  }
+
+  body.dark-theme .empty-state p {
+    color: #94a3b8;
   }
 }
 
@@ -973,30 +1222,85 @@ body.dark-theme .btn-delete:hover {
     font-size: 16px;
   }
 
+  .projects-stats-row .stat-card {
+    gap: 6px;
+  }
+
+  .projects-stats-row .stat-value {
+    font-size: 16px;
+    padding: 6px 4px;
+  }
+
+  .projects-stats-row .stat-label {
+    font-size: 9px;
+  }
+
   .project-card {
     padding: 12px;
+    border-radius: 10px;
   }
 
   .project-header h3 {
-    font-size: 13px;
-  }
-
-  .project-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .project-stat {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 10px;
-  }
-
-  .project-stat-value {
     font-size: 14px;
   }
 
-  .project-stat-label {
+  .header-actions {
+    gap: 6px;
+  }
+
+  .status-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+
+  .btn-edit,
+  .btn-delete {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .project-description {
+    font-size: 12px;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .detail {
+    font-size: 12px;
+  }
+
+  .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .avatar-more {
+    font-size: 9px;
+  }
+
+  .team-avatars {
+    max-width: 65%;
+  }
+
+  .priority {
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  .progress-bar-container {
+    gap: 8px;
+  }
+
+  .progress-text {
     font-size: 11px;
+    min-width: 30px;
+  }
+
+  .filter-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+    min-height: 32px;
   }
 }
