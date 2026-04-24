@@ -188,8 +188,7 @@ const LandingPage = () => {
         </div>
         <div className="nav-links">
           <a href="#features">Features</a>
-          <a href="#demo">Live Preview</a> 
-           
+          <a href="#demo">Live Preview</a>
           <button className="theme-toggle" onClick={toggleTheme}>
             {isDarkMode ? '☀️' : '🌙'}
           </button>
