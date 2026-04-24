@@ -97,6 +97,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const groupRoutes = require('./routes/groupRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Use routes
 app.use('/api/login', loginRoutes);
@@ -115,6 +116,7 @@ app.use('/api/temp', tempRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Socket.io real-time messaging
 const onlineUsers = new Map(); // userId -> { socketId, lastSeen }
