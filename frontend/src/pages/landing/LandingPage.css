@@ -219,7 +219,7 @@
   line-height: 1.1;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
-  text-align: center;
+  text-align: left;
 }
 
 .gradient-text {
@@ -1497,32 +1497,42 @@
 
   .hero-title {
     font-size: 2.5rem;
+    
   }
 
   .hero-subtitle {
     font-size: 1rem;
+    
   }
 
   .hero-description {
     font-size: 1rem;
+    
   }
 
   .hero-stats {
     gap: 1.5rem;
+      
   }
 
   /* Dashboard Preview */
   .dashboard-preview {
     max-width: 100%;
+    
   }
 
   .dashboard-card {
     padding: 1.5rem;
+    
+    
+
   }
 
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
+    
+
   }
 
   .stat-card {
@@ -1623,13 +1633,14 @@
   }
 
   .hero-title {
-    font-size: 1.75rem;
-    line-height: 1.15;
-    text-align: center;
+    line-height: 1.2;
+    text-align: left;
+    white-space: nowrap;
+    font-size: clamp(1.2rem, 5vw, 1.75rem);
   }
 
   .hero-title br {
-    display: block;
+    display: none;
   }
 
   .hero-subtitle {
@@ -1994,19 +2005,21 @@
   }
 
   .hero-title {
-    font-size: 1.5rem;
+    font-size: clamp(1.3rem, 6vw, 1.6rem);
     font-weight: 800;
-    line-height: 1.15;
-    text-align: center;
+    line-height: 1.2;
+    text-align: left;
+    white-space: nowrap;
   }
 
   .hero-title br {
-    display: block;
+    display: none;
   }
 
   .landing-page.dark .hero-title .gradient-text {
-    background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #c4b5fd 100%);
+    /* background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #c4b5fd 100%); */
     -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
@@ -2440,13 +2453,14 @@
   }
 
   .hero-title {
-    font-size: 1.3rem;
-    line-height: 1.15;
-    text-align: center;
+    font-size: 1.1rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-align: left;
   }
 
   .hero-title br {
-    display: block;
+    display: none;
   }
 
   .hero-subtitle {
@@ -2594,5 +2608,201 @@
   .feature-card:hover,
   .stat-card:hover {
     transform: none;
+  }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE FIXES - Enhanced
+   ============================================ */
+
+/* Fix hero text alignment on all mobile sizes */
+@media (max-width: 768px) {
+  .hero-text {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .hero-title {
+    white-space: nowrap;
+    font-size: clamp(1.3rem, 5vw, 2rem);
+    text-align: left;
+    line-height: 1.2;
+  }
+
+  .hero-title br {
+    display: none;
+  }
+
+  .hero-description {
+    text-align: left;
+    max-width: 100%;
+    padding: 0 0.5rem;
+  }
+
+  .hero-subtitle {
+    text-align: left;
+  }
+
+  /* Fix dashboard preview overflow */
+  .dashboard-preview {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .dashboard-card {
+    width: 100%;
+    max-width: 100%;
+    transform: none !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure proper stacking */
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Fix stat items on mobile */
+  .hero-stats {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .stat-item {
+    text-align: center;
+  }
+}
+
+/* Small mobile fixes */
+@media (max-width: 480px) {
+  /* Better hero section spacing */
+  .hero-section {
+    padding-top: 5rem;
+    min-height: auto;
+  }
+
+  .hero-title {
+    font-size: clamp(1.2rem, 6vw, 1.5rem);
+    white-space: nowrap;
+    text-align: left;
+    line-height: 1.2;
+  }
+
+  .hero-title br {
+    display: none;
+  }
+
+  /* Ensure dashboard fits */
+  .dashboard-card {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  /* Better touch targets */
+  .btn-primary,
+  .btn-secondary,
+  .nav-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Fix time widget on mobile */
+  .time-widget {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .time-display {
+    width: 100%;
+    min-width: auto;
+  }
+
+  /* Better feature cards */
+  .feature-card {
+    padding: 1rem;
+  }
+
+  /* Ensure text doesn't overflow */
+  .hero-title,
+  .section-title,
+  .feature-title {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+  }
+}
+
+/* Extra small mobile fixes */
+@media (max-width: 360px) {
+  .hero-title {
+    font-size: 1rem;
+    white-space: nowrap;
+    text-align: left;
+    line-height: 1.2;
+  }
+
+  .hero-title br {
+    display: none;
+  }
+
+  .hero-subtitle {
+    font-size: 0.85rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .hero-description {
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .dashboard-card {
+    padding: 0.5rem;
+  }
+
+  .db-title {
+    font-size: 0.85rem;
+  }
+
+  .stat-card-value {
+    font-size: 1rem;
+  }
+
+  .stat-card-label {
+    font-size: 0.6rem;
+  }
+}
+
+/* Fix horizontal overflow issues */
+.landing-page {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ensure images don't overflow */
+.landing-page img,
+.dashboard-card img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .btn-primary,
+  .btn-secondary,
+  .nav-btn,
+  .theme-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .dashboard-card {
+    transform: none !important;
   }
 }

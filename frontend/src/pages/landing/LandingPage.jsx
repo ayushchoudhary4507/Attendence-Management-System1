@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -206,7 +206,7 @@ const LandingPage = () => {
         <div className="hero-content">
           <div className="hero-text">
             <h1 className="hero-title">
-              <span className="gradient-text">ATTENDANCE<br />WEB SYSTEM</span>
+              <span className="gradient-text">ATTENDANCE WEB SYSTEM</span>
             </h1>
             <p className="hero-subtitle">
               Modern dashboard UI with Light & Dark Mode
