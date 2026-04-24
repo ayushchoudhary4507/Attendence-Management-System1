@@ -31,6 +31,7 @@ const Chat = ({ user }) => {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(true); // For mobile responsive
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -1138,7 +1139,7 @@ const Chat = ({ user }) => {
     <>
       <div className="chat-container">
         {/* Sidebar - User List & Groups */}
-        <div className="chat-sidebar">
+        <div className={`chat-sidebar ${showMobileSidebar ? 'visible' : 'hidden'}`}>
           <div className="chat-sidebar-header">
             <h2>Messages</h2>
             <button 
@@ -1220,6 +1221,11 @@ const Chat = ({ user }) => {
                         name: item.userName,
                         email: item.userEmail
                       });
+                      setSelectedGroup(null);
+                      // Hide sidebar on mobile after selection
+                      if (window.innerWidth <= 768) {
+                        setShowMobileSidebar(false);
+                      }
                     }}
                   >
                     <div className="chat-user-avatar">
@@ -1286,6 +1292,11 @@ const Chat = ({ user }) => {
                           }
                         }
                         setSelectedGroup(group);
+                        setSelectedUser(null);
+                        // Hide sidebar on mobile after selection
+                        if (window.innerWidth <= 768) {
+                          setShowMobileSidebar(false);
+                        }
                       }}
                     >
                       <div className="chat-user-avatar group-avatar">
@@ -1327,6 +1338,16 @@ const Chat = ({ user }) => {
               {/* Chat Header - Direct Message */}
               <div className="chat-header">
                 <div className="chat-header-user">
+                  {/* Back button for mobile */}
+                  <button
+                    className="chat-back-btn"
+                    onClick={() => setShowMobileSidebar(true)}
+                    title="Back to conversations"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                      <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                  </button>
                   <div className="chat-header-avatar">
                     <img src={getAvatarUrl(selectedUser.name)} alt={selectedUser.name} />
                     {onlineUsers.has(selectedUser.id) && (
@@ -1336,10 +1357,10 @@ const Chat = ({ user }) => {
                   <div className="chat-header-info">
                     <h3 className="chat-header-name">{selectedUser.name}</h3>
                     <span className={`chat-header-status ${getLastSeenText(selectedUser.id)}`}>
-                      {isTyping(selectedUser.id) 
-                        ? 'typing...' 
-                        : onlineUsers.has(selectedUser.id) 
-                          ? 'online' 
+                      {isTyping(selectedUser.id)
+                        ? 'typing...'
+                        : onlineUsers.has(selectedUser.id)
+                          ? 'online'
                           : 'offline'}
                     </span>
                   </div>
@@ -1478,13 +1499,23 @@ const Chat = ({ user }) => {
               {/* Chat Header - Group */}
               <div className="chat-header">
                 <div className="chat-header-user">
+                  {/* Back button for mobile */}
+                  <button
+                    className="chat-back-btn"
+                    onClick={() => setShowMobileSidebar(true)}
+                    title="Back to conversations"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                      <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                  </button>
                   <div className="chat-header-avatar group-avatar">
                     <img src={selectedGroup.avatar || getAvatarUrl(selectedGroup.name)} alt={selectedGroup.name} />
                   </div>
                   <div className="chat-header-info">
                     <h3 className="chat-header-name">{selectedGroup.name}</h3>
                     <span className="chat-header-status group-status">
-                      {isGroupTyping() 
+                      {isGroupTyping()
                         ? `${getGroupTypingUsers().join(', ')} typing...`
                         : `${selectedGroup.members?.length || 0} members`}
                     </span>
