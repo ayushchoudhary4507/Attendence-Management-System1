@@ -206,25 +206,15 @@ const LandingPage = () => {
         <div className="hero-content">
           <div className="hero-text">
             <h1 className="hero-title">
-              <span className="gradient-text">ATTENDANCE</span>
-              <br />
-              WEB SYSTEM
+              <span className="gradient-text">ATTENDANCE<br />WEB SYSTEM</span>
             </h1>
             <p className="hero-subtitle">
               Modern dashboard UI with Light & Dark Mode
             </p>
             <p className="hero-description">
-              Streamline your workforce management with our intelligent attendance tracking system. 
+              Streamline your workforce management with our intelligent attendance tracking system.
               Real-time insights, automated reporting, and seamless integration.
             </p>
-            <div className="hero-buttons">
-              <button className="btn-primary" onClick={() => navigate('/login')}>
-                 Login
-              </button>
-              <button className="btn-secondary" onClick={() => navigate('/signup')}>
-                 Sign Up 
-              </button>
-            </div>
             <div className="hero-stats">
               <div className="stat-item">
                 <span className="stat-number">Smart</span>
