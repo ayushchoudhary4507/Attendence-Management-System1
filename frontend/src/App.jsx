@@ -21,7 +21,7 @@ import './styles/responsive.css';
 // Wrapper components for navigation
 const LoginPageWrapper = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
-  return <LoginPage onSignupClick={() => navigate('/signup')} onLoginSuccess={onLoginSuccess} />;
+  return <LoginPage onSignupClick={() => navigate('/signup')} onLoginSuccess={onLoginSuccess} skipWelcome={true} />;
 };
 
 const SignupPageWrapper = () => {

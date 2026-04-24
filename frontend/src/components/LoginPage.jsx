@@ -8,11 +8,8 @@ import './LoginPage.css';
 
 
 
-const LoginPage = ({ onSignupClick, onLoginSuccess }) => {
-
-  const [currentView, setCurrentView] = useState('welcome'); // 'welcome', 'role-select', 'login-form'
-
-  const [selectedRole, setSelectedRole] = useState(null);
+const LoginPage = ({ onSignupClick, onLoginSuccess, skipWelcome = false }) => {
+  const [currentView, setCurrentView] = useState(skipWelcome ? 'login-form' : 'welcome'); // 'welcome', 'login-form', 'otp-login'
 
   const [formData, setFormData] = useState({
 
@@ -77,49 +74,22 @@ const LoginPage = ({ onSignupClick, onLoginSuccess }) => {
 
 
   const handleLoginClick = () => {
-
-    setCurrentView('role-select');
-
+    setCurrentView('login-form');
+    setError('');
+    setSuccess('');
   };
-
-
 
   const handleOTPLoginClick = () => {
-
     setCurrentView('otp-login');
-
-  };
-
-
-
-  const handleRoleSelect = (role) => {
-
-    setSelectedRole(role);
-
-    setCurrentView('login-form');
-
-    setError('');
-
-    setSuccess('');
-
   };
 
 
 
   const handleBack = () => {
-
     if (currentView === 'login-form' || currentView === 'otp-login') {
-
-      setCurrentView('role-select');
-
-      setFormData({ email: '', password: '' });
-
-    } else if (currentView === 'role-select') {
-
       setCurrentView('welcome');
-
+      setFormData({ email: '', password: '' });
     }
-
   };
 
 
@@ -152,48 +122,17 @@ const LoginPage = ({ onSignupClick, onLoginSuccess }) => {
 
     try {
 
-      console.log('🔐 Login attempt:', formData.email, 'Selected role:', selectedRole);
+      console.log('🔐 Login attempt:', formData.email);
 
       const response = await authAPI.login(formData.email, formData.password);
 
       
 
       console.log('✅ Login response:', response);
-
       console.log('👤 User from backend:', response.user);
-
       console.log('🎭 Role from backend:', response.user?.role);
-
       
-
-      // Check if user's role matches selected role (case-insensitive)
-
-      const actualRole = (response.user?.role || '').toString().toLowerCase().trim();
-
-      const requestedRole = (selectedRole || '').toString().toLowerCase().trim();
-
-      
-
-      console.log('🔍 Role comparison:', { actualRole, requestedRole });
-
-      
-
-      if (actualRole !== requestedRole) {
-
-        console.log('❌ Role mismatch!');
-
-        setError(`Access denied. Your account role is "${response.user?.role || 'unknown'}" but you selected "${selectedRole}". Please select the correct role.`);
-
-        setLoading(false);
-
-        return;
-
-      }
-
-      
-
-      console.log('✅ Role matched! Login successful');
-
+      console.log('✅ Login successful');
       setSuccess(response.message);
 
       
@@ -291,107 +230,6 @@ const LoginPage = ({ onSignupClick, onLoginSuccess }) => {
       </div>
 
     );
-
-  }
-
-
-
-  // Role Selection View - Second Page
-
-  if (currentView === 'role-select') {
-
-    return (
-
-      <div className={`login-container ${isDarkMode ? 'dark' : 'light'}`}>
-
-        <div className="login-card">
-
-          {/* Brand Header */}
-
-          <div className="brand-header-compact">
-
-            <span className="brand-logo-icon">📋</span>
-
-            <span className="brand-name-text">AttendancePro</span>
-
-          </div>
-
-          
-
-          <h2 className="login-title">Select Role</h2>
-
-          <p className="login-subtitle">Choose your role to continue</p>
-
-          
-
-          <div className="role-selection-box">
-
-            <button 
-
-              className="role-button admin"
-
-              onClick={() => handleRoleSelect('admin')}
-
-            >
-
-              <span className="role-icon"></span>
-
-              <span className="role-text">Admin Login</span>
-
-            </button>
-
-            
-
-            <button 
-
-              className="role-button employee"
-
-              onClick={() => handleRoleSelect('employee')}
-
-            >
-
-              <span className="role-icon"></span>
-
-              <span className="role-text">Employee Login</span>
-
-            </button>
-
-
-
-            <div className="divider">or</div>
-
-
-
-            <button 
-
-              className="role-button otp"
-
-              onClick={handleOTPLoginClick}
-
-            >
-
-              <span className="role-icon"></span>
-
-              <span className="role-text">Login with OTP</span>
-
-            </button>
-
-          </div>
-
-          
-
-          <button className="back-button back-button-bottom" onClick={handleBack}>
-
-            ← Back
-
-          </button>
-
-        </div>
-
-      </div>
-
-    );
-
   }
 
 
@@ -416,7 +254,7 @@ const LoginPage = ({ onSignupClick, onLoginSuccess }) => {
 
 
 
-  // Login Form View - Third Page
+  // Login Form View
 
   return (
 
@@ -436,13 +274,8 @@ const LoginPage = ({ onSignupClick, onLoginSuccess }) => {
 
         
 
-        <h2 className="login-title">
-
-          {selectedRole === 'admin' && 'ADMIN LOGIN'}
-
-          {selectedRole === 'employee' && 'EMPLOYEE LOGIN'}
-
-        </h2>
+        <h2 className="login-title">Welcome Back</h2>
+        <p className="login-subtitle">Sign in to your account</p>
 
         
 
@@ -534,7 +367,16 @@ const LoginPage = ({ onSignupClick, onLoginSuccess }) => {
 
         </form>
 
-        
+        {/* Alternative Login Options */}
+        <div className="alternative-login">
+          <div className="divider">or</div>
+          <button 
+            className="otp-login-btn"
+            onClick={handleOTPLoginClick}
+          >
+            <span>📱</span> Login with OTP
+          </button>
+        </div>
 
         {error && (
 
