@@ -1295,6 +1295,10 @@ body.dark-theme .create-group-link:hover {
   .chat-main {
     width: 100%;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
   }
 
   /* Mobile Chat Header with Back Button */
@@ -1429,11 +1433,32 @@ body.dark-theme .create-group-link:hover {
     height: 100vh;
     margin: 0;
     border-radius: 0;
+    position: relative;
   }
 
   .chat-header {
     padding: 8px 12px;
     min-height: 56px;
+    flex-shrink: 0;
+  }
+
+  /* Fix input area to bottom on mobile */
+  .chat-input-area {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+    background: var(--white) !important;
+    border-top: 2px solid var(--primary) !important;
+    z-index: 1000 !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  /* Add padding to messages to prevent overlap with fixed input */
+  .chat-messages {
+    padding: 10px 12px 100px 12px !important;
   }
 
   .chat-header-info h3 {
@@ -1460,39 +1485,95 @@ body.dark-theme .create-group-link:hover {
     height: 36px;
   }
 
-  .chat-messages {
-    padding: 10px 12px;
-  }
-
   .message-content {
     max-width: 85%;
-    padding: 8px 12px;
+    padding: 10px 14px;
+    border-radius: 18px;
   }
 
   .message-text {
-    font-size: 14px;
-    line-height: 1.4;
+    font-size: 15px;
+    line-height: 1.5;
   }
 
   .message-meta {
     font-size: 11px;
   }
 
-  .chat-input-area {
-    padding: 10px 12px;
+  /* Enhanced Mobile Input Area */
+  .chat-input-container {
+    display: flex;
+    align-items: center;
     gap: 8px;
+    background: var(--gray-100);
+    border-radius: 24px;
+    padding: 4px 8px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    flex: 1;
+  }
+
+  .chat-input-container:focus-within {
+    border-color: var(--primary);
+    background: var(--white);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
   }
 
   .chat-input {
-    padding: 10px 14px;
+    flex: 1;
+    padding: 12px 16px;
     font-size: 16px;
-    min-height: 44px;
+    min-height: 48px;
+    background: transparent;
+    border: none;
+    outline: none;
   }
 
-  .send-btn {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+  /* Attractive Send Button */
+  .chat-send-btn {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    transition: all 0.2s ease;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chat-send-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5);
+  }
+
+  .chat-send-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  .chat-send-btn:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    box-shadow: none;
+    opacity: 0.7;
+  }
+
+  .chat-send-btn svg {
+    width: 22px;
+    height: 22px;
+    color: white;
+    fill: white;
+  }
+
+  /* Emoji and Attachment buttons */
+  .emoji-btn, .attach-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Sidebar improvements */
@@ -1669,5 +1750,236 @@ body.dark-theme .create-group-link:hover {
 
   .chat-input-area {
     padding: 8px 12px;
+  }
+}
+
+/* ============================================
+   WHATSAPP-STYLE MOBILE CHAT UI ENHANCEMENTS
+   ============================================ */
+
+/* iPhone X/11/12/13/14/15 Safe Area Support */
+@supports (padding: max(0px)) {
+  @media (max-width: 480px) {
+    .chat-input-area {
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    
+    .chat-container {
+      padding-top: env(safe-area-inset-top);
+    }
+  }
+}
+
+/* Mobile Message Input - Enhanced WhatsApp Style */
+@media (max-width: 480px) {
+  /* Container takes full screen */
+  .chat-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    background: #e5ddd5;
+  }
+
+  /* Messages scrollable area */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px 80px 12px;
+    background: #e5ddd5;
+    background-image: url("data:image/svg+xml,%3Csvg width='400' height='400' viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239C92AC' fill-opacity='0.02'%3E%3Cpath d='M0 0h400v400H0V0zm20 20v360h360V20H20z'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* Input fixed at bottom with proper safe area */
+  .chat-input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #f0f2f5;
+    border-top: 1px solid #d1d7db;
+    padding: 8px 12px;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Modern rounded input container */
+  .chat-input-container {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 24px;
+    padding: 4px 4px 4px 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    gap: 4px;
+  }
+
+  /* Emoji & Attachment buttons */
+  .chat-emoji-btn,
+  .chat-attachment-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: #54656f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 0;
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  .chat-emoji-btn:hover,
+  .chat-attachment-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #075e54;
+  }
+
+  .chat-emoji-btn svg,
+  .chat-attachment-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Text input - Full width, no border */
+  .chat-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 10px 8px;
+    font-size: 16px;
+    color: #111;
+    background: transparent;
+    min-height: 40px;
+    line-height: 20px;
+  }
+
+  .chat-input::placeholder {
+    color: #8696a0;
+  }
+
+  /* Send button - WhatsApp green circle */
+  .chat-send-btn {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    border: none;
+    border-radius: 50%;
+    background: #00a884;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    padding: 0;
+  }
+
+  .chat-send-btn:hover:not(:disabled) {
+    background: #008f72;
+    transform: scale(1.05);
+  }
+
+  .chat-send-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  .chat-send-btn:disabled {
+    background: #8696a0;
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .chat-send-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+    margin-left: 2px;
+  }
+
+  /* Message bubbles styling */
+  .message-bubble.sent .message-content {
+    background: #dcf8c6;
+    border-bottom-right-radius: 2px;
+  }
+
+  .message-bubble.received .message-content {
+    background: white;
+    border-bottom-left-radius: 2px;
+  }
+
+  /* Date divider */
+  .date-divider span {
+    background: rgba(225, 245, 254, 0.92);
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  /* Emoji picker mobile optimized */
+  .emoji-picker {
+    bottom: 70px;
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    border-radius: 16px;
+  }
+
+  .emoji-list {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+/* Prevent zoom on input focus (iOS) */
+@media (max-width: 480px) {
+  .chat-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Dark mode for mobile */
+@media (max-width: 480px) {
+  body.dark-theme .chat-container,
+  body.dark-theme .chat-messages {
+    background: #0f1419;
+  }
+
+  body.dark-theme .chat-input-area {
+    background: #1f2c34;
+    border-top-color: #2a3942;
+  }
+
+  body.dark-theme .chat-input-container {
+    background: #2a3942;
+  }
+
+  body.dark-theme .chat-input {
+    color: #e9edef;
+  }
+
+  body.dark-theme .chat-input::placeholder {
+    color: #8696a0;
+  }
+
+  body.dark-theme .message-bubble.sent .message-content {
+    background: #005c4b;
+    color: #e9edef;
+  }
+
+  body.dark-theme .message-bubble.received .message-content {
+    background: #1f2c34;
+    color: #e9edef;
   }
 }

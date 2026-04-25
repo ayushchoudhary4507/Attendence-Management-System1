@@ -1,10 +1,25 @@
 const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({
+  receiverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    required: true
+  },
+  senderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  senderName: {
+    type: String,
+    default: ''
+  },
   type: {
     type: String,
-    enum: ['attendance', 'checkin', 'checkout', 'leave', 'other'],
-    default: 'attendance'
+    enum: ['leave_request', 'user_activity', 'project_update', 'attendance', 'checkin', 'checkout', 'leave', 'message', 'other'],
+    default: 'other'
   },
   title: {
     type: String,
@@ -14,18 +29,22 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  link: {
+    type: String,
+    default: ''
+  },
   employeeId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Employee',
-    required: true
+    default: null
   },
   employeeName: {
     type: String,
-    required: true
+    default: ''
   },
   employeeEmail: {
     type: String,
-    required: true
+    default: ''
   },
   read: {
     type: Boolean,
@@ -36,5 +55,7 @@ const notificationSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+notificationSchema.index({ receiverId: 1, read: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

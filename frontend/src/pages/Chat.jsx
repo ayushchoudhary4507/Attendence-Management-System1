@@ -36,6 +36,7 @@ const Chat = ({ user }) => {
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  // Use user.id (User._id) - Message model stores senderId/receiverId as User._id
   const currentUserId = user?.id || user?._id;
   const currentUserName = user?.name || 'Current User';
   

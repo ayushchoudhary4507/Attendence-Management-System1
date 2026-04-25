@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const mongoose = require('mongoose');
 
 // Get all users (except the current user)
@@ -181,6 +182,43 @@ const sendMessage = async (req, res) => {
     // Populate sender and receiver info for response
     await newMessage.populate('senderId', 'name email');
     await newMessage.populate('receiverId', 'name email');
+// Create notification in database for the receiver
+    console.log('📩 Creating message notification in database for receiver:', receiverId);
+    const messageNotification = await Notification.create({
+      type: 'message',
+      title: `New Message from ${newMessage.senderId.name}`,
+      message: message.trim().substring(0, 50) + (message.length > 50 ? '...' : ''),
+      senderId: senderId,
+      senderName: newMessage.senderId.name,
+      receiverId: receiverObjectId, // Assign to receiver
+      link: '/chat'
+    });
+    console.log('✅ Message notification saved to database:', messageNotification._id);
+
+    // Emit real-time notification to the receiver via socket
+    const io = req.app.get('io');
+    if (io) {
+      const onlineUsersMap = io.onlineUsers;
+      const receiverOnline = onlineUsersMap ? onlineUsersMap.get(receiverId) : null;
+      
+      if (receiverOnline && receiverOnline.isOnline) {
+        io.to(receiverOnline.socketId).emit('newNotification', {
+          id: messageNotification._id,
+          type: 'message',
+          title: `New Message from ${newMessage.senderId.name}`,
+          message: message.trim().substring(0, 50) + (message.length > 50 ? '...' : ''),
+          senderId: senderIdStr,
+          senderName: newMessage.senderId.name,
+          receiverId: receiverId,
+          messageId: newMessage._id,
+          createdAt: new Date(),
+          read: false
+        });
+        console.log(`📢 Message notification emitted to receiver ${receiverId}`);
+      } else {
+        console.log(`ℹ️ Receiver ${receiverId} is not online, notification saved to database only`);
+      }
+    }
 
     res.status(201).json({
       success: true,

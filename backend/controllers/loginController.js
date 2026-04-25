@@ -67,6 +67,61 @@ const loginController = async (req, res) => {
 
     console.log('✅ User logged in successfully from database:', email, 'Role:', user.role);
 
+    // Send user_activity notification to admin (only for employee logins)
+    if (user.role !== 'admin') {
+      try {
+        const Notification = require('../models/Notification');
+        const User = require('../models/User');
+        console.log('📩 Creating user activity notification for admin...');
+        const admins = await User.find({ role: 'admin' }).select('_id');
+        
+        // Create notification for each admin
+        const activityNotifications = [];
+        for (const admin of admins) {
+          const adminNotification = await Notification.create({
+            type: 'user_activity',
+            title: 'User Active',
+            message: `${user.name} just logged in`,
+            senderId: user._id,
+            senderName: user.name,
+            receiverId: admin._id,
+            link: '/employees',
+          });
+          activityNotifications.push(adminNotification);
+        }
+        console.log('✅ User activity notifications created for admins');
+
+        // Emit to admins via socket
+        const io = global._io;
+        if (io) {
+          const onlineUsersMap = io.onlineUsers;
+          for (const admin of admins) {
+            const adminId = admin._id.toString();
+            const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+            if (adminOnline && adminOnline.isOnline) {
+              const notification = activityNotifications.find(n => n.receiverId.toString() === adminId);
+              if (notification) {
+                io.to(adminOnline.socketId).emit('newNotification', {
+                  id: notification._id,
+                  type: 'user_activity',
+                  title: 'User Active',
+                  message: `${user.name} just logged in`,
+                  senderId: user._id,
+                  senderName: user.name,
+                  link: '/employees',
+                  createdAt: new Date(),
+                  read: false
+                });
+                console.log(`📢 User activity notification emitted to admin ${adminId}`);
+              }
+            }
+          }
+        }
+      } catch (notifError) {
+        console.error('Failed to send login notification to admin:', notifError.message);
+      }
+    }
+
     // Find corresponding employee record by email for messaging
     const employee = await Employee.findOne({ email: user.email });
     const employeeId = employee ? employee._id.toString() : null;

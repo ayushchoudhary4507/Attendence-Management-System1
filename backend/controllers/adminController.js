@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const Project = require('../models/Project');
+const Leave = require('../models/Leave');
 
 // Get all users (Admin only)
 const getAllUsers = async (req, res) => {
@@ -83,6 +84,7 @@ const getDashboardStats = async (req, res) => {
     const employeeCount = await User.countDocuments({ role: 'employee' });
     const totalEmployees = await Employee.countDocuments();
     const totalProjects = await Project.countDocuments();
+    // const pendingLeaves = await Leave.getPendingLeavesCount();
 
     res.json({
       message: 'Dashboard statistics retrieved successfully',
@@ -91,7 +93,8 @@ const getDashboardStats = async (req, res) => {
         adminCount,
         employeeCount,
         totalEmployees,
-        totalProjects
+        totalProjects,
+        pendingLeaves
       }
     });
   } catch (error) {

@@ -9,7 +9,9 @@ import '../components/TaskManager.css';
 import '../components/MyTasks.css';
 import './Dashboard.css';
 
-const API_URL = 'https://attendence-management-system1.onrender.com/api';
+const API_URL = import.meta.env.PROD
+  ? 'https://attendence-management-system1.onrender.com/api'
+  : 'http://localhost:5005/api';
 
 const Dashboard = ({ onLogout, userRole }) => {
   const navigate = useNavigate();
@@ -51,8 +53,6 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [showTaskManager, setShowTaskManager] = useState(false);
   const [showMyTasks, setShowMyTasks] = useState(false);
   const [allEmployees, setAllEmployees] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
     absent: 0,
@@ -275,19 +275,6 @@ const Dashboard = ({ onLogout, userRole }) => {
         }
       }
       
-      // Fetch notifications for admin
-      if (isAdmin) {
-        try {
-          const notifRes = await fetch(`${API_URL}/notifications`, { headers });
-          const notifData = await notifRes.json();
-          if (notifData.success) {
-            setNotifications(notifData.data || []);
-            setUnreadCount(notifData.unreadCount || 0);
-          }
-        } catch (e) {
-          console.error('Error fetching notifications:', e);
-        }
-      }
       if (isAdmin) {
         try {
           const taskRes = await fetch(`${API_URL}/tasks/stats`, { headers });
@@ -446,7 +433,7 @@ const Dashboard = ({ onLogout, userRole }) => {
       <div className="dashboard-welcome" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 className="dashboard-title">Dashboard</h1>
-          <p className="dashboard-subtitle">Welcome back! Here's your HR overview.</p>
+          <p className="dashboard-subtitle">Welcome back! Here's your Employee dashboard..</p>
           
           {lastRefreshed && (
             <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
@@ -674,19 +661,7 @@ const Dashboard = ({ onLogout, userRole }) => {
             }
           />
         )}
-        {isAdmin && (
-          <StatCard
-            title="Pending Leaves"
-            value={pendingLeavesCount}
-            color="#F59E0B"
-            onClick={() => setShowLeavePopup(true)}
-            icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-            }
-          />
-        )}
+        
       </div>
 
       {/* Quick Actions */}
@@ -754,80 +729,6 @@ const Dashboard = ({ onLogout, userRole }) => {
         </div>
       </div>
 
-      {/* Notifications Section for Admin */}
-      {isAdmin && notifications.length > 0 && (
-        <div className={`notifications-section ${isDarkMode ? 'dark' : ''}`}>
-          <div className="notifications-header">
-            <h2>
-              📬 Notifications 
-              {unreadCount > 0 && (
-                <span className="notifications-badge">
-                  {unreadCount}
-                </span>
-              )}
-            </h2>
-            <button 
-              className="mark-all-read-btn"
-              onClick={async () => {
-                try {
-                  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-                  await fetch(`${API_URL}/notifications/mark-all-read`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                  });
-                  setUnreadCount(0);
-                  setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-                } catch (e) {
-                  console.error('Error marking all as read:', e);
-                }
-              }}
-            >
-              Mark all as read
-            </button>
-          </div>
-          
-          <div className="notifications-list">
-            {notifications.map((notification) => (
-              <div 
-                key={notification._id} 
-                className={`notification-item ${notification.read ? 'read' : 'unread'}`}
-              >
-                <div className="notification-content-wrapper">
-                  <div>
-                    <p className="notification-title">{notification.title}</p>
-                    <p className="notification-message">{notification.message}</p>
-                    <p className="notification-time">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  {!notification.read && (
-                    <button
-                      className="mark-read-btn"
-                      onClick={async () => {
-                        try {
-                          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-                          await fetch(`${API_URL}/notifications/${notification._id}/read`, {
-                            method: 'PUT',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                          });
-                          setNotifications(prev => 
-                            prev.map(n => n._id === notification._id ? { ...n, read: true } : n)
-                          );
-                          setUnreadCount(prev => Math.max(0, prev - 1));
-                        } catch (e) {
-                          console.error('Error marking as read:', e);
-                        }
-                      }}
-                    >
-                      Mark as read
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Recent Employees */}
       <div className="recent-employees">

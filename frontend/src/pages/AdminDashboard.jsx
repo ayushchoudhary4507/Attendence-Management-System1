@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 import { attendanceAPI, adminAPI } from '../services/api';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [leaves, setLeaves] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -49,6 +52,16 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch all leaves
+  const fetchLeaves = async () => {
+    try {
+      const data = await attendanceAPI.getAllLeaves();
+      setLeaves(data.data || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   // Fetch all users
   const fetchUsers = async () => {
     try {
@@ -66,6 +79,7 @@ const AdminDashboard = () => {
     fetchStats();
     fetchUsers();
     fetchEmployeesForAttendance();
+    fetchLeaves();
     // Apply initial theme
     document.body.classList.remove('light-theme', 'dark-theme');
     document.body.classList.add(isDarkMode ? 'dark-theme' : 'light-theme');
@@ -214,6 +228,17 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle approve/reject leave
+  const handleApproveRejectLeave = async (leaveId, status) => {
+    try {
+      await attendanceAPI.approveRejectLeave(leaveId, status);
+      fetchLeaves();
+      fetchStats();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   if (loading && users.length === 0) {
     return <div className="admin-loading">Loading admin dashboard...</div>;
   }
@@ -234,6 +259,12 @@ const AdminDashboard = () => {
             onClick={() => setActiveTab('users')}
           >
             User Management
+          </button>
+          <button
+            className={activeTab === 'leaves' ? 'active' : ''}
+            onClick={() => setActiveTab('leaves')}
+          >
+            Leave Management
           </button>
           <button className="attendance-btn" onClick={openAttendanceModal}>
             📋 Present Today
@@ -265,15 +296,20 @@ const AdminDashboard = () => {
               <p className="stat-value">{stats.employeeCount}</p>
               <span className="card-hint">Click to manage users</span>
             </div>
-            <div className="stat-card employee-card clickable" onClick={() => window.location.href = '#/employees'}>
+            <div className="stat-card employee-card clickable" onClick={() => navigate('/employees')}>
               <h3>Total Employees</h3>
               <p className="stat-value">{stats.totalEmployees}</p>
               <span className="card-hint">Click to view employees</span>
             </div>
-            <div className="stat-card project-card clickable" onClick={() => window.location.href = '#/projects'}>
+            <div className="stat-card project-card clickable" onClick={() => navigate('/projects')}>
               <h3>Total Projects</h3>
               <p className="stat-value">{stats.totalProjects}</p>
               <span className="card-hint">Click to view projects</span>
+            </div>
+            <div className="stat-card leave-card clickable" onClick={() => setActiveTab('leaves')}>
+              <h3>Pending Leaves</h3>
+              <p className="stat-value">{stats.pendingLeaves || 0}</p>
+              <span className="card-hint">Click to manage leaves</span>
             </div>
           </div>
         </div>
@@ -333,6 +369,74 @@ const AdminDashboard = () => {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'leaves' && (
+        <div className="admin-leaves">
+          <div className="leaves-header">
+            <h2>Leave Management</h2>
+          </div>
+
+          <div className="leaves-table-container">
+            <table className="users-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Leave Type</th>
+                  <th>Duration</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th>Applied On</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaves.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+                      No leaves found
+                    </td>
+                  </tr>
+                ) : (
+                  leaves.map((leave) => (
+                    <tr key={leave._id}>
+                      <td>{leave.employeeId?.name || 'Unknown'}</td>
+                      <td>{leave.leaveType}</td>
+                      <td>
+                        {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()} ({leave.totalDays} days)
+                      </td>
+                      <td>{leave.reason}</td>
+                      <td>
+                        <span className={`status-badge ${leave.status.toLowerCase()}`}>
+                          {leave.status}
+                        </span>
+                      </td>
+                      <td>{new Date(leave.appliedOn).toLocaleDateString()}</td>
+                      <td>
+                        {leave.status === 'Pending' && (
+                          <div className="action-buttons">
+                            <button
+                              className="btn-approve"
+                              onClick={() => handleApproveRejectLeave(leave._id, 'Approved')}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="btn-reject"
+                              onClick={() => handleApproveRejectLeave(leave._id, 'Rejected')}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

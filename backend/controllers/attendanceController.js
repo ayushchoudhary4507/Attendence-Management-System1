@@ -4,6 +4,13 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const Leave = require('../models/Leave');
 
+// Helper function to emit notification via socket
+const emitNotification = (io, userId, notification) => {
+  if (io) {
+    io.emit('receive_notification', { userId, notification });
+  }
+};
+
 // @desc    Mark attendance for today
 // @route   POST /api/attendance/mark
 // @access  Private (Employee only)
@@ -62,14 +69,24 @@ const markAttendance = async (req, res) => {
     });
 
     // Create notification for admin
-    await Notification.create({
-      type: 'attendance',
-      title: 'Attendance Marked',
-      message: `${employee.name} (${employee.email}) has marked attendance for today at ${new Date().toLocaleTimeString()}`,
-      employeeId: employee._id,
-      employeeName: employee.name,
-      employeeEmail: employee.email
-    });
+    console.log('📩 Creating attendance notification for admin...');
+    const User = require('../models/User');
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    
+    // Create notification for each admin
+    for (const admin of admins) {
+      await Notification.create({
+        type: 'attendance',
+        title: 'Attendance Marked',
+        message: `${employee.name} (${employee.email}) has marked attendance for today at ${new Date().toLocaleTimeString()}`,
+        employeeId: employee._id,
+        employeeName: employee.name,
+        employeeEmail: employee.email,
+        senderId: userId,
+        receiverId: admin._id
+      });
+    }
+    console.log('✅ Attendance notifications created for admins');
 
     res.status(201).json({
       success: true,
@@ -693,16 +710,78 @@ const applyLeave = async (req, res) => {
       reason,
       status: 'Pending'
     });
+    console.log('📩 Creating leave notification for admin...');
+    const User = require('../models/User');
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    console.log('📋 Found', admins.length, 'admins');
+    
+    // Create notification for each admin
+    const leaveNotifications = [];
+    for (const admin of admins) {
+      console.log('📝 Creating notification for admin:', admin._id);
+      const adminNotification = await Notification.create({
+        type: 'leave_request',
+        title: 'New Leave Request',
+        message: `${employee.name} applied for ${leaveType} (${totalDays} days)`,
+        employeeId: employee._id,
+        employeeName: employee.name,
+        employeeEmail: employee.email,
+        senderId: employee._id,
+        senderName: employee.name,
+        receiverId: admin._id,
+        link: `/employees/${employee._id}`
+      });
+      leaveNotifications.push(adminNotification);
+      console.log('✅ Notification created:', adminNotification._id);
+    }
+    console.log('✅ Leave notifications created for admins');
 
-    // Notify admin
-    await Notification.create({
-      type: 'leave',
-      title: 'New Leave Request',
-      message: `${employee.name} applied for ${leaveType} (${totalDays} days)`,
-      employeeId: employee._id,
-      employeeName: employee.name,
-      employeeEmail: employee.email
-    });
+    // Emit real-time notification to all admin users
+    const io = req.app.get('io');
+    console.log('🔌 IO instance:', io ? 'Available' : 'Not available');
+    if (io) {
+      const onlineUsersMap = io.onlineUsers;
+      console.log('👥 Online users map:', onlineUsersMap ? 'Available' : 'Not available');
+
+      for (const admin of admins) {
+        const adminId = admin._id.toString();
+        const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+        console.log(`🔍 Admin ${adminId} online:`, adminOnline ? 'Yes' : 'No');
+        if (adminOnline && adminOnline.isOnline) {
+          const notification = leaveNotifications.find(n => n.receiverId.toString() === adminId);
+          if (notification) {
+            io.to(adminOnline.socketId).emit('newNotification', {
+              id: notification._id,
+              type: 'leave_request',
+              title: 'New Leave Request',
+              message: `${employee.name} applied for ${leaveType} (${totalDays} days)`,
+              senderId: employee._id,
+              senderName: employee.name,
+              employeeId: employee._id,
+              employeeName: employee.name,
+              leaveId: leave._id,
+              link: `/employees/${employee._id}`,
+              createdAt: new Date(),
+              read: false
+            });
+            console.log(`📢 Leave notification emitted to admin ${adminId}`);
+          }
+        } else {
+          console.log(`⚠️ Admin ${adminId} not online, notification not emitted`);
+        }
+      }
+
+      // Also emit legacy event for backward compatibility
+      io.emit('new_leave_request', {
+        type: 'leave_request',
+        title: 'New Leave Request',
+        message: `${employee.name} applied for ${leaveType} (${totalDays} days)`,
+        employeeId: employee._id,
+        employeeName: employee.name,
+        leaveId: leave._id,
+        createdAt: new Date()
+      });
+    }
 
     res.status(201).json({ success: true, message: 'Leave applied successfully', data: leave });
   } catch (error) {
@@ -789,7 +868,7 @@ const approveRejectLeave = async (req, res) => {
   try {
     const { leaveId } = req.params;
     const { status, rejectionReason } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user.userId || req.user.id;
 
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Status must be Approved or Rejected' });
@@ -810,15 +889,71 @@ const approveRejectLeave = async (req, res) => {
     if (status === 'Rejected') leave.rejectionReason = rejectionReason;
     await leave.save();
 
-    // Notify employee
-    await Notification.create({
-      type: 'leave',
+    console.log('📩 Creating leave status notification for employee...');
+    
+    // Notify employee about leave approval/rejection
+    const employeeNotification = await Notification.create({
+      type: 'leave_request',
       title: `Leave ${status}`,
       message: `Your ${leave.leaveType} has been ${status.toLowerCase()}`,
       employeeId: leave.employeeId._id,
       employeeName: leave.employeeId.name,
-      employeeEmail: leave.employeeId.email
+      employeeEmail: leave.employeeId.email,
+      senderId: adminId,
+      senderName: 'Admin',
+      receiverId: leave.userId,
+      link: '/attendance'
     });
+    console.log('✅ Employee notification created:', employeeNotification._id);
+
+    // Emit real-time notification to the employee
+    const io = req.app.get('io');
+    console.log('🔌 IO instance:', io ? 'Available' : 'Not available');
+    if (io) {
+      const onlineUsersMap = io.onlineUsers;
+      console.log('👥 Online users map:', onlineUsersMap ? 'Available' : 'Not available');
+      
+      const employeeUserId = leave.userId?.toString();
+      console.log(`🔍 Employee user ID:`, employeeUserId);
+      
+      if (employeeUserId && onlineUsersMap) {
+        const empOnline = onlineUsersMap.get(employeeUserId);
+        console.log(`🔍 Employee ${employeeUserId} online:`, empOnline ? 'Yes' : 'No');
+        if (empOnline && empOnline.isOnline) {
+          io.to(empOnline.socketId).emit('newNotification', {
+            id: employeeNotification._id,
+            type: 'leave_request',
+            title: `Leave ${status}`,
+            message: `Your ${leave.leaveType} has been ${status.toLowerCase()}`,
+            senderId: adminId,
+            senderName: 'Admin',
+            leaveId: leave._id,
+            status: status,
+            link: '/attendance',
+            createdAt: new Date(),
+            read: false
+          });
+          console.log(`📢 Leave status notification emitted to employee ${employeeUserId}`);
+        } else {
+          console.log(`⚠️ Employee ${employeeUserId} not online, notification not emitted`);
+        }
+      }
+
+      // Also emit legacy event for backward compatibility
+      io.emit('leave_status_updated', {
+        userId: leave.userId,
+        employeeId: leave.employeeId.toString(),
+        notification: {
+          type: 'leave_request',
+          title: `Leave ${status}`,
+          message: `Your ${leave.leaveType} has been ${status.toLowerCase()}`,
+          leaveId: leave._id,
+          status: status,
+          createdAt: new Date(),
+          read: false
+        }
+      });
+    }
 
     res.json({ success: true, message: `Leave ${status.toLowerCase()}`, data: leave });
   } catch (error) {
@@ -923,15 +1058,66 @@ const applyLeaveAuto = async (req, res) => {
       appliedOn: new Date()
     });
 
-    // Notify admin about new leave request
-    await Notification.create({
-      type: 'leave',
-      title: 'New Leave Request',
-      message: `${employee.name} requested ${leaveType} (${totalDays} days) from ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`,
-      employeeId: employee._id,
-      employeeName: employee.name,
-      employeeEmail: employee.email
-    });
+    console.log('📩 Creating leave notification for admin (auto-apply)...');
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    console.log('📋 Found', admins.length, 'admins');
+    
+    // Create notification for each admin
+    const leaveNotifications = [];
+    for (const admin of admins) {
+      console.log('📝 Creating notification for admin:', admin._id);
+      const adminNotification = await Notification.create({
+        type: 'leave_request',
+        title: 'New Leave Request',
+        message: `${employee.name} applied for ${leaveType} (${totalDays} days)`,
+        employeeId: employee._id,
+        employeeName: employee.name,
+        employeeEmail: employee.email,
+        senderId: employee._id,
+        senderName: employee.name,
+        receiverId: admin._id,
+        link: `/employees/${employee._id}`
+      });
+      leaveNotifications.push(adminNotification);
+      console.log('✅ Notification created:', adminNotification._id);
+    }
+    console.log('✅ Leave notifications created for admins');
+
+    // Emit real-time notification to all admin users
+    const io = req.app.get('io');
+    console.log('🔌 IO instance:', io ? 'Available' : 'Not available');
+    if (io) {
+      const onlineUsersMap = io.onlineUsers;
+      console.log('👥 Online users map:', onlineUsersMap ? 'Available' : 'Not available');
+
+      for (const admin of admins) {
+        const adminId = admin._id.toString();
+        const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+        console.log(`🔍 Admin ${adminId} online:`, adminOnline ? 'Yes' : 'No');
+        if (adminOnline && adminOnline.isOnline) {
+          const notification = leaveNotifications.find(n => n.receiverId.toString() === adminId);
+          if (notification) {
+            io.to(adminOnline.socketId).emit('newNotification', {
+              id: notification._id,
+              type: 'leave_request',
+              title: 'New Leave Request',
+              message: `${employee.name} applied for ${leaveType} (${totalDays} days)`,
+              senderId: employee._id,
+              senderName: employee.name,
+              employeeId: employee._id,
+              employeeName: employee.name,
+              leaveId: leave._id,
+              link: `/employees/${employee._id}`,
+              createdAt: new Date(),
+              read: false
+            });
+            console.log(`📢 Leave notification emitted to admin ${adminId}`);
+          }
+        } else {
+          console.log(`⚠️ Admin ${adminId} not online, notification not emitted`);
+        }
+      }
+    }
 
     res.status(201).json({ success: true, message: 'Leave applied successfully. Pending admin approval.', data: leave });
   } catch (error) {

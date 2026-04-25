@@ -97,7 +97,6 @@ const adminRoutes = require('./routes/adminRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const groupRoutes = require('./routes/groupRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Use routes
 app.use('/api/login', loginRoutes);
@@ -116,11 +115,14 @@ app.use('/api/temp', tempRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/groups', groupRoutes);
-app.use('/api/dashboard', dashboardRoutes);
 
 // Socket.io real-time messaging
 const onlineUsers = new Map(); // userId -> { socketId, lastSeen }
 const typingUsers = new Map(); // userId -> { receiverId, timeout }
+
+// Expose io globally so controllers can emit notifications
+global._io = io;
+io.onlineUsers = onlineUsers;
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -193,8 +195,23 @@ io.on('connection', (socket) => {
       if (receiver && receiver.isOnline) {
         io.to(receiver.socketId).emit('receive_message', messageData);
         console.log(`Message delivered to receiver ${receiverId}`);
+
+        // Also send notification to receiver with receiverId for filtering
+        io.to(receiver.socketId).emit('newNotification', {
+          id: Date.now(),
+          type: 'message',
+          title: `New message from ${senderName}`,
+          message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+          senderId,
+          senderName,
+          receiverId, // Include receiverId so frontend can verify
+          createdAt: new Date()
+        });
+        console.log(`Message notification sent to receiver ${receiverId}`);
+      } else {
+        console.log(`Receiver ${receiverId} not online, notification not sent`);
       }
-      
+
       // Confirm to sender
       socket.emit('message_sent', {
         ...messageData,
@@ -316,7 +333,35 @@ io.on('connection', (socket) => {
       // Broadcast to all members in the group room (including sender for confirmation)
       io.to(`group:${groupId}`).emit('receive_group_message', messageData);
       console.log(`Group message broadcasted to group:${groupId}`);
-      
+
+      // Send notification to online group members (except sender)
+      const Group = require('./models/Group');
+      try {
+        const group = await Group.findById(groupId);
+        if (group && group.members) {
+          group.members.forEach(member => {
+            const memberId = member.userId?.toString() || member.toString();
+            if (memberId !== senderId) {
+              const memberOnline = onlineUsers.get(memberId);
+              if (memberOnline && memberOnline.isOnline) {
+                io.to(memberOnline.socketId).emit('newNotification', {
+                  id: Date.now(),
+                  type: 'message',
+                  title: `${senderName} in ${group.name || 'Group'}`,
+                  message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+                  groupId,
+                  senderId,
+                  senderName,
+                  createdAt: new Date()
+                });
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.log('Group notification error (non-critical):', err.message);
+      }
+
       // Confirm to sender
       socket.emit('group_message_sent', {
         ...messageData,
@@ -407,6 +452,71 @@ io.on('connection', (socket) => {
       readBy: readerId,
       readAt: new Date()
     });
+  });
+
+  // ==================== NOTIFICATION SOCKET HANDLERS ====================
+
+  // Send notification to specific user
+  socket.on('send_notification', (data) => {
+    const { userId, notification } = data;
+
+    if (!userId || !notification) {
+      console.error('Invalid notification data:', data);
+      return;
+    }
+
+    const targetUser = onlineUsers.get(userId);
+    if (targetUser && targetUser.isOnline) {
+      // Emit both event names for compatibility
+      io.to(targetUser.socketId).emit('newNotification', notification);
+      io.to(targetUser.socketId).emit('receive_notification', { userId, notification });
+      console.log(`Notification sent to user ${userId}:`, notification.title);
+    }
+  });
+
+  // Helper: Create and send notification to a user (server-side use)
+  socket.on('create_notification', async (data) => {
+    const { userId, title, message, type } = data;
+
+    if (!userId || !title || !message) {
+      console.error('Invalid create_notification data:', data);
+      return;
+    }
+
+    try {
+      const User = require('./models/User');
+      const user = await User.findById(userId);
+      if (!user) {
+        console.error('User not found for notification:', userId);
+        return;
+      }
+
+      const newNotification = {
+        id: Date.now(),
+        title,
+        message,
+        type: type || 'update',
+        time: 'Just now',
+        read: false,
+        createdAt: new Date()
+      };
+
+      if (!user.notifications) {
+        user.notifications = [];
+      }
+      user.notifications.unshift(newNotification);
+      await user.save();
+
+      // Emit to user if online
+      const targetUser = onlineUsers.get(userId);
+      if (targetUser && targetUser.isOnline) {
+        io.to(targetUser.socketId).emit('newNotification', newNotification);
+        io.to(targetUser.socketId).emit('receive_notification', { userId, notification: newNotification });
+        console.log(`Notification created and sent to user ${userId}:`, title);
+      }
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
   });
 
   // Handle disconnect

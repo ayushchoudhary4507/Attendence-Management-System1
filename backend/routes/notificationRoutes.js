@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const {
   createNotification,
   getNotifications,
@@ -190,11 +190,11 @@ router.use(protect);
 // Create notification (any authenticated user)
 router.post('/', createNotification);
 
-// Admin only routes
-router.get('/', admin, getNotifications);
-router.get('/unread-count', admin, getUnreadCount);
-router.put('/:id/read', admin, markAsRead);
-router.put('/mark-all-read', admin, markAllAsRead);
-router.delete('/:id', admin, deleteNotification);
+// Get notifications (all users - controller filters by role)
+router.get('/', getNotifications);
+router.get('/unread-count', getUnreadCount);
+router.put('/:id/read', markAsRead);
+router.put('/mark-all-read', markAllAsRead);
+router.delete('/:id', deleteNotification);
 
 module.exports = router;

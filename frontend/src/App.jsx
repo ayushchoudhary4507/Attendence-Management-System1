@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
@@ -15,6 +15,7 @@ import Chat from './pages/Chat';
 import EmployeeWorkHours from './components/EmployeeWorkHours';
 import Attendance from './components/Attendance';
 import { settingsAPI } from './services/api';
+import { NotificationProvider, useNotifications, timeAgo } from './context/NotificationContext';
 import './App.css';
 import './styles/responsive.css';
 
@@ -34,6 +35,8 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+  
+  const { notifications, filteredNotifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, filter, setFilter } = useNotifications();
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -63,11 +66,10 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     setMobileSidebarOpen(false);
   };
   const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   const searchItems = [
@@ -75,6 +77,9 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     { label: 'Employees', path: '/employees', icon: '👥', category: 'Page' },
     { label: 'Analytics', path: '/analytics', icon: '📈', category: 'Page' },
     { label: 'Projects', path: '/projects', icon: '📁', category: 'Page' },
+    { label: 'Messages', path: '/chat', icon: '💬', category: 'Page' },
+    { label: 'Work Hours', path: '/work-hours', icon: '⏰', category: 'Page' },
+    { label: 'Attendance', path: '/attendance', icon: '✅', category: 'Page' },
     { label: 'Settings', path: '/settings', icon: '⚙️', category: 'Page' },
     ...(userRole === 'admin' ? [{ label: 'Admin Panel', path: '/admin', icon: '🔐', category: 'Page' }] : []),
     { label: 'Add Employee', path: '/employees', action: 'add', icon: '➕', category: 'Action' },
@@ -101,11 +106,23 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     navigate(item.path);
   };
   
-  // Load theme and notifications on mount
+  // Load theme on mount
   useEffect(() => {
     loadTheme();
-    fetchNotifications();
   }, []);
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showNotifications]);
 
   const loadTheme = () => {
     const savedTheme = localStorage.getItem('theme') || 'light';
@@ -123,57 +140,6 @@ const Layout = ({ children, onLogout, userRole, user }) => {
       document.body.classList.add(prefersDark ? 'dark-theme' : 'light-theme');
     } else {
       document.body.classList.add('light-theme');
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      setLoadingNotifications(true);
-      const response = await settingsAPI.getNotifications();
-      if (response.success) {
-        setNotifications(response.data);
-      }
-    } catch (err) {
-      console.error('Error loading notifications:', err);
-      // Use default notifications if API fails
-      setNotifications([
-        { id: 1, title: 'Welcome!', message: 'Your notifications will appear here', time: 'Just now', read: false, type: 'info' }
-      ]);
-    } finally {
-      setLoadingNotifications(false);
-    }
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAsRead = async (id) => {
-    try {
-      await settingsAPI.markNotificationRead(id);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
-      // Still update UI even if API fails
-      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await settingsAPI.markAllNotificationsRead();
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
-    } catch (err) {
-      console.error('Error marking all as read:', err);
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
-    }
-  };
-
-  const deleteNotification = async (id) => {
-    try {
-      await settingsAPI.deleteNotification(id);
-      setNotifications(notifications.filter(n => n.id !== id));
-    } catch (err) {
-      console.error('Error deleting notification:', err);
-      setNotifications(notifications.filter(n => n.id !== id));
     }
   };
 
@@ -297,7 +263,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                       {searchQuery.trim() === '' ? (
                         <div className="search-suggestions">
                           <p className="search-section-title">Quick Access</p>
-                          {searchItems.slice(0, 5).map((item) => (
+                          {searchItems.slice(0, 8).map((item) => (
                             <div key={item.label} className="search-item" onClick={() => handleSearchClick(item)}>
                               <span className="search-item-icon">{item.icon}</span>
                               <span className="search-item-label">{item.label}</span>
@@ -319,12 +285,80 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                     </div>
                   </div>
                 )}
-                <button className="icon-btn notification-btn" onClick={() => setShowNotifications(!showNotifications)} style={{ position: 'relative' }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h20v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
-                  </svg>
-                  {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <button className="icon-btn notification-btn" onClick={() => setShowNotifications(!showNotifications)}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                      <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h20v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
+                    </svg>
+                    {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
+                  </button>
+
+                  {/* Notification Dropdown */}
+                  {showNotifications && (
+                    <div ref={notificationRef} className={`notification-dropdown ${isDarkMode ? 'dark-mode' : ''}`}>
+                      <div className="notification-header">
+                        <h3>Notifications</h3>
+                        <div className="notification-header-actions">
+                          {unreadCount > 0 && (
+                            <button className="mark-all-read" onClick={markAllAsRead}>Mark all read</button>
+                          )}
+                        </div>
+                      </div>
+                      {/* Filter tabs */}
+                      <div className="notification-filters">
+                        {['all', 'leave_request', 'user_activity', 'project_update', 'message'].map(f => (
+                          <button
+                            key={f}
+                            className={`filter-btn ${filter === f ? 'active' : ''}`}
+                            onClick={() => setFilter(f)}
+                          >
+                            {f === 'all' ? 'All' : f === 'leave_request' ? '📅 Leave' : f === 'user_activity' ? '👤 Activity' : f === 'project_update' ? '📊 Project' : '💬 Message'}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="notification-list">
+                        {filteredNotifications.length === 0 ? (
+                          <div className="no-notifications">No notifications</div>
+                        ) : (
+                          filteredNotifications.slice(0, 20).map((notification) => (
+                            <div
+                              key={notification.id || notification._id}
+                              className={`notification-item ${notification.read ? 'read' : 'unread'}`}
+                              onClick={() => {
+                                markAsRead(notification.id || notification._id);
+                                if (notification.link) navigate(notification.link);
+                              }}
+                            >
+                              <div className="notification-icon">
+                                {notification.type === 'leave_request' && '📅'}
+                                {notification.type === 'user_activity' && '👤'}
+                                {notification.type === 'project_update' && '📊'}
+                                {notification.type === 'message' && '💬'}
+                                {notification.type === 'leave' && '📅'}
+                                {notification.type === 'attendance' && '⏰'}
+                                {notification.type === 'checkin' && '✅'}
+                                {notification.type === 'checkout' && '🏠'}
+                                {!['leave_request','user_activity','project_update','message','leave','attendance','checkin','checkout'].includes(notification.type) && '🔔'}
+                              </div>
+                              <div className="notification-content">
+                                <p className="notification-title">{notification.title}</p>
+                                <p className="notification-message">{notification.message}</p>
+                                <span className="notification-time">{timeAgo(notification.createdAt)}</span>
+                              </div>
+                              <button
+                                className="delete-notification"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteNotification(notification.id || notification._id);
+                                }}
+                              >×</button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <button className="icon-btn theme-btn" onClick={() => {
                   const isDark = document.body.classList.contains('dark-theme');
                   const newTheme = isDark ? 'light' : 'dark';
@@ -337,39 +371,6 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                     <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 9c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 000 1.41.996.996 0 001.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06z"/>
                   </svg>
                 </button>
-
-                {/* Notification Dropdown */}
-                {showNotifications && (
-                  <div className={`notification-dropdown ${isDarkMode ? 'dark-mode' : ''}`}>
-                    <div className="notification-header">
-                      <h3>Notifications</h3>
-                      {unreadCount > 0 && (
-                        <button className="mark-all-read" onClick={markAllAsRead}>Mark all as read</button>
-                      )}
-                    </div>
-                    <div className="notification-list">
-                      {notifications.length === 0 ? (
-                        <div className="no-notifications">No notifications</div>
-                      ) : (
-                        notifications.map((notification) => (
-                          <div key={notification.id} className={`notification-item ${notification.read ? 'read' : 'unread'}`}>
-                            <div className="notification-icon">
-                              {notification.type === 'success' && '✅'}
-                              {notification.type === 'warning' && '⚠️'}
-                              {notification.type === 'info' && 'ℹ️'}
-                            </div>
-                            <div className="notification-content" onClick={() => markAsRead(notification.id)}>
-                              <p className="notification-title">{notification.title}</p>
-                              <p className="notification-message">{notification.message}</p>
-                              <span className="notification-time">{notification.time}</span>
-                            </div>
-                            <button className="delete-notification" onClick={() => deleteNotification(notification.id)}>×</button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px' }}>
                 <img 
@@ -427,8 +428,8 @@ const AdminRoute = ({ isAuthenticated, user, children }) => {
 };
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   console.log('App render - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
@@ -496,8 +497,9 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
+    <NotificationProvider>
+      <Router>
+        <Routes>
         {/* Public Routes */}
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={
@@ -592,7 +594,8 @@ function App() {
           isAuthenticated ? <Navigate to="/" /> : <Navigate to="/landing" />
         } />
       </Routes>
-    </Router>
+      </Router>
+    </NotificationProvider>
   );
 }
 

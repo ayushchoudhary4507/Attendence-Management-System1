@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// Direct backend URL - bypass Vite proxy
-const API_BASE_URL = 'https://attendence-management-system1.onrender.com/api';
+// Conditional API URL based on environment
+const API_BASE_URL = import.meta.env.PROD
+  ? 'https://attendence-management-system1.onrender.com/api'
+  : 'http://localhost:5005/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

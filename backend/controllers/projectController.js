@@ -65,6 +65,60 @@ exports.createProject = async (req, res) => {
       createdBy: req.user.userId
     });
     await project.save();
+
+    // Send project_update notification to admin
+    try {
+      const Notification = require('../models/Notification');
+      const User = require('../models/User');
+      const creator = await User.findById(req.user.userId).select('name');
+      const creatorName = creator ? creator.name : 'Unknown';
+      const admins = await User.find({ role: 'admin' }).select('_id');
+
+      // Create notification for each admin
+      const projectNotifications = [];
+      for (const admin of admins) {
+        const adminNotification = await Notification.create({
+          type: 'project_update',
+          title: 'New Project Created',
+          message: `${creatorName} created project "${name}"`,
+          senderId: req.user.userId,
+          senderName: creatorName,
+          receiverId: admin._id,
+          link: '/projects'
+        });
+        projectNotifications.push(adminNotification);
+      }
+      console.log('✅ Project notifications created for admins');
+
+      // Emit to admins via socket
+      const io = global._io;
+      if (io) {
+        const onlineUsersMap = io.onlineUsers;
+        for (const admin of admins) {
+          const adminId = admin._id.toString();
+          const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+          if (adminOnline && adminOnline.isOnline) {
+            const notification = projectNotifications.find(n => n.receiverId.toString() === adminId);
+            if (notification) {
+              io.to(adminOnline.socketId).emit('newNotification', {
+                id: notification._id,
+                type: 'project_update',
+                title: 'New Project Created',
+                message: `${creatorName} created project "${name}"`,
+                senderId: req.user.userId,
+                senderName: creatorName,
+                link: '/projects',
+                createdAt: new Date(),
+                read: false
+              });
+            }
+          }
+        }
+      }
+    } catch (notifError) {
+      console.error('Failed to send project notification:', notifError.message);
+    }
+
     res.status(201).json({ success: true, message: 'Project created successfully', data: project });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -95,7 +149,59 @@ exports.updateProject = async (req, res) => {
       { name, description, status, progress, team, deadline, priority },
       { new: true, runValidators: true }
     );
-    
+
+    // Send project_update notification to admin
+    try {
+      const Notification = require('../models/Notification');
+      const User = require('../models/User');
+      const updater = await User.findById(userId).select('name');
+      const updaterName = updater ? updater.name : 'Unknown';
+      const admins = await User.find({ role: 'admin' }).select('_id');
+
+      // Create notification for each admin
+      const projectNotifications = [];
+      for (const admin of admins) {
+        const adminNotification = await Notification.create({
+          type: 'project_update',
+          title: 'Project Updated',
+          message: `${updaterName} updated project "${updatedProject.name}"`,
+          senderId: userId,
+          senderName: updaterName,
+          receiverId: admin._id,
+          link: '/projects'
+        });
+        projectNotifications.push(adminNotification);
+      }
+      console.log('✅ Project update notifications created for admins');
+
+      const io = global._io;
+      if (io) {
+        const onlineUsersMap = io.onlineUsers;
+        for (const admin of admins) {
+          const adminId = admin._id.toString();
+          const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+          if (adminOnline && adminOnline.isOnline) {
+            const notification = projectNotifications.find(n => n.receiverId.toString() === adminId);
+            if (notification) {
+              io.to(adminOnline.socketId).emit('newNotification', {
+                id: notification._id,
+                type: 'project_update',
+                title: 'Project Updated',
+                message: `${updaterName} updated project "${updatedProject.name}"`,
+                senderId: userId,
+                senderName: updaterName,
+                link: '/projects',
+                createdAt: new Date(),
+                read: false
+              });
+            }
+          }
+        }
+      }
+    } catch (notifError) {
+      console.error('Failed to send project update notification:', notifError.message);
+    }
+
     res.json({ success: true, message: 'Project updated successfully', data: updatedProject });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
