@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AttendanceButton from '../components/AttendanceButton';
 import TaskManager from '../components/TaskManager';
 import MyTasks from '../components/MyTasks';
 import AdminLeavePopup from '../components/AdminLeavePopup';
-import '../components/AttendanceButton.css';
 import '../components/TaskManager.css';
 import '../components/MyTasks.css';
 import './Dashboard.css';
@@ -668,7 +666,6 @@ const Dashboard = ({ onLogout, userRole }) => {
       <div className="quick-actions">
         <h2 className="quick-actions-title">Quick Actions</h2>
         <div className="quick-actions-buttons">
-          {isEmployee && <AttendanceButton />}
           
           {isAdmin && (
             <button 

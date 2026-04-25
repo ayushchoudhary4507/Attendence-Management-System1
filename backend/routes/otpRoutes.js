@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { authMiddleware } = require('../middleware/adminMiddleware');
 const { sendOTP } = require('../utils/emailService');
-const { sendMobileOTP } = require('../utils/smsService');
+// SMS service removed - use email OTP only
 
 // Debug: Log when router is loaded
 console.log('✅ otpRoutes loaded - registering routes: /send, /verify, /resend, /send-mobile, /verify-mobile');
@@ -149,16 +149,7 @@ router.post('/send', async (req, res) => {
       }
     }
     
-    // Send OTP via SMS if mobile is provided
-    if (normalizedMobile) {
-      const smsResult = await sendMobileOTP(normalizedMobile, otp);
-      if (!smsResult.success) {
-        console.error('SMS sending failed:', smsResult.message);
-        // Continue anyway - OTP is stored and can be viewed in terminal
-      } else {
-        console.log('✅ SMS sent successfully to:', normalizedMobile);
-      }
-    }
+    // SMS service removed - use email OTP only
     
     // Log OTP for development/testing (remove in production)
     console.log(`OTP for ${otpKey}: ${otp}`);
@@ -442,20 +433,13 @@ router.post('/send-mobile', async (req, res) => {
       expiresAt: Date.now() + 5 * 60 * 1000
     });
 
-    // Send OTP via SMS
-    const smsResult = await sendMobileOTP(mobile, otp);
-    
-    if (!smsResult.success) {
-      console.error('SMS sending failed:', smsResult.message);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to send SMS: ' + smsResult.message 
-      });
-    }
+    // SMS service removed - use email OTP only
+    // OTP is stored and can be used for testing
+    console.log(`OTP for ${mobile}: ${otp}`);
 
     res.json({
       success: true,
-      message: 'OTP sent successfully to your mobile',
+      message: 'OTP generated successfully (SMS service disabled)',
       // Remove in production - for testing only
       otp: process.env.NODE_ENV === 'development' ? otp : undefined
     });

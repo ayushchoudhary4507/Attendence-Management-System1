@@ -7,7 +7,6 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const mongoose = require('mongoose');
 require('dotenv').config();
-const connectDB = require('./config/db');
 const dns = require('node:dns');
 const Message = require('./models/Message');
 const Group = require('./models/Group');
@@ -16,6 +15,17 @@ const Group = require('./models/Group');
 dns.setServers(['8.8.8.8', '8.8.4.4',]);
 
 // Connect to database
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    console.log(`✅ MongoDB Atlas Connected: ${conn.connection.host}`);
+    console.log(`📊 Database: ${conn.connection.name}`);
+    console.log(`🔗 Connection State: ${conn.connection.readyState}`);
+  } catch (error) {
+    console.error(`❌ MongoDB Connection Error: ${error.message}`);
+    process.exit(1);
+  }
+};
 connectDB();
 
 const app = express();
