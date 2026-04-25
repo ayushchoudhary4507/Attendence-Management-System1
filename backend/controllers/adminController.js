@@ -93,8 +93,7 @@ const getDashboardStats = async (req, res) => {
         adminCount,
         employeeCount,
         totalEmployees,
-        totalProjects,
-        pendingLeaves
+        totalProjects
       }
     });
   } catch (error) {
