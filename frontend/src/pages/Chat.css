@@ -1273,35 +1273,108 @@ body.dark-theme .create-group-link:hover {
   /* Mobile Sidebar (Contacts List) */
   .chat-sidebar {
     width: 100%;
-    height: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--gray-200);
+    min-width: 100%;
+    max-width: 100%;
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 10;
-    transition: transform 0.3s ease;
-    max-width: 100%;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    background: var(--white);
+    border-right: none;
   }
 
   .chat-sidebar.hidden {
     transform: translateX(-100%);
   }
 
-  .chat-sidebar.visible {
-    transform: translateX(0);
-  }
-
+  /* Mobile Chat Area */
   .chat-main {
     width: 100%;
     height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    position: relative;
   }
 
-  /* Mobile Chat Header with Back Button */
+  /* Mobile Messages */
+  .chat-messages {
+    padding: 12px 16px;
+    padding-bottom: 80px;
+  }
+
+  .message-bubble {
+    padding: 10px 14px;
+    margin-bottom: 10px;
+  }
+
+  .message-content {
+    max-width: 85%;
+    font-size: 14px;
+  }
+
+  .message-time {
+    font-size: 11px;
+  }
+
+  .message-meta {
+    font-size: 11px;
+  }
+
+  /* Input Area - Mobile Fix */
+  .chat-input-area {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+    background: var(--white) !important;
+    border-top: 1px solid var(--gray-200) !important;
+  }
+
+  .chat-input-container {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+    border-radius: 20px !important;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chat-input {
+    padding: 8px 10px !important;
+    font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 40px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Send Button - Mobile Fix */
+  .chat-send-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    padding: 8px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .chat-send-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .chat-emoji-btn,
+  .chat-attachment-btn {
+    padding: 6px !important;
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .chat-header {
     padding: 10px 12px;
     min-height: 56px;
@@ -1870,44 +1943,30 @@ body.dark-theme .create-group-link:hover {
 
   /* Send button - WhatsApp green circle */
   .chat-send-btn {
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
-    min-height: 48px;
-    border: none;
-    border-radius: 50%;
-    background: #00a884;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    transition: all 0.2s ease;
-    padding: 0;
-  }
-
-  .chat-send-btn:hover:not(:disabled) {
-    background: #008f72;
-    transform: scale(1.05);
-  }
-
-  .chat-send-btn:active:not(:disabled) {
-    transform: scale(0.95);
-  }
-
-  .chat-send-btn:disabled {
-    background: #8696a0;
-    opacity: 0.6;
-    cursor: not-allowed;
-    box-shadow: none;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: #00a884 !important;
+    color: white !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    padding: 8px !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+    transition: all 0.2s ease !important;
+    margin: 0 !important;
   }
 
   .chat-send-btn svg {
-    width: 24px;
-    height: 24px;
-    fill: white;
-    margin-left: 2px;
+    width: 18px !important;
+    height: 18px !important;
+    fill: white !important;
+    margin: 0 !important;
   }
 
   /* Message bubbles styling */

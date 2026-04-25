@@ -45,6 +45,7 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
+  position: relative;
 }
 
 .icon-btn:hover {
@@ -52,24 +53,99 @@ body {
   color: #4f46e5;
 }
 
+/* Header Icons Layout */
+.header-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* Notification Badge */
 .badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -2px;
+  right: -2px;
   background: #ef4444;
   color: white;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 5px;
+  padding: 0 4px;
   border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+/* Mobile responsive badge */
+@media (max-width: 768px) {
+  .badge {
+    top: -1px;
+    right: -1px;
+    font-size: 9px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border-width: 1.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .badge {
+    top: 0 !important;
+    right: 0 !important;
+    font-size: 8px !important;
+    min-width: 12px !important;
+    height: 12px !important;
+    padding: 0 2px !important;
+    border-width: 1px !important;
+  }
+}
+
+/* Mobile responsive icon button */
+@media (max-width: 768px) {
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .header-icons {
+    gap: 6px;
+  }
+  
+  .header-right {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .icon-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .header-icons {
+    gap: 4px;
+  }
+  
+  .header-right {
+    gap: 6px;
+  }
 }
 
 /* Notification Dropdown Styles */
@@ -1192,10 +1268,10 @@ html, body {
   }
 
   .notification-dropdown {
-    width: calc(100vw - 20px);
+    width: calc(100vw - 24px);
     max-width: none;
-    right: -80px;
-    left: 10px;
+    right: auto;
+    left: 12px;
     margin-top: 6px;
     border-radius: 10px;
     max-height: 80vh;
