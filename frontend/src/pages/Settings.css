@@ -403,6 +403,14 @@ body.dark-theme .theme-card span {
 /* Tablet styles (max-width: 1024px) */
 @media (max-width: 1024px) {
   .settings-page {
+    padding: 16px;
+  }
+
+  .settings-header h1 {
+    font-size: 24px;
+  }
+
+  .settings-container {
     flex-direction: column;
   }
 
@@ -410,10 +418,8 @@ body.dark-theme .theme-card span {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
-    padding: 16px;
-  }
-
-  .settings-tabs {
+    padding: 12px;
+    display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px;
@@ -425,6 +431,7 @@ body.dark-theme .theme-card span {
     justify-content: center;
     padding: 10px 16px;
     font-size: 13px;
+    margin-bottom: 0;
   }
 
   .settings-content {
@@ -434,23 +441,50 @@ body.dark-theme .theme-card span {
   .settings-section h2 {
     font-size: 20px;
   }
+
+  .theme-cards {
+    flex-wrap: wrap;
+  }
+
+  .theme-card {
+    flex: 1;
+    min-width: 120px;
+  }
 }
 
 /* Mobile styles (max-width: 768px) */
 @media (max-width: 768px) {
-  .settings-sidebar {
+  .settings-page {
     padding: 12px;
   }
 
-  .settings-tabs {
+  .settings-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .settings-header h1 {
+    font-size: 22px;
+  }
+
+  .settings-sidebar {
+    padding: 10px;
     gap: 6px;
   }
 
   .tab-btn {
-    min-width: 100px;
+    min-width: auto;
+    flex: 1;
     padding: 10px 12px;
     font-size: 12px;
     min-height: 44px;
+    border-radius: 8px;
+  }
+
+  .tab-icon {
+    font-size: 16px;
   }
 
   .settings-content {
@@ -462,6 +496,10 @@ body.dark-theme .theme-card span {
     margin-bottom: 16px;
   }
 
+  .section-desc {
+    font-size: 13px;
+  }
+
   .form-group {
     margin-bottom: 16px;
   }
@@ -471,12 +509,11 @@ body.dark-theme .theme-card span {
     margin-bottom: 6px;
   }
 
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
+  .form-group input {
     padding: 12px;
     font-size: 16px;
     min-height: 44px;
+    max-width: 100%;
   }
 
   .toggle-item {
@@ -491,55 +528,87 @@ body.dark-theme .theme-card span {
     font-size: 12px;
   }
 
-  .toggle-switch {
-    min-width: 48px;
-    min-height: 28px;
+  .toggle {
+    width: 44px;
+    height: 24px;
   }
 
-  .theme-options {
-    grid-template-columns: repeat(2, 1fr);
+  .toggle-slider:before {
+    width: 16px;
+    height: 16px;
+    left: 3px;
+    bottom: 3px;
+  }
+
+  .toggle input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+  }
+
+  .theme-cards {
     gap: 12px;
   }
 
   .theme-card {
-    padding: 16px;
-    min-height: 80px;
+    padding: 14px;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .theme-preview {
+    width: 60px;
+    height: 50px;
   }
 
   .theme-card span {
     font-size: 12px;
   }
 
-  .btn-primary,
-  .btn-secondary {
+  .btn-save {
+    width: 100%;
     min-height: 44px;
     padding: 12px 20px;
     font-size: 14px;
-    width: 100%;
+    margin-top: 16px;
   }
 
-  .settings-actions {
-    flex-direction: column;
-    gap: 12px;
+  .btn-secondary {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 14px;
+    margin-top: 12px;
+  }
+
+  .security-info {
+    padding: 14px;
+  }
+
+  .info-item {
+    padding: 6px 0;
   }
 }
 
 /* Small mobile styles (max-width: 480px) */
 @media (max-width: 480px) {
-  .settings-sidebar {
-    padding: 10px;
+  .settings-page {
+    padding: 8px;
   }
 
-  .settings-tabs {
-    flex-direction: column;
+  .settings-header h1 {
+    font-size: 20px;
+  }
+
+  .settings-sidebar {
+    padding: 8px;
     gap: 4px;
   }
 
   .tab-btn {
     width: 100%;
     justify-content: flex-start;
-    padding: 12px 14px;
+    padding: 10px 12px;
     font-size: 13px;
+    flex: none;
   }
 
   .settings-content {
@@ -548,54 +617,175 @@ body.dark-theme .theme-card span {
 
   .settings-section h2 {
     font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .section-desc {
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
   }
 
   .form-group label {
     font-size: 12px;
   }
 
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    padding: 10px;
+  .form-group input {
+    padding: 10px 12px;
     font-size: 16px;
+    border-radius: 8px;
   }
 
   .toggle-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 0;
+  }
+
+  .toggle-item h4 {
+    font-size: 13px;
+  }
+
+  .toggle-item p {
+    font-size: 11px;
+  }
+
+  .theme-cards {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .toggle-header {
-    width: 100%;
-  }
-
-  .theme-options {
-    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .theme-card {
     flex-direction: row;
     justify-content: flex-start;
+    align-items: center;
     gap: 12px;
-    padding: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    min-width: auto;
+  }
+
+  .theme-preview {
+    width: 50px;
+    height: 40px;
+    margin-bottom: 0;
+  }
+
+  .theme-card span {
+    font-size: 13px;
+    font-weight: 500;
   }
 
   .security-info {
-    padding: 16px;
+    padding: 12px;
+    border-radius: 10px;
   }
 
   .info-item {
     flex-direction: column;
     gap: 4px;
+    padding: 8px 0;
   }
 
   .info-item .label {
     font-size: 11px;
   }
 
-  .info-item .value {
+  .btn-save,
+  .btn-secondary {
+    padding: 12px;
     font-size: 13px;
+    border-radius: 10px;
+  }
+
+  /* Responsive dark mode - Mobile */
+  body.dark-theme .settings-page {
+    background: #0f0f19;
+  }
+
+  body.dark-theme .settings-container {
+    background: rgba(20, 20, 35, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  body.dark-theme .settings-sidebar {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  body.dark-theme .tab-btn.active {
+    background: linear-gradient(135deg, #4F46E5, #7c3aed);
+  }
+
+  body.dark-theme .settings-section h2 {
+    color: #f1f5f9;
+  }
+
+  body.dark-theme .form-group label {
+    color: #e2e8f0;
+  }
+}
+
+/* Extra small mobile (max-width: 360px) */
+@media (max-width: 360px) {
+  .settings-page {
+    padding: 6px;
+  }
+
+  .settings-header h1 {
+    font-size: 18px;
+  }
+
+  .settings-sidebar {
+    padding: 6px;
+    gap: 3px;
+  }
+
+  .tab-btn {
+    padding: 8px 10px;
+    font-size: 11px;
+    min-height: 40px;
+  }
+
+  .tab-icon {
+    font-size: 14px;
+  }
+
+  .settings-content {
+    padding: 10px;
+  }
+
+  .settings-section h2 {
+    font-size: 15px;
+  }
+
+  .form-group input {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .toggle-item h4 {
+    font-size: 12px;
+  }
+
+  .toggle-item p {
+    font-size: 10px;
+  }
+
+  .theme-preview {
+    width: 45px;
+    height: 35px;
+  }
+
+  .theme-card span {
+    font-size: 12px;
+  }
+
+  .btn-save,
+  .btn-secondary {
+    padding: 10px;
+    font-size: 12px;
   }
 }

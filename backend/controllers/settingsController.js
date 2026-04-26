@@ -1,4 +1,40 @@
 const User = require('../models/User');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for profile image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads/profiles';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // Get user profile and settings
 exports.getProfile = async (req, res) => {
@@ -26,21 +62,118 @@ exports.getProfile = async (req, res) => {
 
 // Update user profile
 exports.updateProfile = async (req, res) => {
+  console.log('=== Update Profile Request ===');
+  console.log('Request body:', req.body);
+  console.log('Request file:', req.file);
+  console.log('User from auth middleware:', req.user);
+  
   try {
     const { name, email, phone, department, role } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.user.userId,
-      { name, email, phone, department, role },
-      { new: true, runValidators: true }
-    );
+    let profileImagePath = req.file ? `/uploads/profiles/${req.file.filename}` : null;
+
+    console.log('Updating profile for userId:', req.user?.userId);
+
+    if (!req.user || !req.user.userId) {
+      console.error('❌ User not found in request');
+      return res.status(401).json({ success: false, message: 'Unauthorized: User not found' });
+    }
+
+    const user = await User.findById(req.user.userId);
     if (!user) {
+      console.error('❌ User not found in database for userId:', req.user.userId);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    res.json({ success: true, message: 'Profile updated successfully', data: user });
+
+    console.log('Current user data:', {
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      department: user.department,
+      role: user.role,
+      profileImage: user.profileImage
+    });
+
+    // Update fields
+    if (name) {
+      console.log('Updating name:', name);
+      user.name = name;
+    }
+    if (email) {
+      console.log('Updating email:', email);
+      user.email = email;
+    }
+    if (phone !== undefined) {
+      console.log('Updating phone:', phone);
+      user.phone = phone;
+    }
+    if (department !== undefined) {
+      console.log('Updating department:', department);
+      user.department = department;
+    }
+    if (role) {
+      console.log('Updating role:', role);
+      user.role = role;
+    }
+    
+    // Update profile image if uploaded
+    if (profileImagePath) {
+      console.log('Updating profile image:', profileImagePath);
+      user.profileImage = profileImagePath;
+    }
+
+    await user.save();
+    console.log('✅ User saved successfully');
+
+    const responseData = {
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      department: user.department,
+      role: user.role,
+      profileImage: user.profileImage
+    };
+
+    console.log('Response data:', responseData);
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: responseData
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Update profile error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    
+    if (error.name === 'ValidationError') {
+      console.error('Validation errors:', Object.values(error.errors).map(e => e.message));
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Validation error',
+        errors: Object.values(error.errors).map(e => e.message)
+      });
+    }
+    
+    if (error.code === 11000) {
+      console.error('Duplicate key error:', error.keyValue);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Duplicate field value',
+        field: Object.keys(error.keyValue)[0]
+      });
+    }
+
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error updating profile',
+      error: error.message 
+    });
   }
 };
+
+// Export upload middleware for use in routes
+exports.upload = upload;
 
 // Update settings (notifications, appearance)
 exports.updateSettings = async (req, res) => {

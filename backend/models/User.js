@@ -32,6 +32,10 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'employee'],
     default: 'employee'
   },
+  profileImage: {
+    type: String,
+    default: ''
+  },
   settings: {
     appearance: {
       theme: {

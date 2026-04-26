@@ -2236,7 +2236,7 @@ body.dark-theme .create-group-link:hover {
     color: #8696a0;
   }
 
-  /* Send button - WhatsApp green circle */
+  /* Send button - WhatsApp blue circle */
   .chat-send-btn {
     width: 40px !important;
     height: 40px !important;
@@ -2244,8 +2244,6 @@ body.dark-theme .create-group-link:hover {
     min-height: 40px !important;
     border: none !important;
     border-radius: 50% !important;
-    background: #00a884 !important;
-    color: white !important;
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;

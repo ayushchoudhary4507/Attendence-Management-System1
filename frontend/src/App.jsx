@@ -67,10 +67,26 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   };
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
+  const notificationBtnRef = useRef(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    department: '',
+    role: '',
+    profileImage: ''
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const profileModalRef = useRef(null);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const searchItems = [
     { label: 'Dashboard', path: '/', icon: '📊', category: 'Page' },
@@ -114,7 +130,9 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   // Close notification dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+      const clickedDropdown = notificationRef.current && notificationRef.current.contains(event.target);
+      const clickedButton = notificationBtnRef.current && notificationBtnRef.current.contains(event.target);
+      if (!clickedDropdown && !clickedButton) {
         setShowNotifications(false);
       }
     };
@@ -130,6 +148,152 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     setIsDarkMode(isDark);
     applyTheme(savedTheme);
   };
+
+  // Load profile data when modal opens
+  const loadProfileData = () => {
+    setProfileData({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      department: user?.department || '',
+      role: user?.role || '',
+      profileImage: user?.profileImage || ''
+    });
+    // Handle both relative and full URLs
+    const profileImg = user?.profileImage;
+    const fullUrl = profileImg && !profileImg.startsWith('http') ? `http://localhost:5005${profileImg}` : profileImg;
+    setProfileImagePreview(fullUrl || null);
+    setProfileImageFile(null);
+  };
+
+  // Handle image file selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+      setProfileImageFile(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle image removal
+  const handleImageRemove = () => {
+    setProfileImageFile(null);
+    setProfileImagePreview(null);
+    setProfileData({ ...profileData, profileImage: '' });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Trigger file input click
+  const handleImageUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handle profile modal open
+  const handleProfileClick = () => {
+    loadProfileData();
+    setShowProfileModal(true);
+    setIsEditing(false);
+  };
+
+  // Handle profile update
+  const handleProfileUpdate = async () => {
+    try {
+      setSaving(true);
+
+      // If there's an image file, use FormData for multipart upload
+      if (profileImageFile) {
+        const formData = new FormData();
+        formData.append('name', profileData.name);
+        formData.append('email', profileData.email);
+        formData.append('phone', profileData.phone);
+        formData.append('department', profileData.department);
+        formData.append('role', profileData.role);
+        formData.append('profileImage', profileImageFile);
+
+        const response = await fetch('http://localhost:5005/api/settings/profile', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
+          },
+          body: formData
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Update user object in both localStorage and sessionStorage
+          const updatedUser = { 
+            ...user, 
+            ...profileData, 
+            profileImage: data.data.profileImage ? `http://localhost:5005${data.data.profileImage}` : null 
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+          setProfileImageFile(null);
+          setProfileImagePreview(updatedUser.profileImage || null);
+          setIsEditing(false);
+          alert('Profile updated successfully!');
+        } else {
+          alert('Failed to update profile');
+        }
+      } else {
+        // No image file, regular JSON update
+        const response = await fetch('http://localhost:5005/api/settings/profile', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(profileData)
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Update user object in both localStorage and sessionStorage
+          const updatedUser = { ...user, ...profileData };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
+          setIsEditing(false);
+          alert('Profile updated successfully!');
+        } else {
+          alert('Failed to update profile');
+        }
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Error updating profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Close profile modal when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileModalRef.current && !profileModalRef.current.contains(event.target)) {
+        setShowProfileModal(false);
+        setIsEditing(false);
+      }
+    };
+    if (showProfileModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProfileModal]);
 
   const applyTheme = (theme) => {
     document.body.classList.remove('light-theme', 'dark-theme');
@@ -286,7 +450,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                   </div>
                 )}
                 <div style={{ position: 'relative' }}>
-                  <button className="icon-btn notification-btn" onClick={() => setShowNotifications(!showNotifications)}>
+                  <button ref={notificationBtnRef} className="icon-btn notification-btn" onClick={() => setShowNotifications(!showNotifications)}>
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                       <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h20v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
                     </svg>
@@ -372,12 +536,18 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                   </svg>
                 </button>
               </div>
-              <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px' }}>
-                <img 
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || user?.email || 'User')}&background=4F46E5&color=fff`} 
-                  alt="User" 
-                  className="user-avatar" 
-                  style={{ width: '35px', height: '35px', borderRadius: '50%' }}
+              <div
+                className="user-info"
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '15px', cursor: 'pointer', padding: '8px 12px', borderRadius: '8px', transition: 'background 0.2s' }}
+                onClick={handleProfileClick}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(79, 70, 229, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <img
+                  src={user?.profileImage && !user?.profileImage.startsWith('http') ? `http://localhost:5005${user?.profileImage}` : user?.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || user?.email || 'User')}&background=4F46E5&color=fff`}
+                  alt="User"
+                  className="user-avatar"
+                  style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover' }}
                 />
                 <div className="user-info-text">
                   <div className="user-name">{user?.name || 'User'}</div>
@@ -396,6 +566,125 @@ const Layout = ({ children, onLogout, userRole, user }) => {
             </div>
           </div>
         </header>
+
+        {/* Profile Modal */}
+        {showProfileModal && (
+          <div className="profile-modal-overlay">
+            <div ref={profileModalRef} className={`profile-modal ${isDarkMode ? 'dark-mode' : ''}`}>
+              <div className="profile-modal-header">
+                <h2>Profile Details</h2>
+                <button className="close-modal" onClick={() => { setShowProfileModal(false); setIsEditing(false); }}>×</button>
+              </div>
+              <div className="profile-modal-content">
+                <div className="profile-avatar-section">
+                  <div className="avatar-wrapper">
+                    <img
+                      src={profileImagePreview || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || 'User')}&background=4F46E5&color=fff&size=80`}
+                      alt="Profile"
+                      className="profile-modal-avatar"
+                    />
+                    {isEditing && (
+                      <button className="upload-avatar-btn" onClick={handleImageUploadClick} title="Change profile picture">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
+                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                      </button>
+                    )}
+                    {isEditing && profileImagePreview && (
+                      <button className="remove-avatar-btn" onClick={handleImageRemove} title="Remove profile picture">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                      </button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                  <h3>{profileData.name || 'User'}</h3>
+                  <p className="profile-role">{profileData.role || 'Employee'}</p>
+                  {isEditing && !profileImagePreview && (
+                    <p className="upload-hint">Click the camera icon to add a profile picture</p>
+                  )}
+                </div>
+                <div className="profile-details">
+                  <div className="profile-detail-item">
+                    <label>Name</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={profileData.name}
+                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                        className="profile-input"
+                      />
+                    ) : (
+                      <span className="profile-value">{profileData.name || 'N/A'}</span>
+                    )}
+                  </div>
+                  <div className="profile-detail-item">
+                    <label>Email</label>
+                    {isEditing ? (
+                      <input
+                        type="email"
+                        value={profileData.email}
+                        onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                        className="profile-input"
+                      />
+                    ) : (
+                      <span className="profile-value">{profileData.email || 'N/A'}</span>
+                    )}
+                  </div>
+                  <div className="profile-detail-item">
+                    <label>Phone</label>
+                    {isEditing ? (
+                      <input
+                        type="tel"
+                        value={profileData.phone}
+                        onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                        className="profile-input"
+                      />
+                    ) : (
+                      <span className="profile-value">{profileData.phone || 'N/A'}</span>
+                    )}
+                  </div>
+                  <div className="profile-detail-item">
+                    <label>Department</label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={profileData.department}
+                        onChange={(e) => setProfileData({ ...profileData, department: e.target.value })}
+                        className="profile-input"
+                      />
+                    ) : (
+                      <span className="profile-value">{profileData.department || 'N/A'}</span>
+                    )}
+                  </div>
+                  <div className="profile-detail-item">
+                    <label>Role</label>
+                    <span className="profile-value">{profileData.role || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="profile-modal-actions">
+                {isEditing ? (
+                  <>
+                    <button className="btn-cancel" onClick={() => { setIsEditing(false); loadProfileData(); }} disabled={saving}>Cancel</button>
+                    <button className="btn-save-profile" onClick={handleProfileUpdate} disabled={saving}>
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn-edit-profile" onClick={() => setIsEditing(true)}>Edit Profile</button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Page Content */}
         <div className="page-content">

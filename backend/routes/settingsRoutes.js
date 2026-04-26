@@ -286,8 +286,8 @@ const { authMiddleware } = require('../middleware/authMiddleware');
 // Get user profile and settings
 router.get('/profile', authMiddleware, settingsController.getProfile);
 
-// Update profile
-router.put('/profile', authMiddleware, settingsController.updateProfile);
+// Update profile (with optional profile image upload)
+router.put('/profile', authMiddleware, settingsController.upload.single('profileImage'), settingsController.updateProfile);
 
 // Update settings
 router.put('/settings', authMiddleware, settingsController.updateSettings);

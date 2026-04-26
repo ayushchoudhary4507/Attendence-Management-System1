@@ -447,6 +447,40 @@ body.dark-theme .theme-toggle-btn {
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
 }
 
+/* Leave Management Action Buttons */
+.btn-approve,
+.btn-reject {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 13px;
+}
+
+.btn-approve {
+  background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.btn-approve:hover {
+  background: linear-gradient(145deg, #a7f3d0 0%, #6ee7b7 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-reject {
+  background: linear-gradient(145deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+}
+
+.btn-reject:hover {
+  background: linear-gradient(145deg, #fecaca 0%, #fca5a5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
 /* Modal Styles - Modern Glassmorphism */
 .modal-overlay {
   position: fixed;
@@ -813,6 +847,127 @@ body.dark-theme .admin-error {
   .modal {
     margin: 20px;
     padding: 20px;
+  }
+
+  /* Leave Management - Mobile Card Layout */
+  .leaves-table-container {
+    overflow-x: hidden;
+    border-radius: 12px;
+  }
+
+  .leaves-table-container .users-table {
+    display: block;
+  }
+
+  .leaves-table-container .users-table thead {
+    display: none;
+  }
+
+  .leaves-table-container .users-table tbody {
+    display: block;
+  }
+
+  .leaves-table-container .users-table tbody tr {
+    display: block;
+    margin-bottom: 16px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(79, 70, 229, 0.1);
+    padding: 16px;
+  }
+
+  .leaves-table-container .users-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .leaves-table-container .users-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+  }
+
+  .leaves-table-container .users-table td:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .leaves-table-container .users-table td:first-child {
+    padding-top: 0;
+  }
+
+  .leaves-table-container .users-table td::before {
+    font-weight: 600;
+    color: #64748b;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .leaves-table-container .users-table td:nth-child(1)::before { content: "Employee"; }
+  .leaves-table-container .users-table td:nth-child(2)::before { content: "Leave Type"; }
+  .leaves-table-container .users-table td:nth-child(3)::before { content: "Duration"; }
+  .leaves-table-container .users-table td:nth-child(4)::before { content: "Reason"; }
+  .leaves-table-container .users-table td:nth-child(5)::before { content: "Status"; }
+  .leaves-table-container .users-table td:nth-child(6)::before { content: "Applied On"; }
+  .leaves-table-container .users-table td:nth-child(7)::before { content: "Actions"; }
+
+  /* Status Badge - Mobile */
+  .leaves-table-container .status-badge {
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  /* Action Buttons - Mobile */
+  .leaves-table-container .action-buttons {
+    flex-direction: row;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .leaves-table-container .btn-approve,
+  .leaves-table-container .btn-reject {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 8px;
+    min-width: 80px;
+    text-align: center;
+  }
+}
+
+/* Small Mobile - 480px */
+@media (max-width: 480px) {
+  .leaves-table-container .users-table tbody tr {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .leaves-table-container .users-table td {
+    font-size: 13px;
+    padding: 8px 0;
+  }
+
+  .leaves-table-container .status-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  .leaves-table-container .action-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .leaves-table-container .btn-approve,
+  .leaves-table-container .btn-reject {
+    width: 100%;
+    padding: 10px;
+    font-size: 13px;
   }
 }
 

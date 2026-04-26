@@ -17,13 +17,17 @@ dns.setServers(['8.8.8.8', '8.8.4.4',]);
 // Connect to database
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
-    console.log(`✅ MongoDB Atlas Connected: ${conn.connection.host}`);
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/attendance';
+    console.log('🔗 MongoDB URI:', mongoUri ? 'Set' : 'Not set');
+    const conn = await mongoose.connect(mongoUri);
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.name}`);
     console.log(`🔗 Connection State: ${conn.connection.readyState}`);
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);
-    process.exit(1);
+    console.error('Please ensure MongoDB is running and MONGODB_URI is set in .env file');
+    // Don't exit process, allow server to start without DB for testing
+    console.warn('⚠️  Server will start without database connection');
   }
 };
 connectDB();
