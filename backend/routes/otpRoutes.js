@@ -144,8 +144,12 @@ router.post('/send', async (req, res) => {
     if (email) {
       const emailResult = await sendOTP(email, otp);
       if (!emailResult.success) {
-        // If email fails, still return success but log the error
         console.error('Email sending failed:', emailResult.message);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Failed to send OTP email. Please check email configuration.',
+          error: emailResult.message
+        });
       }
     }
     

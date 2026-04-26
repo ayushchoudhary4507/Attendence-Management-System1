@@ -3,6 +3,7 @@ const Employee = require('../models/Employee');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const Leave = require('../models/Leave');
+const Holiday = require('../models/Holiday');
 
 // Helper function to emit notification via socket
 const emitNotification = (io, userId, notification) => {
@@ -37,10 +38,36 @@ const markAttendance = async (req, res) => {
       });
     }
 
-    // Check if attendance already marked for today
+    // Check if today is a holiday
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const year = today.getFullYear();
     
+    console.log('Checking for holiday on:', today, 'year:', year);
+    
+    try {
+      const holiday = await Holiday.findOne({
+        date: today,
+        year: year,
+        isActive: true
+      });
+
+      if (holiday) {
+        console.log('Holiday found:', holiday.name);
+        return res.status(400).json({
+          success: false,
+          message: `Today is a holiday: ${holiday.name}. Attendance not required.`,
+          isHoliday: true,
+          holiday: holiday
+        });
+      }
+      console.log('No holiday found for today');
+    } catch (holidayError) {
+      console.error('Error checking holiday:', holidayError);
+      // Continue even if holiday check fails
+    }
+
+    // Check if attendance already marked for today
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
