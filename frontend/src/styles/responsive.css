@@ -673,12 +673,18 @@ body.dark-theme .modal-container {
     width: 100%;
   }
   
-  /* Notification dropdown full width */
+  /* Notification dropdown centered on mobile */
   .notification-dropdown,
   .search-dropdown {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
     width: calc(100vw - 32px);
     max-width: 360px;
-    right: -60px;
+    margin-top: 0;
+    z-index: 9999;
   }
 }
 
@@ -697,6 +703,20 @@ body.dark-theme .modal-container {
   /* Very compact header */
   .top-header {
     padding: 8px 12px;
+  }
+  
+  /* Notification dropdown centered on small screens */
+  .notification-dropdown,
+  .search-dropdown {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100vw - 24px);
+    max-width: 340px;
+    margin-top: 0;
+    z-index: 9999;
   }
   
   /* Hide breadcrumb current on small screens */
