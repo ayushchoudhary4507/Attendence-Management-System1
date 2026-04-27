@@ -97,7 +97,6 @@ const markAttendance = async (req, res) => {
 
     // Create notification for admin
     console.log('📩 Creating attendance notification for admin...');
-    const User = require('../models/User');
     const admins = await User.find({ role: 'admin' }).select('_id');
     
     // Create notification for each admin
