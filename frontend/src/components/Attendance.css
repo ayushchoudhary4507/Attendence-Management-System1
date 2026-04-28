@@ -5,6 +5,29 @@
   100% { opacity: 1; }
 }
 
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
 .attendance-page {
   padding: 20px;
   max-width: 800px;
@@ -97,17 +120,20 @@
 
 /* Time Stats */
 .time-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
 }
 
 .time-stat {
   background: #f8fafc;
-  padding: 16px;
-  border-radius: 8px;
+  padding: 20px 30px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
+  text-align: center;
+  min-width: 150px;
 }
 
 .time-stat.highlight {
@@ -161,6 +187,10 @@
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 200px;
 }
 
 .btn-checkin:hover {
@@ -182,6 +212,10 @@
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 200px;
 }
 
 .btn-checkout:hover {

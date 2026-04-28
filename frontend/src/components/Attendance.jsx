@@ -371,12 +371,18 @@ const Attendance = () => {
               fontSize: '14px',
               fontWeight: '600',
               display: 'flex',
+              justifyContent: 'center',
               alignItems: 'center',
               gap: '8px',
-              opacity: applyLeaveLoading ? 0.7 : 1
+              opacity: applyLeaveLoading ? 0.7 : 1,
+              minWidth: '180px'
             }}
           >
-            {applyLeaveLoading ? '⏳ Applying...' : ' Apply for Leave ▼'}
+            {applyLeaveLoading ? (
+              <div className="loading-container">
+                <div className="loading-spinner" style={{ width: '18px', height: '18px' }}></div>
+              </div>
+            ) : ' Apply for Leave ▼'}
           </button>
           {showLeaveDropdown && (
             <div style={{
@@ -477,7 +483,11 @@ const Attendance = () => {
                   onClick={checkOut}
                   disabled={loading}
                 >
-                  {loading ? 'Processing...' : 'Check Out'}
+                  {loading ? (
+                    <div className="loading-container">
+                      <div className="loading-spinner"></div>
+                    </div>
+                  ) : 'Check Out'}
                 </button>
               ) : (
                 <div className="completed-message">
@@ -523,7 +533,11 @@ const Attendance = () => {
                 onClick={markAttendance}
                 disabled={loading}
               >
-                {loading ? 'Processing...' : 'Check In'}
+                {loading ? (
+                  <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                  </div>
+                ) : 'Check In'}
               </button>
             </div>
           </div>
@@ -645,7 +659,11 @@ const Attendance = () => {
                   opacity: applyLeaveLoading ? 0.7 : 1
                 }}
               >
-                {applyLeaveLoading ? '⏳ Applying...' : 'Apply Leave'}
+                {applyLeaveLoading ? (
+                  <div className="loading-container">
+                    <div className="loading-spinner" style={{ width: '18px', height: '18px' }}></div>
+                  </div>
+                ) : 'Apply Leave'}
               </button>
             </div>
           </div>
