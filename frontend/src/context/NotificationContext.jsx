@@ -104,8 +104,22 @@ export const NotificationProvider = ({ children }) => {
     setUnreadCount(prev => prev + 1);
   }, []);
 
-  // Show toast (disabled)
-  const showToast = useCallback(() => {}, []);
+  // Show toast notification popup
+  const showToast = useCallback((title, message, type = 'info') => {
+    const toast = {
+      id: Date.now() + Math.random(),
+      title: title || 'Notification',
+      message: message || '',
+      type: type || 'info',
+      createdAt: new Date()
+    };
+    setToastNotifications(prev => [toast, ...prev].slice(0, 5));
+    playNotificationSound();
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      setToastNotifications(prev => prev.filter(t => t.id !== toast.id));
+    }, 5000);
+  }, [playNotificationSound]);
 
   // Keep refs updated for use in socket handlers
   addNotificationRef.current = addNotification;
@@ -151,6 +165,14 @@ export const NotificationProvider = ({ children }) => {
       const addNotif = addNotificationRef.current;
       const showT = showToastRef.current;
       if (!addNotif || !showT) return;
+
+      // Filter: only show if this notification is for the current user
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const currentUserId = currentUser.id || currentUser._id;
+      if (data.receiverId && String(data.receiverId) !== String(currentUserId)) {
+        console.log('Notification not for this user, skipping');
+        return;
+      }
 
       const notification = {
         id: data.id || Date.now(),

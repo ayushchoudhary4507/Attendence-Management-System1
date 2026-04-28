@@ -163,6 +163,17 @@ const Dashboard = ({ onLogout, userRole }) => {
         fetch(`${API_URL}/projects`, { headers })
       ]);
 
+      // Handle 401 - token invalid/expired
+      if (empRes.status === 401 || projRes.status === 401) {
+        console.warn('🔒 Token invalid or expired, clearing auth data');
+        sessionStorage.removeItem('token');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+        return;
+      }
+
       // Check if responses are ok
       if (!empRes.ok) {
         throw new Error(`Employees API error: ${empRes.status} ${empRes.statusText}`);

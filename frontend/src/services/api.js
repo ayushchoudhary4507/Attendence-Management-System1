@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // Conditional API URL based on environment
-const API_BASE_URL = 'http://localhost:5005/api';
+const API_BASE_URL = import.meta.env.PROD
+  ? 'https://attendence-management-system1.onrender.com/api'
+  : 'http://localhost:5005/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -20,6 +22,25 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Handle 401 responses - clear stale tokens and redirect to login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('🔒 Token invalid or expired, clearing auth data');
+      sessionStorage.removeItem('token');
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      localStorage.removeItem('user');
+      // Redirect to login page if not already there
+      if (window.location.pathname !== '/' && window.location.pathname !== '/login') {
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const authAPI = {
   login: async (email, password) => {

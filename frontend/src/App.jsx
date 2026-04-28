@@ -18,6 +18,7 @@ import Holidays from './pages/admin/Holidays';
 import AdminSidebar from './components/sidebar/admin/AdminSidebar';
 import { settingsAPI } from './services/api';
 import { NotificationProvider, useNotifications, timeAgo } from './context/NotificationContext';
+import ToastNotification from './components/ToastNotification';
 import './App.css';
 import './styles/responsive.css';
 
@@ -748,6 +749,7 @@ function App() {
 
   return (
     <NotificationProvider>
+      <ToastNotification />
       <Router>
         <Routes>
         {/* Public Routes */}

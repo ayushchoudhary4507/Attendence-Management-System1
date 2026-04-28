@@ -44,13 +44,17 @@ const authMiddleware = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
+      console.log('AuthMiddleware - No token provided for:', req.method, req.originalUrl);
       return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('AuthMiddleware - Token decoded for userId:', decoded.userId);
+
     const user = await User.findById(decoded.userId);
 
     if (!user) {
+      console.log('AuthMiddleware - User not found for userId:', decoded.userId);
       return res.status(401).json({ message: 'User not found.' });
     }
 
@@ -59,6 +63,10 @@ const authMiddleware = async (req, res, next) => {
 
     next();
   } catch (error) {
+    console.error('AuthMiddleware - Error:', error.name, error.message);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired. Please login again.', error: error.message });
+    }
     res.status(401).json({ message: 'Invalid token.', error: error.message });
   }
 };
