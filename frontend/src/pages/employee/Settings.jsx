@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
-import { settingsAPI } from '../services/api';
+import { settingsAPI } from '../../services/api';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');

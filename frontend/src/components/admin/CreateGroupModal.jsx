@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { groupAPI, chatAPI } from '../services/api';
+import { groupAPI, chatAPI } from '../../services/api';
 import './CreateGroupModal.css';
 
 const CreateGroupModal = ({ isOpen, onClose, onGroupCreated, currentUserId }) => {

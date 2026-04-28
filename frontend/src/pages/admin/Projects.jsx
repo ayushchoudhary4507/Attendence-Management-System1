@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './Projects.css';
-import { projectsAPI } from '../services/api';
+import { projectsAPI } from '../../services/api';
 
 const Projects = ({ userRole }) => {
   const isAdmin = userRole === 'admin';

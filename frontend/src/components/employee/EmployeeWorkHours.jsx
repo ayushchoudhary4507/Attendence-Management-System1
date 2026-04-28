@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { attendanceAPI } from '../services/api';
+import { attendanceAPI } from '../../services/api';
 import './EmployeeWorkHours.css';
 
 const EmployeeWorkHours = () => {

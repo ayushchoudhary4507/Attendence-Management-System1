@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-import { authAPI } from '../services/api';
+import { authAPI } from '../../services/api';
 
 import OTPLogin from './OTPLogin';
 

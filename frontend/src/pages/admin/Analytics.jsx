@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminAPI, attendanceAPI, taskAPI, projectsAPI, API_BASE_URL } from '../services/api';
+import { adminAPI, attendanceAPI, taskAPI, projectsAPI, API_BASE_URL } from '../../services/api';
 import {
   BarChart,
   Bar,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import '../components/EmployeeDashboard.css';
+import '../../components/admin/EmployeeDashboard.css';
 import './Employees.css';
-import { attendanceAPI, API_BASE_URL } from '../services/api';
+import { attendanceAPI, API_BASE_URL } from '../../services/api';
 
 const API_URL = import.meta.env.PROD
   ? 'https://attendence-management-system1.onrender.com/api'

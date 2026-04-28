@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { taskAPI } from '../services/api';
+import { taskAPI } from '../../services/api';
 import './MyTasks.css';
 
 const MyTasks = () => {

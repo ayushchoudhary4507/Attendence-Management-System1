@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { taskAPI } from '../services/api';
+import { taskAPI } from '../../services/api';
 import './TaskManager.css';
 
 const TaskManager = ({ employees, onClose, onTaskCreated }) => {

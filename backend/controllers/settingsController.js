@@ -119,6 +119,10 @@ exports.updateProfile = async (req, res) => {
     if (profileImagePath) {
       console.log('Updating profile image:', profileImagePath);
       user.profileImage = profileImagePath;
+    } else if (req.body.profileImage === '' || req.body.profileImage === null) {
+      // User explicitly removed profile image
+      console.log('Removing profile image');
+      user.profileImage = null;
     }
 
     await user.save();

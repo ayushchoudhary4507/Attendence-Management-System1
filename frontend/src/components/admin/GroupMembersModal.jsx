@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { groupAPI } from '../services/api';
+import { groupAPI } from '../../services/api';
 import './GroupMembersModal.css';
 
 const GroupMembersModal = ({ isOpen, onClose, group, currentUserId, onGroupUpdated, onMemberRemoved, onAdminUpdated, availableUsers }) => {

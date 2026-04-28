@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TaskManager from '../components/TaskManager';
-import MyTasks from '../components/MyTasks';
-import AdminLeavePopup from '../components/AdminLeavePopup';
-import '../components/TaskManager.css';
-import '../components/MyTasks.css';
+import TaskManager from '../../components/admin/TaskManager';
+import MyTasks from '../../components/employee/MyTasks';
+import AdminLeavePopup from '../../components/admin/AdminLeavePopup';
+import '../../components/admin/TaskManager.css';
+import '../../components/employee/MyTasks.css';
 import './Dashboard.css';
 
 const API_URL = import.meta.env.PROD

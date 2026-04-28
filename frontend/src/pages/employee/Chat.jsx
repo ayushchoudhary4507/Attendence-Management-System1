@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { chatAPI, groupAPI } from '../services/api';
-import CreateGroupModal from '../components/CreateGroupModal';
-import GroupMembersModal from '../components/GroupMembersModal';
+import { chatAPI, groupAPI } from '../../services/api';
+import CreateGroupModal from '../../components/admin/CreateGroupModal';
+import GroupMembersModal from '../../components/admin/GroupMembersModal';
 import './Chat.css';
 
 const SOCKET_URL = import.meta.env.PROD 

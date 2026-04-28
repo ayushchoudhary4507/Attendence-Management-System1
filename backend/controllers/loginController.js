@@ -155,6 +155,9 @@ const loginController = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        phone: user.phone,
+        department: user.department,
+        profileImage: user.profileImage || null,
         permissions: permissions
       },
       popup: {
@@ -229,7 +232,10 @@ const adminLoginController = async (req, res) => {
         employeeId: employeeId,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        phone: user.phone,
+        department: user.department,
+        profileImage: user.profileImage || null
       }
     });
   } catch (error) {
