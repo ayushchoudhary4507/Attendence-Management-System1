@@ -476,7 +476,7 @@ body.dark-theme .settings-container,
 body.dark-theme .messages-container,
 body.dark-theme .search-dropdown,
 body.dark-theme .notification-dropdown {
-  background: rgba(30, 30, 46, 0.8);
+  
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-color: rgba(255, 255, 255, 0.1);

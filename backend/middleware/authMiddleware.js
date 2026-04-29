@@ -16,6 +16,7 @@ const authMiddleware = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     console.log('AuthMiddleware - Token decoded:', decoded);
     req.user = decoded;
+    req.userId = decoded.userId;
     next();
   } catch (error) {
     console.error('AuthMiddleware - Token verification failed:', error.message);
@@ -34,6 +35,7 @@ const protect = (req, res, next) => {
 
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+    req.userId = decoded.userId;
     next();
   } catch (error) {
     res.status(401).json({ success: false, message: 'Token is not valid' });

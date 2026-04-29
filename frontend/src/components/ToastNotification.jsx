@@ -10,6 +10,12 @@ const ToastNotification = () => {
       case 'leave_request':
       case 'leave':
         return '📅';
+      case 'leave_approved':
+        return '✅';
+      case 'leave_rejected':
+        return '❌';
+      case 'late_login':
+        return '⏰';
       case 'user_activity':
         return '👤';
       case 'project_update':
@@ -26,7 +32,7 @@ const ToastNotification = () => {
       case 'checkin':
         return '⏰';
       case 'checkout':
-        return '�';
+        return '🏠';
       default:
         return '🔔';
     }
@@ -36,13 +42,13 @@ const ToastNotification = () => {
     const user = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
     if (toast.type === 'message') {
       window.location.href = '/chat';
-    } else if (toast.type === 'leave_request' || toast.type === 'leave') {
+    } else if (toast.type === 'leave_request' || toast.type === 'leave' || toast.type === 'leave_approved' || toast.type === 'leave_rejected') {
       if (user.role === 'admin') {
         window.location.href = '/admin';
       } else {
         window.location.href = '/attendance';
       }
-    } else if (toast.type === 'user_activity') {
+    } else if (toast.type === 'user_activity' || toast.type === 'late_login') {
       if (user.role === 'admin') {
         window.location.href = '/employees';
       }

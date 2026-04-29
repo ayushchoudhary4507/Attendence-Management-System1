@@ -523,5 +523,147 @@ export const groupAPI = {
   }
 };
 
+// Shift API
+export const shiftAPI = {
+  // Get all shifts
+  getAllShifts: async () => {
+    const response = await api.get('/shifts');
+    return response.data;
+  },
+
+  // Get shift by ID
+  getShiftById: async (id) => {
+    const response = await api.get(`/shifts/${id}`);
+    return response.data;
+  },
+
+  // Create shift (Admin only)
+  createShift: async (shiftData) => {
+    const response = await api.post('/shifts/create', shiftData);
+    return response.data;
+  },
+
+  // Update shift (Admin only)
+  updateShift: async (id, shiftData) => {
+    const response = await api.put(`/shifts/${id}`, shiftData);
+    return response.data;
+  },
+
+  // Delete shift (Admin only)
+  deleteShift: async (id) => {
+    const response = await api.delete(`/shifts/${id}`);
+    return response.data;
+  },
+
+  // Assign shift to employees (Admin only)
+  assignShift: async (assignmentData) => {
+    const response = await api.post('/shifts/assign', assignmentData);
+    return response.data;
+  },
+
+  // Get shifts for a specific user
+  getUserShifts: async (userId, startDate, endDate) => {
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await api.get(`/shifts/user/${userId}`, { params });
+    return response.data;
+  },
+
+  // Get my shifts (Employee - uses logged-in user)
+  getMyShifts: async (startDate, endDate) => {
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await api.get('/shifts/my-shifts', { params });
+    return response.data;
+  },
+
+  // Get all shift assignments (Admin)
+  getAllAssignments: async (date, shiftId) => {
+    const params = {};
+    if (date) params.date = date;
+    if (shiftId) params.shiftId = shiftId;
+    const response = await api.get('/shifts/assignments', { params });
+    return response.data;
+  },
+
+  // Remove shift assignment (Admin)
+  removeAssignment: async (id) => {
+    const response = await api.delete(`/shifts/assignment/${id}`);
+    return response.data;
+  }
+};
+
+// Salary API
+export const salaryAPI = {
+  // Calculate salary (Admin only)
+  calculateSalary: async (salaryData) => {
+    const response = await api.post('/salary/calculate', salaryData);
+    return response.data;
+  },
+
+  // Get salary for a specific user
+  getUserSalary: async (userId, month, year) => {
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    const response = await api.get(`/salary/user/${userId}`, { params });
+    return response.data;
+  },
+
+  // Get my salary (Employee - uses logged-in user)
+  getMySalary: async (month, year) => {
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    const response = await api.get('/salary/my-salary', { params });
+    return response.data;
+  },
+
+  // Get all salaries (Admin only)
+  getAllSalaries: async (month, year, employeeId) => {
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    if (employeeId) params.employeeId = employeeId;
+    const response = await api.get('/salary', { params });
+    return response.data;
+  },
+
+  // Mark salary as paid (Admin only)
+  markAsPaid: async (id) => {
+    const response = await api.put(`/salary/${id}/pay`);
+    return response.data;
+  },
+
+  // Bulk calculate salary (Admin only)
+  bulkCalculate: async (month, year) => {
+    const response = await api.post('/salary/bulk-calculate', { month, year });
+    return response.data;
+  }
+};
+
+// Report API
+export const reportAPI = {
+  // Get monthly report for a specific user
+  getMonthlyReport: async (userId, month, year) => {
+    const response = await api.get(`/reports/monthly/${userId}`, { params: { month, year } });
+    return response.data;
+  },
+
+  // Get my report (Employee - uses logged-in user)
+  getMyReport: async (month, year) => {
+    const response = await api.get('/reports/my-report', { params: { month, year } });
+    return response.data;
+  },
+
+  // Get all monthly reports (Admin only)
+  getAllMonthlyReports: async (month, year) => {
+    const response = await api.get('/reports/monthly', { params: { month, year } });
+    return response.data;
+  }
+};
+
 export { API_BASE_URL };
 export default api;

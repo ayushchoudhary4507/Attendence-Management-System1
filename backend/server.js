@@ -111,6 +111,9 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const holidayRoutes = require('./routes/holidayRoutes');
+const shiftRoutes = require('./routes/shiftRoutes');
+const salaryRoutes = require('./routes/salaryRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Use routes
 app.use('/api/login', loginRoutes);
@@ -129,6 +132,9 @@ app.use('/api/public', publicRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/holidays', holidayRoutes);
+app.use('/api/shifts', shiftRoutes);
+app.use('/api/salary', salaryRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Socket.io real-time messaging
 const onlineUsers = new Map(); // userId -> { socketId, lastSeen }
@@ -568,6 +574,30 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+// ==================== CRON JOB: Auto Salary Calculation ====================
+// Runs on the 1st of every month at 1:00 AM
+try {
+  const cron = require('node-cron');
+  const { bulkCalculateSalary } = require('./controllers/salaryController');
+
+  cron.schedule('0 1 1 * *', async () => {
+    console.log('⏰ Cron: Auto-calculating salaries for previous month...');
+    try {
+      const now = new Date();
+      const prevMonth = now.getMonth(); // 0-indexed (current month - 1 = previous month)
+      const prevYear = prevMonth === 0 ? now.getFullYear() - 1 : now.getFullYear();
+      const month = prevMonth === 0 ? 12 : prevMonth;
+      const results = await bulkCalculateSalary(month, prevYear, null);
+      console.log(`✅ Cron: Auto-calculated salary for ${results.length} employees`);
+    } catch (err) {
+      console.error('❌ Cron: Error in auto salary calculation:', err.message);
+    }
+  });
+  console.log('✅ Cron job registered: Auto salary calculation on 1st of each month at 1 AM');
+} catch (err) {
+  console.warn('⚠️ node-cron not installed. Auto salary calculation disabled. Install with: npm install node-cron');
+}
 
 // 404 handler - catches all unmatched routes
 app.use((req, res) => {

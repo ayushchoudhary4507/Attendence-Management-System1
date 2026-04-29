@@ -918,8 +918,9 @@ const approveRejectLeave = async (req, res) => {
     console.log('📩 Creating leave status notification for employee...');
     
     // Notify employee about leave approval/rejection
+    const notificationType = status === 'Approved' ? 'leave_approved' : 'leave_rejected';
     const employeeNotification = await Notification.create({
-      type: 'leave_request',
+      type: notificationType,
       title: `Leave ${status}`,
       message: `Your ${leave.leaveType} has been ${status.toLowerCase()}`,
       employeeId: leave.employeeId._id,
@@ -931,6 +932,29 @@ const approveRejectLeave = async (req, res) => {
       link: '/attendance'
     });
     console.log('✅ Employee notification created:', employeeNotification._id);
+
+    // Send email notification to employee
+    const { sendLeaveApprovalEmail, sendLeaveRejectionEmail } = require('../utils/emailService');
+    try {
+      if (status === 'Approved') {
+        await sendLeaveApprovalEmail(
+          leave.employeeId.email,
+          leave.employeeId.name,
+          leave.leaveType,
+          leave.startDate,
+          leave.endDate
+        );
+      } else if (status === 'Rejected') {
+        await sendLeaveRejectionEmail(
+          leave.employeeId.email,
+          leave.employeeId.name,
+          leave.leaveType,
+          rejectionReason
+        );
+      }
+    } catch (emailError) {
+      console.error('Failed to send leave status email:', emailError.message);
+    }
 
     // Emit real-time notification to the employee
     const io = req.app.get('io');

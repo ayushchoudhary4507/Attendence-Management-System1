@@ -18,7 +18,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['leave_request', 'user_activity', 'project_update', 'attendance', 'checkin', 'checkout', 'leave', 'message', 'other'],
+    enum: ['leave_request', 'user_activity', 'project_update', 'attendance', 'checkin', 'checkout', 'leave', 'message', 'other', 'late_login', 'leave_approved', 'leave_rejected', 'shift_assigned', 'salary_generated'],
     default: 'other'
   },
   title: {

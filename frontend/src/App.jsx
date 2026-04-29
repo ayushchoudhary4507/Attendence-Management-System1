@@ -15,6 +15,12 @@ import Chat from './pages/employee/Chat';
 import EmployeeWorkHours from './components/employee/EmployeeWorkHours';
 import Attendance from './components/employee/Attendance';
 import Holidays from './pages/admin/Holidays';
+import ShiftManagement from './pages/admin/ShiftManagement';
+import AdminSalary from './pages/admin/AdminSalary';
+import MonthlyReports from './pages/admin/MonthlyReports';
+import MyShifts from './pages/employee/MyShifts';
+import EmployeeSalary from './pages/employee/EmployeeSalary';
+import EmployeeReports from './pages/employee/EmployeeReports';
 import AdminSidebar from './components/sidebar/admin/AdminSidebar';
 import { settingsAPI } from './services/api';
 import { NotificationProvider, useNotifications, timeAgo } from './context/NotificationContext';
@@ -100,7 +106,15 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     { label: 'Work Hours', path: '/work-hours', icon: '⏰', category: 'Page' },
     { label: 'Attendance', path: '/attendance', icon: '✅', category: 'Page' },
     { label: 'Settings', path: '/settings', icon: '⚙️', category: 'Page' },
-    ...(userRole === 'admin' ? [{ label: 'Admin Panel', path: '/admin', icon: '🔐', category: 'Page' }] : []),
+    ...(userRole === 'admin' ? [
+      { label: 'Shift Management', path: '/shifts', icon: '🗓️', category: 'Page' },
+      { label: 'Salary Management', path: '/salary', icon: '💰', category: 'Page' },
+      { label: 'Monthly Reports', path: '/reports', icon: '📊', category: 'Page' },
+      { label: 'Admin Panel', path: '/admin', icon: '🔐', category: 'Page' },
+    ] : [
+      { label: 'My Shifts', path: '/my-shifts', icon: '🗓️', category: 'Page' },
+      { label: 'My Salary', path: '/my-salary', icon: '💰', category: 'Page' },
+    ]),
     { label: 'Add Employee', path: '/employees', action: 'add', icon: '➕', category: 'Action' },
     { label: 'Export Data', path: '/employees', action: 'export', icon: '📥', category: 'Action' },
     { label: 'View All Employees', path: '/employees', icon: '👤', category: 'Action' },
@@ -432,15 +446,26 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                       </div>
                       {/* Filter tabs */}
                       <div className="notification-filters">
-                        {['all', 'leave_request', 'user_activity', 'project_update', 'message'].map(f => (
-                          <button
-                            key={f}
-                            className={`filter-btn ${filter === f ? 'active' : ''}`}
-                            onClick={() => setFilter(f)}
-                          >
-                            {f === 'all' ? 'All' : f === 'leave_request' ? '📅 Leave' : f === 'user_activity' ? '👤 Activity' : f === 'project_update' ? '📊 Project' : '💬 Message'}
-                          </button>
-                        ))}
+                        {['all', 'leave_request', 'user_activity', 'project_update', 'message', 'shift_assigned', 'salary_generated'].map(f => {
+                          const filterLabels = {
+                            all: 'All',
+                            leave_request: 'Leave',
+                            message: 'Message',
+                            user_activity:'Activity',
+                            project_update: 'Project',
+                            shift_assigned: 'Shift',
+                            salary_generated: 'Salary'
+                          };
+                          return (
+                            <button
+                              key={f}
+                              className={`filter-btn ${filter === f ? 'active' : ''}`}
+                              onClick={() => setFilter(f)}
+                            >
+                              {filterLabels[f]}
+                            </button>
+                          );
+                        })}
                       </div>
                       <div className="notification-list">
                         {filteredNotifications.length === 0 ? (
@@ -457,6 +482,9 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                             >
                               <div className="notification-icon">
                                 {notification.type === 'leave_request' && '📅'}
+                                {notification.type === 'leave_approved' && '✅'}
+                                {notification.type === 'leave_rejected' && '❌'}
+                                {notification.type === 'late_login' && '⏰'}
                                 {notification.type === 'user_activity' && '👤'}
                                 {notification.type === 'project_update' && '📊'}
                                 {notification.type === 'message' && '💬'}
@@ -464,7 +492,9 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                                 {notification.type === 'attendance' && '⏰'}
                                 {notification.type === 'checkin' && '✅'}
                                 {notification.type === 'checkout' && '🏠'}
-                                {!['leave_request','user_activity','project_update','message','leave','attendance','checkin','checkout'].includes(notification.type) && '🔔'}
+                                {notification.type === 'shift_assigned' && '🗓️'}
+                                {notification.type === 'salary_generated' && '💰'}
+                                {!['leave_request','leave_approved','leave_rejected','late_login','user_activity','project_update','message','leave','attendance','checkin','checkout','shift_assigned','salary_generated'].includes(notification.type) && '🔔'}
                               </div>
                               <div className="notification-content">
                                 <p className="notification-title">{notification.title}</p>
@@ -840,6 +870,51 @@ function App() {
           </ProtectedRoute>
         } />
         
+        {/* Shifts - Role-based: Admin sees management, Employee sees their shifts */}
+        <Route path="/shifts" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              {user?.role === 'admin' ? <ShiftManagement user={user} /> : <MyShifts user={user} />}
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        {/* Salary - Role-based: Admin sees management, Employee sees their salary */}
+        <Route path="/salary" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              {user?.role === 'admin' ? <AdminSalary user={user} /> : <EmployeeSalary user={user} />}
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        {/* Reports - Role-based: Admin sees all, Employee sees their own */}
+        <Route path="/reports" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              {user?.role === 'admin' ? <MonthlyReports user={user} /> : <EmployeeReports user={user} />}
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        {/* My Shifts - Employee (alias) */}
+        <Route path="/my-shifts" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              <MyShifts user={user} />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        {/* My Salary - Employee (alias) */}
+        <Route path="/my-salary" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              <EmployeeSalary user={user} />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
         {/* Admin Only Route */}
         <Route path="/admin" element={
           <AdminRoute isAuthenticated={isAuthenticated} user={user}>

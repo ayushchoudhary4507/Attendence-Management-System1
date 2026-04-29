@@ -67,6 +67,64 @@ const loginController = async (req, res) => {
 
     console.log('✅ User logged in successfully from database:', email, 'Role:', user.role);
 
+    // Late login detection (employees only, before 10 AM is considered on time)
+    const now = new Date();
+    const lateHour = 10; // 10 AM
+    if (user.role === 'employee' && now.getHours() >= lateHour && now.getMinutes() > 0) {
+      try {
+        const Notification = require('../models/Notification');
+        const User = require('../models/User');
+        const { sendLateLoginAlert } = require('../utils/emailService');
+        const admins = await User.find({ role: 'admin' }).select('_id email');
+        
+        for (const admin of admins) {
+          const lateNotification = await Notification.create({
+            type: 'late_login',
+            title: 'Late Login Alert',
+            message: `${user.name} logged in late at ${now.toLocaleTimeString()}`,
+            receiverId: admin._id,
+            senderId: user._id,
+            senderName: user.name,
+            employeeId: user._id,
+            employeeName: user.name,
+            employeeEmail: user.email,
+            link: '/employees',
+            read: false
+          });
+          
+          // Emit to admin via socket
+          const io = global._io;
+          if (io) {
+            const onlineUsersMap = io.onlineUsers;
+            const adminOnline = onlineUsersMap ? onlineUsersMap.get(admin._id.toString()) : null;
+            if (adminOnline && adminOnline.isOnline) {
+              io.to(adminOnline.socketId).emit('newNotification', {
+                id: lateNotification._id,
+                type: 'late_login',
+                title: 'Late Login Alert',
+                message: `${user.name} logged in late at ${now.toLocaleTimeString()}`,
+                senderId: user._id,
+                senderName: user.name,
+                link: '/employees',
+                receiverId: admin._id,
+                createdAt: lateNotification.createdAt,
+                read: false
+              });
+              console.log(`📢 Late login notification emitted to admin ${admin._id}`);
+            }
+          }
+          
+          // Send email alert to admin
+          if (admin.email) {
+            await sendLateLoginAlert(admin.email, user.name, user.email, now.toLocaleTimeString());
+          }
+        }
+        console.log('✅ Late login notification created for admins');
+      } catch (notifError) {
+        console.error('Failed to create late login notification:', notifError.message);
+      }
+    }
+
     // Send user_activity notification to admin (only for employee logins)
     if (user.role !== 'admin') {
       try {
