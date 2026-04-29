@@ -523,6 +523,21 @@ export const groupAPI = {
   }
 };
 
+// Employee API
+export const employeeAPI = {
+  // Get all employees
+  getEmployees: async () => {
+    const response = await api.get('/employees');
+    return response.data;
+  },
+
+  // Get single employee
+  getEmployee: async (id) => {
+    const response = await api.get(`/employees/${id}`);
+    return response.data;
+  }
+};
+
 // Shift API
 export const shiftAPI = {
   // Get all shifts
@@ -662,6 +677,80 @@ export const reportAPI = {
   getAllMonthlyReports: async (month, year) => {
     const response = await api.get('/reports/monthly', { params: { month, year } });
     return response.data;
+  }
+};
+
+// Payslip API
+export const payslipAPI = {
+  // Download payslip PDF
+  downloadPayslip: async (userId, month, year) => {
+    const params = { month, year };
+    const response = await api.get(`/payslip/${userId}`, {
+      params,
+      responseType: 'blob'
+    });
+    return response;
+  },
+
+  // Download my payslip (Employee)
+  downloadMyPayslip: async (month, year) => {
+    const params = { month, year };
+    const response = await api.get('/payslip/my-payslip', {
+      params,
+      responseType: 'blob'
+    });
+    return response;
+  }
+};
+
+// Advanced Reports API
+export const advancedReportAPI = {
+  // Daily report
+  getDailyReport: async (date) => {
+    const params = {};
+    if (date) params.date = date;
+    const response = await api.get('/advanced-reports/daily', { params });
+    return response.data;
+  },
+
+  // Weekly report
+  getWeeklyReport: async (startDate) => {
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    const response = await api.get('/advanced-reports/weekly', { params });
+    return response.data;
+  },
+
+  // Monthly report with charts data
+  getMonthlyCharts: async (month, year) => {
+    const response = await api.get('/advanced-reports/monthly-charts', { params: { month, year } });
+    return response.data;
+  },
+
+  // Export attendance to Excel
+  exportAttendanceExcel: async (month, year, startDate, endDate) => {
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const response = await api.get('/advanced-reports/export/attendance', {
+      params,
+      responseType: 'blob'
+    });
+    return response;
+  },
+
+  // Export salary to Excel (Admin)
+  exportSalaryExcel: async (month, year) => {
+    const params = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    const response = await api.get('/advanced-reports/export/salary', {
+      params,
+      responseType: 'blob'
+    });
+    return response;
   }
 };
 

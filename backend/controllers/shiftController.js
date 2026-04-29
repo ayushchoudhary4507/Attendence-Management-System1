@@ -143,20 +143,32 @@ const assignShift = async (req, res) => {
     const errors = [];
 
     for (const employeeId of employeeIds) {
-      // Find employee and corresponding user
-      const employee = await Employee.findById(employeeId);
+      // Find employee - try Employee collection first, then User collection
+      let employee = await Employee.findById(employeeId);
+      const User = require('../models/User');
+      let user = null;
+
       if (!employee) {
-        errors.push(`Employee ${employeeId} not found`);
+        // The ID might be from the User collection (merged employees list)
+        user = await User.findById(employeeId);
+        if (!user) {
+          errors.push(`Employee/User ${employeeId} not found`);
+          continue;
+        }
+        // Try to find matching Employee by email
+        employee = await Employee.findOne({ email: user.email });
+      } else {
+        // Find user by email
+        user = await User.findOne({ email: employee.email });
+      }
+
+      if (!user) {
+        errors.push(`User for employee ${employee?.name || employeeId} not found`);
         continue;
       }
 
-      // Find user by email
-      const User = require('../models/User');
-      const user = await User.findOne({ email: employee.email });
-      if (!user) {
-        errors.push(`User for employee ${employee.name} not found`);
-        continue;
-      }
+      // Use the Employee ID for the assignment if we have one, otherwise use the User ID
+      const assignEmployeeId = employee ? employee._id : employeeId;
 
       for (const dateStr of dates) {
         const date = new Date(dateStr);
@@ -165,9 +177,9 @@ const assignShift = async (req, res) => {
         try {
           // Upsert: update if exists, create if not
           const assignment = await ShiftAssignment.findOneAndUpdate(
-            { employeeId, date },
+            { employeeId: assignEmployeeId, date },
             {
-              employeeId,
+              employeeId: assignEmployeeId,
               userId: user._id,
               shiftId,
               date,
@@ -180,9 +192,9 @@ const assignShift = async (req, res) => {
         } catch (err) {
           if (err.code === 11000) {
             // Duplicate key - already assigned
-            errors.push(`${employee.name} already has a shift on ${dateStr}`);
+            errors.push(`${employee?.name || user.name} already has a shift on ${dateStr}`);
           } else {
-            errors.push(`Error assigning shift to ${employee.name} on ${dateStr}: ${err.message}`);
+            errors.push(`Error assigning shift to ${employee?.name || user.name} on ${dateStr}: ${err.message}`);
           }
         }
       }
@@ -198,9 +210,9 @@ const assignShift = async (req, res) => {
           receiverId: user._id,
           senderId: req.userId,
           senderName: req.user?.name || 'Admin',
-          employeeId: employee._id,
-          employeeName: employee.name,
-          employeeEmail: employee.email,
+          employeeId: assignEmployeeId,
+          employeeName: employee?.name || user.name,
+          employeeEmail: employee?.email || user.email,
           link: '/my-shifts',
           read: false
         });

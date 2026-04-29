@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { salaryAPI, reportAPI } from '../../services/api';
+import { salaryAPI, reportAPI, payslipAPI } from '../../services/api';
 import './EmployeeSalary.css';
 
 const EmployeeSalary = ({ user }) => {
@@ -9,6 +9,7 @@ const EmployeeSalary = ({ user }) => {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth() + 1);
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [report, setReport] = useState(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (user?.id) fetchSalaryData();
@@ -33,6 +34,24 @@ const EmployeeSalary = ({ user }) => {
   };
 
   const monthName = new Date(viewYear, viewMonth - 1).toLocaleString('default', { month: 'long' });
+
+  const handleDownloadPayslip = async () => {
+    try {
+      setDownloading(true);
+      const response = await payslipAPI.downloadMyPayslip(viewMonth, viewYear);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payslip_${monthName}_${viewYear}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading payslip:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) return <div className="page-loading"><div className="spinner"></div></div>;
 
@@ -64,6 +83,9 @@ const EmployeeSalary = ({ user }) => {
               <span className={`paid-badge ${selectedSalary.isPaid ? 'paid' : 'unpaid'}`}>
                 {selectedSalary.isPaid ? 'Paid' : 'Unpaid'}
               </span>
+              <button className="payslip-btn" onClick={handleDownloadPayslip} disabled={downloading}>
+                {downloading ? 'Generating...' : 'Download Payslip'}
+              </button>
             </div>
             <div className="summary-amount">
               <span className="currency">₹</span>

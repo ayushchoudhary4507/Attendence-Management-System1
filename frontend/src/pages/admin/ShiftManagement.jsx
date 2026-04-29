@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { shiftAPI } from '../../services/api';
+import { shiftAPI, employeeAPI } from '../../services/api';
 import './ShiftManagement.css';
 
 const ShiftManagement = ({ user }) => {
@@ -51,12 +51,8 @@ const ShiftManagement = ({ user }) => {
 
   const fetchEmployees = async () => {
     try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://localhost:5005/api/employees', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success) setEmployees(data.employees || data.data || []);
+      const data = await employeeAPI.getEmployees();
+      if (data.success) setEmployees(data.data || []);
     } catch (err) {
       console.error('Error fetching employees:', err);
     }

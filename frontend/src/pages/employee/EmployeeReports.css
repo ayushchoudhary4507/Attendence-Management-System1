@@ -7,16 +7,95 @@
 .report-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 2px solid var(--border-color, #e0e0e0);
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .report-header h1 {
   font-size: 1.75rem;
   color: var(--text-primary, #1a1a2e);
   margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tab-buttons {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-secondary, #f0f0f0);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.tab-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary, #6c757d);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  background: rgba(67, 97, 238, 0.1);
+  color: #4361ee;
+}
+
+.tab-btn.active {
+  background: #4361ee;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
+}
+
+.export-btn {
+  padding: 8px 16px;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  background: transparent;
+  color: #10b981;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.month-selector input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #1a1a2e);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.stat-sub {
+  font-size: 0.7rem;
+  color: var(--text-secondary, #6c757d);
+  margin-top: 2px;
 }
 
 .month-selector {
@@ -294,6 +373,40 @@ body.dark-theme .report-header {
 
 body.dark-theme .report-header h1 {
   color: #f9fafb;
+}
+
+body.dark-theme .tab-buttons {
+  background: rgba(15, 15, 26, 0.6);
+}
+
+body.dark-theme .tab-btn {
+  color: #94a3b8;
+}
+
+body.dark-theme .tab-btn:hover {
+  background: rgba(79, 70, 229, 0.2);
+  color: #818cf8;
+}
+
+body.dark-theme .tab-btn.active {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  color: #fff;
+}
+
+body.dark-theme .export-btn {
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+body.dark-theme .export-btn:hover {
+  background: #10b981;
+  color: #fff;
+}
+
+body.dark-theme .month-selector input[type="date"] {
+  background: rgba(30, 30, 46, 0.8);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
 }
 
 body.dark-theme .month-selector select {

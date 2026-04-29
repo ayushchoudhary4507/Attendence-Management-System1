@@ -449,12 +449,12 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                         {['all', 'leave_request', 'user_activity', 'project_update', 'message', 'shift_assigned', 'salary_generated'].map(f => {
                           const filterLabels = {
                             all: 'All',
-                            leave_request: 'Leave',
-                            message: 'Message',
-                            user_activity:'Activity',
-                            project_update: 'Project',
-                            shift_assigned: 'Shift',
-                            salary_generated: 'Salary'
+                            leave_request: '📅 Leave',
+                            user_activity: '👤 Activity',
+                            project_update: '📊 Project',
+                            message: '💬 Message',
+                            shift_assigned: '🗓️ Shift',
+                            salary_generated: '💰 Salary'
                           };
                           return (
                             <button

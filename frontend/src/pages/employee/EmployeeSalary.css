@@ -67,6 +67,42 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.payslip-btn {
+  padding: 6px 16px;
+  border: 1px solid #4361ee;
+  border-radius: 8px;
+  background: transparent;
+  color: #4361ee;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.payslip-btn:hover {
+  background: #4361ee;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(67, 97, 238, 0.3);
+}
+
+.payslip-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+body.dark-theme .payslip-btn {
+  border-color: #818cf8;
+  color: #818cf8;
+}
+
+body.dark-theme .payslip-btn:hover {
+  background: #4361ee;
+  color: #fff;
 }
 
 .summary-header h2 {

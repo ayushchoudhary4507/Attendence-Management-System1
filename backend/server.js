@@ -114,6 +114,8 @@ const holidayRoutes = require('./routes/holidayRoutes');
 const shiftRoutes = require('./routes/shiftRoutes');
 const salaryRoutes = require('./routes/salaryRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const payslipRoutes = require('./routes/payslipRoutes');
+const advancedReportRoutes = require('./routes/advancedReportRoutes');
 
 // Use routes
 app.use('/api/login', loginRoutes);
@@ -135,6 +137,8 @@ app.use('/api/holidays', holidayRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/salary', salaryRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/payslip', payslipRoutes);
+app.use('/api/advanced-reports', advancedReportRoutes);
 
 // Socket.io real-time messaging
 const onlineUsers = new Map(); // userId -> { socketId, lastSeen }

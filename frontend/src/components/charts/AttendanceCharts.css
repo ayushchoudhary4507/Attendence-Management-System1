@@ -1,0 +1,55 @@
+.attendance-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.chart-section {
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.chart-section h3 {
+  font-size: 1rem;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0 0 16px 0;
+}
+
+.chart-tooltip {
+  background: rgba(30, 30, 46, 0.95);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+
+.chart-tooltip .tooltip-label {
+  font-weight: 600;
+  color: #f1f5f9;
+  margin: 0 0 4px 0;
+}
+
+.chart-tooltip p {
+  margin: 2px 0;
+}
+
+/* Dark Mode */
+body.dark-theme .chart-section {
+  background: rgba(30, 30, 46, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+body.dark-theme .chart-section h3 {
+  color: #f9fafb;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .attendance-charts {
+    grid-template-columns: 1fr;
+  }
+}
