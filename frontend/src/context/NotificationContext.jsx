@@ -30,6 +30,12 @@ export const timeAgo = (date) => {
   return past.toLocaleDateString();
 };
 
+// Helper: check if notification already exists
+const isDuplicateNotification = (notificationsRef, notifId) => {
+  if (!notifId) return false;
+  return notificationsRef.current.some(n => (n.id === notifId || n._id === notifId));
+};
+
 // Helper: API call with token
 const apiCall = async (method, path, body = null) => {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -126,7 +132,9 @@ export const NotificationProvider = ({ children }) => {
   showToastRef.current = showToast;
 
   // Initialize socket connection
-  useEffect(() => {
+  const socketRefInternal = useRef(null);
+
+  const initSocket = useCallback(() => {
     const user = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     const userId = user.id || user._id;
@@ -135,6 +143,14 @@ export const NotificationProvider = ({ children }) => {
       console.log('No user/token found, skipping socket connection');
       return;
     }
+
+    // Prevent duplicate connections
+    if (socketRefInternal.current && socketRefInternal.current.connected) {
+      console.log('Socket already connected, skipping');
+      return;
+    }
+
+    console.log('🔌 Initializing notification socket for userId:', userId);
 
     const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -174,20 +190,34 @@ export const NotificationProvider = ({ children }) => {
         return;
       }
 
+      // Check for duplicate (same ID already exists)
+      const notifId = data.id || data._id;
+      if (isDuplicateNotification(notificationsRef, notifId)) {
+        console.log('Duplicate notification (newNotification), skipping:', notifId);
+        return;
+      }
+
       const notification = {
-        id: data.id || Date.now(),
+        id: notifId || Date.now(),
         type: data.type || 'other',
         title: data.title || 'Notification',
         message: data.message || '',
         senderId: data.senderId,
-        senderName: data.senderName,
-        link: data.link,
+        senderName: data.senderName || 'System',
+        senderAvatar: data.senderAvatar || null,
         receiverId: data.receiverId,
+        receiverRole: data.receiverRole || 'admin',
+        read: false,
         createdAt: data.createdAt || new Date(),
-        read: false
+        metadata: data.metadata || {},
+        action: data.action || 'view',
+        actionUrl: data.actionUrl || '/',
+        priority: data.priority || 'medium',
+        expiresAt: data.expiresAt || null,
+        source: data.source || 'socket'
       };
       addNotif(notification);
-      showT(notification.title, notification.message, notification.type);
+      showT(data.title, data.message, data.type || 'other');
     });
 
     // Handle leave status update (for employees)
@@ -195,19 +225,24 @@ export const NotificationProvider = ({ children }) => {
       console.log('Leave status updated:', data);
       const user = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
       const currentUserId = user.id || user._id;
-      if (data.userId === currentUserId || String(data.userId) === String(currentUserId)) {
-        const addNotif = addNotificationRef.current;
-        const showT = showToastRef.current;
-        if (!addNotif || !showT) return;
-        addNotif({
-          id: Date.now(),
-          type: 'leave_request',
-          title: data.notification.title,
-          message: data.notification.message,
-          createdAt: data.notification.createdAt || new Date(),
-          read: false
-        });
-        showT(data.notification.title, data.notification.message, 'leave_request');
+
+      if (data.employeeId && String(data.employeeId) !== String(currentUserId)) {
+        return;
+      }
+
+      const notifId = data.notification?.id || data.notification?._id;
+      if (isDuplicateNotification(notificationsRef, notifId)) {
+        console.log('Duplicate notification (leave_status_updated), skipping');
+        return;
+      }
+
+      if (data.notification) {
+        addNotificationRef.current(data.notification);
+        showToastRef.current(
+          data.notification.title || 'Leave Status Updated',
+          data.notification.message || `Your leave request has been ${data.status}`,
+          'leave_request'
+        );
       }
     });
 
@@ -217,15 +252,24 @@ export const NotificationProvider = ({ children }) => {
       const addNotif = addNotificationRef.current;
       const showT = showToastRef.current;
       if (!addNotif || !showT) return;
-      addNotif({
-        id: Date.now(),
+
+      const notifId = data.id || data._id;
+      if (isDuplicateNotification(notificationsRef, notifId)) {
+        console.log('Duplicate notification (new_leave_request), skipping');
+        return;
+      }
+
+      const notification = {
+        id: notifId || Date.now(),
         type: 'leave_request',
-        title: data.title,
-        message: data.message,
-        employeeName: data.employeeName,
-        createdAt: data.createdAt || new Date(),
-        read: false
-      });
+        title: data.title || 'New Leave Request',
+        message: data.message || '',
+        senderId: data.senderId,
+        read: false,
+        createdAt: new Date(),
+        source: 'socket-legacy'
+      };
+      addNotif(notification);
       showT(data.title, data.message, 'leave_request');
     });
 
@@ -233,21 +277,24 @@ export const NotificationProvider = ({ children }) => {
       console.log('Legacy new_message_notification:', data);
       const user = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
       const currentUserId = user.id || user._id;
-      const targetId = data.userId || data.receiverId;
-      if (targetId === currentUserId || String(targetId) === String(currentUserId)) {
-        const addNotif = addNotificationRef.current;
-        const showT = showToastRef.current;
-        if (!addNotif || !showT) return;
-        addNotif({
-          id: Date.now(),
-          type: 'message',
-          title: data.notification.title,
-          message: data.notification.message,
-          senderName: data.notification.senderName,
-          createdAt: data.notification.createdAt || new Date(),
-          read: false
-        });
-        showT(data.notification.title, data.notification.message, 'message');
+
+      if (data.receiverId && String(data.receiverId) !== String(currentUserId)) {
+        return;
+      }
+
+      const notifId = data.notification?.id || data.notification?._id;
+      if (isDuplicateNotification(notificationsRef, notifId)) {
+        console.log('Duplicate notification (new_message_notification), skipping');
+        return;
+      }
+
+      if (data.notification) {
+        addNotificationRef.current(data.notification);
+        showToastRef.current(
+          data.notification.title || 'New Message',
+          data.notification.message || 'You have a new message',
+          'message'
+        );
       }
     });
 
@@ -256,15 +303,39 @@ export const NotificationProvider = ({ children }) => {
       const addNotif = addNotificationRef.current;
       const showT = showToastRef.current;
       if (!addNotif || !showT) return;
-      addNotif({
-        id: Date.now(),
-        ...data.notification,
-        createdAt: data.notification?.createdAt || new Date(),
-        read: false
-      });
+
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const currentUserId = currentUser.id || currentUser._id;
+      if (data.receiverId && String(data.receiverId) !== String(currentUserId)) {
+        return;
+      }
+
+      const notifId = data.notification?.id || data.notification?._id;
+      if (isDuplicateNotification(notificationsRef, notifId)) {
+        console.log('Duplicate notification (receive_notification), skipping:', notifId);
+        return;
+      }
+
+      if (data.notification) {
+        addNotif({
+          ...data.notification,
+          source: 'socket-legacy'
+        });
+      } else if (data.title) {
+        addNotif({
+          id: notifId || Date.now(),
+          type: data.type || 'other',
+          title: data.title,
+          message: data.message || '',
+          read: false,
+          createdAt: new Date(),
+          source: 'socket-legacy'
+        });
+      }
       showT(data.notification?.title || 'Notification', data.notification?.message || '', data.notification?.type || 'info');
     });
 
+    socketRefInternal.current = newSocket;
     setSocket(newSocket);
     fetchNotifications();
 
@@ -275,8 +346,30 @@ export const NotificationProvider = ({ children }) => {
       newSocket.off('new_message_notification');
       newSocket.off('receive_notification');
       newSocket.close();
+      socketRefInternal.current = null;
     };
   }, [fetchNotifications]);
+
+  // Run socket init on mount AND when login event fires
+  useEffect(() => {
+    const cleanup = initSocket();
+
+    const handleLoginEvent = () => {
+      console.log('🔄 Login detected, re-initializing socket...');
+      if (socketRefInternal.current) {
+        socketRefInternal.current.close();
+        socketRefInternal.current = null;
+      }
+      initSocket();
+    };
+
+    window.addEventListener('app-login', handleLoginEvent);
+
+    return () => {
+      if (cleanup) cleanup();
+      window.removeEventListener('app-login', handleLoginEvent);
+    };
+  }, [initSocket]);
 
   // Mark as read
   const markAsRead = useCallback((notificationId) => {

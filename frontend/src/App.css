@@ -192,23 +192,31 @@ body {
 
 .notification-filters {
   display: flex;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 10px 12px;
   border-bottom: 1px solid #e5e7eb;
   overflow-x: auto;
   flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.notification-filters::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-btn {
-  padding: 4px 10px;
+  padding: 8px 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 6px;
   background: white;
   color: #6b7280;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  white-space: nowrap;
   transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .filter-btn:hover {
@@ -1253,15 +1261,16 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 22px 24px;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .profile-modal-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: #111827;
+  letter-spacing: -0.3px;
 }
 
 .close-modal {
@@ -1270,13 +1279,14 @@ html, body {
   font-size: 28px;
   color: #6b7280;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.2s;
+  line-height: 1;
 }
 
 .close-modal:hover {
@@ -1285,88 +1295,96 @@ html, body {
 }
 
 .profile-modal-content {
-  padding: 24px;
+  padding: 28px 24px;
 }
 
 .profile-avatar-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .avatar-wrapper {
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  display: inline-block;
 }
 
 .profile-modal-avatar {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  border: 3px solid #4F46E5;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  border: 3px solid #e5e7eb;
   object-fit: cover;
+  display: block;
 }
 
-.upload-avatar-btn {
+.avatar-action-buttons {
   position: absolute;
-  bottom: 0;
-  right: 0;
+  bottom: -4px;
+  right: -4px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.avatar-action-btn {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #4F46E5 0%, #7c3aed 100%);
-  border: 3px solid white;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
-}
-
-.upload-avatar-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.5);
-}
-
-.remove-avatar-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 24px;
-  height: 24px;
-  background: #ef4444;
   border: 2px solid white;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(4px);
 }
 
-.remove-avatar-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+.avatar-action-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.avatar-action-btn:active {
+  transform: translateY(0) scale(1);
+}
+
+.edit-avatar-btn {
+  background: linear-gradient(135deg, #4F46E5 0%, #7c3aed 100%);
+}
+
+.edit-avatar-btn:hover {
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+.delete-avatar-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.delete-avatar-btn:hover {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 .profile-avatar-section h3 {
-  margin: 0 0 4px 0;
-  font-size: 18px;
+  margin: 0 0 8px 0;
+  font-size: 20px;
   font-weight: 600;
   color: #111827;
+  letter-spacing: -0.3px;
 }
 
 .profile-role {
-  margin: 0;
-  font-size: 14px;
-  color: #6b7280;
-  background: #f3f4f6;
-  padding: 4px 12px;
-  border-radius: 12px;
+  background: linear-gradient(135deg, #4F46E5 0%, #7c3aed 100%);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
 }
 
 .upload-hint {
@@ -1379,13 +1397,13 @@ html, body {
 .profile-details {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .profile-detail-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .profile-detail-item label {
@@ -1423,19 +1441,19 @@ html, body {
 
 .profile-modal-actions {
   display: flex;
-  gap: 12px;
-  padding: 20px 24px;
+  gap: 14px;
+  padding: 24px 24px 28px 24px;
   border-top: 1px solid #e5e7eb;
   background: #f9fafb;
 }
 
 .btn-edit-profile {
   flex: 1;
-  padding: 12px 20px;
+  padding: 14px 20px;
   background: linear-gradient(135deg, #4F46E5 0%, #7c3aed 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -1454,11 +1472,11 @@ html, body {
 
 .btn-cancel {
   flex: 1;
-  padding: 12px 20px;
+  padding: 14px 20px;
   background: white;
-  color: #6b7280;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -1478,11 +1496,11 @@ html, body {
 
 .btn-save-profile {
   flex: 1;
-  padding: 12px 20px;
+  padding: 14px 20px;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -1503,6 +1521,63 @@ html, body {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.profile-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.profile-header-btn:hover {
+  background: #f3f4f6;
+  color: #4F46E5;
+  transform: scale(1.05);
+}
+
+.profile-header-btn.edit-btn:hover {
+  color: #4F46E5;
+}
+
+.btn-delete-account {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 14px 20px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete-account:hover {
+  background: #fecaca;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.btn-delete-account:active {
+  transform: translateY(0);
 }
 
 /* Dark mode for profile modal */
@@ -1578,6 +1653,38 @@ html, body {
   color: #f1f5f9;
 }
 
+.profile-modal.dark-mode .profile-header-btn {
+  color: #94a3b8;
+}
+
+.profile-modal.dark-mode .profile-header-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+}
+
+.profile-modal.dark-mode .btn-delete-account {
+  background: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.profile-modal.dark-mode .btn-delete-account:hover {
+  background: rgba(220, 38, 38, 0.25);
+}
+
+.profile-modal.dark-mode .profile-modal-avatar {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.profile-modal.dark-mode .avatar-action-btn {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.profile-modal.dark-mode .avatar-action-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
 /* Responsive styles for profile modal */
 @media (max-width: 768px) {
   .profile-modal {
@@ -1601,6 +1708,15 @@ html, body {
   .profile-modal-avatar {
     width: 70px;
     height: 70px;
+  }
+
+  .avatar-action-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .avatar-action-buttons {
+    gap: 5px;
   }
 
   .profile-avatar-section h3 {
@@ -1627,7 +1743,8 @@ html, body {
 
   .btn-edit-profile,
   .btn-cancel,
-  .btn-save-profile {
+  .btn-save-profile,
+  .btn-delete-account {
     width: 100%;
   }
 }
@@ -1655,6 +1772,15 @@ html, body {
   .profile-modal-avatar {
     width: 60px;
     height: 60px;
+  }
+
+  .avatar-action-btn {
+    width: 26px;
+    height: 26px;
+  }
+
+  .avatar-action-buttons {
+    gap: 4px;
   }
 
   .profile-detail-item {

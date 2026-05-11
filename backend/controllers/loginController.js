@@ -59,6 +59,10 @@ const loginController = async (req, res) => {
       });
     }
 
+    // Update lastLogin timestamp
+    user.lastLogin = new Date();
+    await user.save();
+
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role, name: user.name },
       JWT_SECRET,
@@ -264,11 +268,15 @@ const adminLoginController = async (req, res) => {
     // Verify password
     const hashedInput = Buffer.from(password).toString('base64');
     const isMatch = (hashedInput === user.password);
-    
+
     if (!isMatch) {
       console.log('Password does not match');
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+
+    // Update lastLogin timestamp
+    user.lastLogin = new Date();
+    await user.save();
 
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role, name: user.name },

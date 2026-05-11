@@ -113,10 +113,10 @@ const getNotifications = async (req, res) => {
     console.log('🔍 Fetching notifications for user:', userId, 'Role:', user?.role);
     
     if (user && user.role !== 'admin') {
+      // Employees only see notifications where they are the receiver
       // Support both new receiverId and old userId fields for backward compatibility
       filter.$or = [
         { receiverId: userId },
-        { senderId: userId },
         { userId: userId } // Legacy support
       ];
       console.log('🔍 Employee filter:', filter);
@@ -160,10 +160,9 @@ const getUnreadCount = async (req, res) => {
 
     let filter = { read: false };
     if (user && user.role !== 'admin') {
-      // Support both new receiverId and old userId fields for backward compatibility
+      // Employees only see notifications where they are the receiver
       filter.$or = [
         { receiverId: userId },
-        { senderId: userId },
         { userId: userId }
       ];
     }
@@ -224,10 +223,9 @@ const markAllAsRead = async (req, res) => {
 
     let filter = { read: false };
     if (user && user.role !== 'admin') {
-      // Support both new receiverId and old userId fields for backward compatibility
+      // Employees only see notifications where they are the receiver
       filter.$or = [
         { receiverId: userId },
-        { senderId: userId },
         { userId: userId }
       ];
     }

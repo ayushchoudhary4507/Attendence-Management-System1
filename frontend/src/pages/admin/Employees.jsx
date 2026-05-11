@@ -675,6 +675,7 @@ const Employees = ({ onLogout, userRole }) => {
               <th>User Role</th>
               <th>Reporting To</th>
               <th>Attendance</th>
+              {isAdmin && <th>Last Login</th>}
               <th>Action</th>
             </tr>
           </thead>
@@ -753,6 +754,11 @@ const Employees = ({ onLogout, userRole }) => {
                     )}
                   </div>
                 </td>
+                {isAdmin && (
+                  <td>
+                    {employee.lastLogin ? new Date(employee.lastLogin).toLocaleString() : <span style={{color: '#9CA3AF', fontSize: '13px'}}>Never</span>}
+                  </td>
+                )}
                 <td>
                   {isAdmin ? (
                     <div className="action-buttons" style={{position: 'relative'}}>

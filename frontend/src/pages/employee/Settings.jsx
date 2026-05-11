@@ -28,7 +28,6 @@ const Settings = () => {
 
   const [security, setSecurity] = useState({
     twoFactor: false,
-    lastLogin: 'Mar 10, 2026 at 9:30 AM',
     passwordLastChanged: 'Feb 15, 2026'
   });
 
@@ -296,10 +295,6 @@ const Settings = () => {
             <div className="settings-section">
               <h2>Security Settings</h2>
               <div className="security-info">
-                <div className="info-item">
-                  <span className="label">Last Login:</span>
-                  <span>{security.lastLogin}</span>
-                </div>
                 <div className="info-item">
                   <span className="label">Password Last Changed:</span>
                   <span>{security.passwordLastChanged}</span>

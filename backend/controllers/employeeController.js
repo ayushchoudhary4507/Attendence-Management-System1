@@ -46,7 +46,7 @@ const getEmployees = async (req, res) => {
     // Also fetch users from User collection (for messaging compatibility)
     const users = await User.find({
       role: { $in: ['admin', 'employee'] }
-    }).select('name email role createdAt');
+    }).select('name email role createdAt lastLogin');
     console.log('Users found:', users.length);
 
     // Get today's attendance for all employees

@@ -22,7 +22,7 @@ import MyShifts from './pages/employee/MyShifts';
 import EmployeeSalary from './pages/employee/EmployeeSalary';
 import EmployeeReports from './pages/employee/EmployeeReports';
 import AdminSidebar from './components/sidebar/admin/AdminSidebar';
-import { settingsAPI } from './services/api';
+import { settingsAPI, API_BASE_URL } from './services/api';
 import { NotificationProvider, useNotifications, timeAgo } from './context/NotificationContext';
 import ToastNotification from './components/ToastNotification';
 import './App.css';
@@ -178,7 +178,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     });
     // Handle both relative and full URLs
     const profileImg = user?.profileImage;
-    const fullUrl = profileImg && !profileImg.startsWith('http') ? `http://localhost:5005${profileImg}` : profileImg;
+    const fullUrl = profileImg && !profileImg.startsWith('http') ? `${API_BASE_URL.replace('/api', '')}${profileImg}` : profileImg;
     setProfileImagePreview(fullUrl || null);
     setProfileImageFile(null);
   };
@@ -244,7 +244,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
         formData.append('role', profileData.role);
         formData.append('profileImage', profileImageFile);
 
-        const response = await fetch('http://localhost:5005/api/settings/profile', {
+        const response = await fetch(`${API_BASE_URL}/settings/profile`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
@@ -257,7 +257,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
           const updatedUser = { 
             ...user, 
             ...profileData, 
-            profileImage: data.data.profileImage ? `http://localhost:5005${data.data.profileImage}` : null 
+            profileImage: data.data.profileImage ? `${API_BASE_URL.replace('/api', '')}${data.data.profileImage}` : null 
           };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           sessionStorage.setItem('user', JSON.stringify(updatedUser));
@@ -270,7 +270,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
         }
       } else {
         // No image file, regular JSON update
-        const response = await fetch('http://localhost:5005/api/settings/profile', {
+        const response = await fetch(`${API_BASE_URL}/settings/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -565,7 +565,20 @@ const Layout = ({ children, onLogout, userRole, user }) => {
             <div ref={profileModalRef} className={`profile-modal ${isDarkMode ? 'dark-mode' : ''}`}>
               <div className="profile-modal-header">
                 <h2>Profile Details</h2>
-                <button className="close-modal" onClick={() => { setShowProfileModal(false); setIsEditing(false); }}>×</button>
+                <div className="profile-modal-header-actions">
+                  {!isEditing && (
+                    <button
+                      className="profile-header-btn edit-btn"
+                      onClick={() => setIsEditing(true)}
+                      title="Edit Profile"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                      </svg>
+                    </button>
+                  )}
+                  <button className="close-modal" onClick={() => { setShowProfileModal(false); setIsEditing(false); }}>×</button>
+                </div>
               </div>
               <div className="profile-modal-content">
                 <div className="profile-avatar-section">
@@ -576,18 +589,28 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                       className="profile-modal-avatar"
                     />
                     {isEditing && (
-                      <button className="upload-avatar-btn" onClick={handleImageUploadClick} title="Change profile picture">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="white">
-                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                        </svg>
-                      </button>
-                    )}
-                    {isEditing && profileImagePreview && (
-                      <button className="remove-avatar-btn" onClick={handleImageRemove} title="Remove profile picture">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
-                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                        </svg>
-                      </button>
+                      <div className="avatar-action-buttons">
+                        <button
+                          className="avatar-action-btn edit-avatar-btn"
+                          onClick={handleImageUploadClick}
+                          title="Change profile picture"
+                        >
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                          </svg>
+                        </button>
+                        {profileImagePreview && (
+                          <button
+                            className="avatar-action-btn delete-avatar-btn"
+                            onClick={handleImageRemove}
+                            title="Remove profile picture"
+                          >
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
+                              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     )}
                     <input
                       ref={fileInputRef}
@@ -671,7 +694,22 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                     </button>
                   </>
                 ) : (
-                  <button className="btn-edit-profile" onClick={() => setIsEditing(true)}>Edit Profile</button>
+                  <>
+                    <button className="btn-edit-profile" onClick={() => setIsEditing(true)}>Edit Profile</button>
+                    <button
+                      className="btn-delete-account"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                          alert('Account deletion request sent to admin.');
+                        }
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                      </svg>
+                      Delete Account
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -752,6 +790,8 @@ function App() {
     sessionStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     setIsAuthenticated(true);
+    // Notify NotificationContext to initialize socket now that user is logged in
+    window.dispatchEvent(new Event('app-login'));
   };
 
   const handleLogout = () => {

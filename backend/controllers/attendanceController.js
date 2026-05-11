@@ -797,16 +797,8 @@ const applyLeave = async (req, res) => {
         }
       }
 
-      // Also emit legacy event for backward compatibility
-      io.emit('new_leave_request', {
-        type: 'leave_request',
-        title: 'New Leave Request',
-        message: `${employee.name} applied for ${leaveType} (${totalDays} days)`,
-        employeeId: employee._id,
-        employeeName: employee.name,
-        leaveId: leave._id,
-        createdAt: new Date()
-      });
+      // Note: Legacy new_leave_request event removed to avoid duplicate notifications.
+      // The newNotification event above already delivers the leave notification to admins.
     }
 
     res.status(201).json({ success: true, message: 'Leave applied successfully', data: leave });
@@ -989,20 +981,8 @@ const approveRejectLeave = async (req, res) => {
         }
       }
 
-      // Also emit legacy event for backward compatibility
-      io.emit('leave_status_updated', {
-        userId: leave.userId,
-        employeeId: leave.employeeId.toString(),
-        notification: {
-          type: 'leave_request',
-          title: `Leave ${status}`,
-          message: `Your ${leave.leaveType} has been ${status.toLowerCase()}`,
-          leaveId: leave._id,
-          status: status,
-          createdAt: new Date(),
-          read: false
-        }
-      });
+      // Note: Legacy leave_status_updated event removed to avoid duplicate notifications.
+      // The newNotification event above already delivers the leave status to the employee.
     }
 
     res.json({ success: true, message: `Leave ${status.toLowerCase()}`, data: leave });

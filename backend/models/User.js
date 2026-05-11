@@ -36,6 +36,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  lastLogin: {
+    type: Date,
+    default: null
+  },
   settings: {
     appearance: {
       theme: {

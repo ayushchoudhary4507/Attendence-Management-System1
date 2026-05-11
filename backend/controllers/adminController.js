@@ -84,7 +84,7 @@ const getDashboardStats = async (req, res) => {
     const employeeCount = await User.countDocuments({ role: 'employee' });
     const totalEmployees = await Employee.countDocuments();
     const totalProjects = await Project.countDocuments();
-    // const pendingLeaves = await Leave.getPendingLeavesCount();
+    const pendingLeaves = await Leave.getPendingLeavesCount();
 
     res.json({
       message: 'Dashboard statistics retrieved successfully',
@@ -93,7 +93,8 @@ const getDashboardStats = async (req, res) => {
         adminCount,
         employeeCount,
         totalEmployees,
-        totalProjects
+        totalProjects,
+        pendingLeaves
       }
     });
   } catch (error) {
