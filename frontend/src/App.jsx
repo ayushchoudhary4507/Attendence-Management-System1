@@ -12,12 +12,15 @@ import Projects from './pages/admin/Projects';
 import Settings from './pages/employee/Settings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Chat from './pages/employee/Chat';
+import NotificationsPage from './pages/Notifications';
 import EmployeeWorkHours from './components/employee/EmployeeWorkHours';
 import Attendance from './components/employee/Attendance';
 import Holidays from './pages/admin/Holidays';
 import ShiftManagement from './pages/admin/ShiftManagement';
 import AdminSalary from './pages/admin/AdminSalary';
 import MonthlyReports from './pages/admin/MonthlyReports';
+import AIInsights from './pages/admin/AIInsights';
+import AIChat from './pages/admin/AIChat';
 import MyShifts from './pages/employee/MyShifts';
 import EmployeeSalary from './pages/employee/EmployeeSalary';
 import EmployeeReports from './pages/employee/EmployeeReports';
@@ -96,6 +99,18 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Helper: convert relative image path to full URL, or return as-is if already full
+  const getImageUrl = (imgPath) => {
+    if (!imgPath) return null;
+    if (imgPath.startsWith('http')) return imgPath;
+    const base = API_BASE_URL.replace('/api', '');
+    return `${base}${imgPath}`;
+  };
+
+  // Fallback avatar URL
+  const fallbackAvatar = (name, email) =>
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(name || email || 'User')}&background=4F46E5&color=fff`;
 
   const searchItems = [
     { label: 'Dashboard', path: '/', icon: '📊', category: 'Page' },
@@ -177,9 +192,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
       profileImage: user?.profileImage || ''
     });
     // Handle both relative and full URLs
-    const profileImg = user?.profileImage;
-    const fullUrl = profileImg && !profileImg.startsWith('http') ? `${API_BASE_URL.replace('/api', '')}${profileImg}` : profileImg;
-    setProfileImagePreview(fullUrl || null);
+    setProfileImagePreview(getImageUrl(user?.profileImage) || null);
     setProfileImageFile(null);
   };
 
@@ -257,7 +270,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
           const updatedUser = { 
             ...user, 
             ...profileData, 
-            profileImage: data.data.profileImage ? `${API_BASE_URL.replace('/api', '')}${data.data.profileImage}` : null 
+            profileImage: data.data.profileImage ? getImageUrl(data.data.profileImage) : null 
           };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           sessionStorage.setItem('user', JSON.stringify(updatedUser));
@@ -536,10 +549,11 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <img
-                  src={user?.profileImage && !user?.profileImage.startsWith('http') ? `http://localhost:5005${user?.profileImage}` : user?.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || user?.email || 'User')}&background=4F46E5&color=fff`}
+                  src={getImageUrl(user?.profileImage) || fallbackAvatar(user?.name, user?.email)}
                   alt="User"
                   className="user-avatar"
                   style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.onerror = null; e.target.src = fallbackAvatar(user?.name, user?.email); }}
                 />
                 <div className="user-info-text">
                   <div className="user-name">{user?.name || 'User'}</div>
@@ -584,9 +598,10 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                 <div className="profile-avatar-section">
                   <div className="avatar-wrapper">
                     <img
-                      src={profileImagePreview || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name || 'User')}&background=4F46E5&color=fff&size=80`}
+                      src={profileImagePreview || fallbackAvatar(profileData.name, profileData.email)}
                       alt="Profile"
                       className="profile-modal-avatar"
+                      onError={(e) => { e.target.onerror = null; e.target.src = fallbackAvatar(profileData.name, profileData.email); }}
                     />
                     {isEditing && (
                       <div className="avatar-action-buttons">
@@ -893,6 +908,22 @@ function App() {
             </Layout>
           </ProtectedRoute>
         } />
+
+        <Route path="/ai-insights" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              <AIInsights />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/ai-chat" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              <AIChat />
+            </Layout>
+          </ProtectedRoute>
+        } />
         
         <Route path="/settings" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
@@ -906,6 +937,14 @@ function App() {
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
             <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
               <Chat user={user} />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/notifications" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              <NotificationsPage />
             </Layout>
           </ProtectedRoute>
         } />

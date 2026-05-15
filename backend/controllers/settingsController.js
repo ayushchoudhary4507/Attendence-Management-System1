@@ -51,6 +51,7 @@ exports.getProfile = async (req, res) => {
         phone: user.phone,
         department: user.department,
         role: user.role,
+        profileImage: user.profileImage,
         settings: user.settings,
         notifications: user.notifications
       }

@@ -1,0 +1,241 @@
+.notification-panel.absolute {
+  position: absolute;
+  top: 10px;
+  left: calc(100% + 10px);
+  width: 350px;
+  max-height: 500px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  border: 1px solid #eee;
+  overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+.notification-panel.inline {
+  position: static;
+  width: 100%;
+  max-height: 350px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0;
+  border: 1px solid #eee;
+  overflow: hidden;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.notification-header {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+}
+
+.notification-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.notification-panel.inline .notification-header {
+  padding: 10px 16px;
+}
+
+.notification-panel.inline .notification-header h3 {
+  font-size: 0.9rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.mark-all-read {
+  background: none;
+  border: none;
+  color: #007bff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.mark-all-read:hover {
+  background: #e7f1ff;
+}
+
+.close-panel {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #999;
+}
+
+.notification-filters {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  overflow-x: auto;
+  white-space: nowrap;
+  background: #fff;
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+.notification-filters::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+}
+
+.filter-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid #eee;
+  background: #f8f9fa;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.filter-btn:hover {
+  background: #eef2ff;
+  border-color: #4F46E5;
+  color: #4F46E5;
+}
+
+.filter-btn.active {
+  background: #4F46E5;
+  color: white;
+  border-color: #4F46E5;
+}
+
+.notification-list {
+  overflow-y: auto;
+  flex: 1;
+  max-height: 400px;
+}
+
+.notification-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f8f9fa;
+  display: flex;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.notification-item:hover {
+  background: #fcfcfc;
+}
+
+.notification-item.unread {
+  background: #f0f7ff;
+  border-left: 3px solid #007bff;
+}
+
+.notification-item.unread:hover {
+  background: #e6f0ff;
+}
+
+.notification-icon {
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title {
+  margin: 0 0 2px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.notification-message {
+  margin: 0 0 4px 0;
+  font-size: 0.85rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.notification-time {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.delete-notification {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  padding: 4px;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.notification-item:hover .delete-notification {
+  opacity: 1;
+}
+
+.delete-notification:hover {
+  color: #ff4d4d;
+}
+
+.loading-state, .empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+/* For mobile responsiveness */
+@media (max-width: 768px) {
+  .notification-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -60%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
+}

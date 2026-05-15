@@ -5,11 +5,11 @@ const NotificationContext = createContext();
 
 const SOCKET_URL = import.meta.env.PROD
   ? 'https://attendence-management-system1.onrender.com'
-  : 'http://localhost:5005';
+  : 'http://127.0.0.1:5005';
 
 const API_URL = import.meta.env.PROD
   ? 'https://attendence-management-system1.onrender.com/api'
-  : 'http://localhost:5005/api';
+  : 'http://127.0.0.1:5005/api';
 
 // Helper: time ago formatting
 export const timeAgo = (date) => {

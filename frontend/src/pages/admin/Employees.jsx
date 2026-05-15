@@ -5,7 +5,7 @@ import { attendanceAPI, API_BASE_URL } from '../../services/api';
 
 const API_URL = import.meta.env.PROD
   ? 'https://attendence-management-system1.onrender.com/api'
-  : 'http://localhost:5005/api';
+  : 'http://127.0.0.1:5005/api';
 
 // Role badge colors
 const ROLE_COLORS = {

@@ -1,0 +1,172 @@
+import React, { useState, useEffect } from 'react';
+import { aiAPI } from '../../services/api';
+import { 
+  FiCpu, 
+  FiAlertCircle, 
+  FiTrendingUp, 
+  FiUsers, 
+  FiCalendar, 
+  FiCheckCircle,
+  FiLoader,
+  FiZap,
+  FiClock,
+  FiShield
+} from 'react-icons/fi';
+import './AIInsights.css';
+
+const AIInsights = () => {
+  const [loading, setLoading] = useState(true);
+  const [insights, setInsights] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchInsights();
+  }, []);
+
+  const fetchInsights = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await aiAPI.getInsights();
+      if (data.success) {
+        setInsights(data.data);
+      } else {
+        setError(data.message || 'Failed to load insights');
+      }
+    } catch (err) {
+      console.error('Error fetching AI insights:', err);
+      setError('An error occurred while connecting to the AI service');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderContent = (content) => {
+    if (!content) return "No data available.";
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+      return (
+        <ul className="ai-list">
+          {content.map((item, idx) => (
+            <li key={idx} className="ai-list-item">
+              <span className="ai-bullet">•</span>
+              <span className="ai-text">
+                {typeof item === 'object' 
+                  ? (item.name || item.label || JSON.stringify(item)) 
+                  : item}
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    if (typeof content === 'object') {
+      return Object.entries(content).map(([key, val]) => (
+        <div key={key} className="ai-meta-item">
+          <strong>{key}:</strong> {typeof val === 'object' ? JSON.stringify(val) : val}
+        </div>
+      ));
+    }
+    return String(content);
+  };
+
+  if (loading) {
+    return (
+      <div className="ai-loading-container">
+        <FiLoader className="ai-spinner" />
+        <h3>AI is analyzing attendance data...</h3>
+        <p>This may take a few seconds as we process patterns and trends.</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="ai-error-container">
+        <FiAlertCircle size={48} color="#ef4444" />
+        <h3>Analysis Failed</h3>
+        <p>{error}</p>
+        <button onClick={fetchInsights} className="ai-retry-btn">Retry Analysis</button>
+      </div>
+    );
+  }
+
+  if (!insights) return null;
+
+  return (
+    <div className="ai-insights-page">
+      <div className="ai-header">
+        <div className="ai-title-wrapper">
+          <FiZap className="ai-zap-icon" />
+          <h1>AI Attendance Insights</h1>
+        </div>
+        <p className="ai-subtitle">Smart analysis of attendance records for the last 30 days</p>
+      </div>
+
+      <div className="ai-insights-grid">
+        {/* Card 1: Frequent Absentees */}
+        <div className="ai-card">
+          <div className="ai-card-header">
+            <FiUsers className="ai-card-icon" />
+            <h3>Frequent Absentees</h3>
+          </div>
+          <div className="ai-card-content">
+            {renderContent(insights.frequentAbsentees)}
+          </div>
+        </div>
+
+        {/* Card 2: Late Arrival Patterns */}
+        <div className="ai-card">
+          <div className="ai-card-header">
+            <FiClock className="ai-card-icon" />
+            <h3>Late Arrival Patterns</h3>
+          </div>
+          <div className="ai-card-content">
+            <p className="ai-text">{renderContent(insights.latePatterns)}</p>
+          </div>
+        </div>
+
+        {/* Card 3: Department Performance */}
+        <div className="ai-card">
+          <div className="ai-card-header">
+            <FiTrendingUp className="ai-card-icon" />
+            <h3>Department Performance</h3>
+          </div>
+          <div className="ai-card-content">
+            <p className="ai-text">{renderContent(insights.departmentPerformance)}</p>
+          </div>
+        </div>
+
+        {/* Card 4: Suspicious Behavior */}
+        <div className="ai-card">
+          <div className="ai-card-header">
+            <FiShield className="ai-card-icon" />
+            <h3>Suspicious Behavior</h3>
+          </div>
+          <div className="ai-card-content">
+            <p className="ai-text">{renderContent(insights.suspiciousBehavior)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Summary */}
+      <div className="ai-summary-section">
+        <div className="ai-card summary-card full-width">
+          <div className="ai-card-header">
+            <FiCheckCircle className="ai-card-icon" />
+            <h3>AI Executive Summary</h3>
+          </div>
+          <div className="ai-card-content">
+            <p className="ai-summary-text">{renderContent(insights.monthlySummary)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="ai-footer">
+        <p>Insights generated by Gemini AI • Patterns updated in real-time</p>
+      </div>
+    </div>
+  );
+};
+
+export default AIInsights;

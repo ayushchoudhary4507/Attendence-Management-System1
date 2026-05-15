@@ -47,7 +47,7 @@ const { authMiddleware, admin } = require('../middleware/authMiddleware');
  *         name: year
  *         schema:
  *           type: integer
- *         description: Year to filter holidays (default: current year)
+ *         description: "Year to filter holidays (default: current year)"
  *       - in: query
  *         name: type
  *         schema:
@@ -241,10 +241,10 @@ router.get('/check', authMiddleware, holidayController.checkHoliday);
  *             properties:
  *               year:
  *                 type: integer
- *                 description: Year to import holidays for (default: current year)
+ *                 description: "Year to import holidays for (default: current year)"
  *               country:
  *                 type: string
- *                 description: Country code for holidays (currently supports India)
+ *                 description: "Country code for holidays (currently supports India)"
  *     responses:
  *       200:
  *         description: Holidays imported successfully

@@ -42,7 +42,7 @@ const AdminSalary = ({ user }) => {
   const fetchEmployees = async () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://localhost:5005/api/employees', {
+      const response = await fetch('http://127.0.0.1:5005/api/employees', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();

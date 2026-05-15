@@ -22,7 +22,7 @@ const Holidays = ({ user }) => {
     try {
       setLoading(true);
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5005/api/holidays?year=${year}`, {
+      const response = await fetch(`http://127.0.0.1:5005/api/holidays?year=${year}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -99,7 +99,7 @@ const Holidays = ({ user }) => {
 
       if (existingHoliday) {
         // Update existing holiday
-        const response = await fetch(`http://localhost:5005/api/holidays/${existingHoliday._id}`, {
+        const response = await fetch(`http://127.0.0.1:5005/api/holidays/${existingHoliday._id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -118,7 +118,7 @@ const Holidays = ({ user }) => {
         }
       } else {
         // Create new holiday
-        const response = await fetch('http://localhost:5005/api/holidays', {
+        const response = await fetch('http://127.0.0.1:5005/api/holidays', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -152,7 +152,7 @@ const Holidays = ({ user }) => {
     
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5005/api/holidays/${holidayId}`, {
+      const response = await fetch(`http://127.0.0.1:5005/api/holidays/${holidayId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -240,7 +240,7 @@ const Holidays = ({ user }) => {
               onClick={() => {
                 if (window.confirm('This will import common public holidays for ' + year + '. Continue?')) {
                   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-                  fetch('http://localhost:5005/api/holidays/import', {
+                  fetch('http://127.0.0.1:5005/api/holidays/import', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

@@ -9,7 +9,7 @@ import './Dashboard.css';
 
 const API_URL = import.meta.env.PROD
   ? 'https://attendence-management-system1.onrender.com/api'
-  : 'http://localhost:5005/api';
+  : 'http://127.0.0.1:5005/api';
 
 const Dashboard = ({ onLogout, userRole }) => {
   const navigate = useNavigate();

@@ -3,14 +3,14 @@ import axios from 'axios';
 // Conditional API URL based on environment
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://attendence-management-system1.onrender.com/api'
-  : 'http://localhost:5005/api';
+  : 'http://127.0.0.1:5005/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // 15 seconds timeout
+  timeout: 60000, // 60 seconds timeout
   timeoutErrorMessage: 'Request timed out. Server may be starting up, please try again.'
 });
 
@@ -751,6 +751,19 @@ export const advancedReportAPI = {
       responseType: 'blob'
     });
     return response;
+  }
+};
+
+// AI API
+export const aiAPI = {
+  getInsights: async () => {
+    const response = await api.get('/ai/insights');
+    return response.data;
+  },
+  
+  chat: async (query) => {
+    const response = await api.post('/ai/chat', { query });
+    return response.data;
   }
 };
 

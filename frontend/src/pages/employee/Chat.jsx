@@ -7,7 +7,7 @@ import './Chat.css';
 
 const SOCKET_URL = import.meta.env.PROD 
   ? 'https://attendence-management-system1.onrender.com'
-  : 'http://localhost:5005';
+  : 'http://127.0.0.1:5005';
 
 const Chat = ({ user }) => {
   const [socket, setSocket] = useState(null);
