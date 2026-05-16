@@ -21,6 +21,7 @@ import AdminSalary from './pages/admin/AdminSalary';
 import MonthlyReports from './pages/admin/MonthlyReports';
 import AIInsights from './pages/admin/AIInsights';
 import AIChat from './pages/admin/AIChat';
+import AttendancePredictions from './pages/admin/AttendancePredictions';
 import MyShifts from './pages/employee/MyShifts';
 import EmployeeSalary from './pages/employee/EmployeeSalary';
 import EmployeeReports from './pages/employee/EmployeeReports';
@@ -921,6 +922,14 @@ function App() {
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
             <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
               <AIChat />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/ai-predictions" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+              <AttendancePredictions />
             </Layout>
           </ProtectedRoute>
         } />

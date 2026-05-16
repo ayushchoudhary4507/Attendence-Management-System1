@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import TaskManager from '../../components/admin/TaskManager';
 import MyTasks from '../../components/employee/MyTasks';
 import AdminLeavePopup from '../../components/admin/AdminLeavePopup';
@@ -492,7 +492,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           title="Total Employees"
           value={stats.totalEmployees}
           color="#4F46E5"
-          linkTo="#/employees"
+          linkTo="/employees"
           icon={
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -506,7 +506,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           title="Active Employees"
           value={attendanceStats.activeNow}
           color="#10B981"
-          linkTo="#/workhours"
+          linkTo="/workhours"
           icon={
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -518,7 +518,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           title="Interns"
           value={stats.interns}
           color="#F59E0B"
-          linkTo="#/employees"
+          linkTo="/employees"
           icon={
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
@@ -531,7 +531,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           title="Managers"
           value={stats.managers}
           color="#EF4444"
-          linkTo="#/employees"
+          linkTo="/employees"
           icon={
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -543,7 +543,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           title="Total Projects"
           value={stats.totalProjects}
           color="#8B5CF6"
-          linkTo="#/projects"
+          linkTo="/projects"
           icon={
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -554,7 +554,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           title="Active Projects"
           value={stats.activeProjects}
           color="#06B6D4"
-          linkTo="#/projects"
+          linkTo="/projects"
           icon={
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
@@ -565,7 +565,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           title="Completed Projects"
           value={stats.completedProjects}
           color="#10B981"
-          linkTo="#/projects"
+          linkTo="/projects"
           icon={
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -704,7 +704,7 @@ const Dashboard = ({ onLogout, userRole }) => {
             </button>
           )}
           
-          <a href="#/employees" className="btn-primary">
+          <Link to="/employees" className="btn-primary">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
@@ -712,7 +712,7 @@ const Dashboard = ({ onLogout, userRole }) => {
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
             View All Employees
-          </a>
+          </Link>
           <button 
             onClick={() => isAdmin ? setShowAddModal(true) : alert('Access denied. Only admin can add employees.')}
             className="btn-secondary"
@@ -742,9 +742,9 @@ const Dashboard = ({ onLogout, userRole }) => {
       <div className="recent-employees">
         <div className="recent-header">
           <h2 className="recent-title">Recent Employees</h2>
-          <a href="#/employees" className="view-all-link">
+          <Link to="/employees" className="view-all-link">
             View All →
-          </a>
+          </Link>
         </div>
         
         {loading ? (
@@ -777,9 +777,9 @@ const Dashboard = ({ onLogout, userRole }) => {
       <div className="recent-employees" style={{ marginTop: '30px' }}>
         <div className="recent-header">
           <h2 className="recent-title">Recent Projects</h2>
-          <a href="#/projects" className="view-all-link">
+          <Link to="/projects" className="view-all-link">
             View All →
-          </a>
+          </Link>
         </div>
         
         {loading ? (

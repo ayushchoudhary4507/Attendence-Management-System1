@@ -6,30 +6,21 @@ const { Server } = require('socket.io');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 require('dotenv').config();
-const dns = require('node:dns');
+
+
+const logger = require('./utils/logger');
+const connectDB = require('./utils/db');
+const { errorHandler } = require('./utils/errorHandler');
+const healthRoutes = require('./routes/healthRoutes');
+
 const Message = require('./models/Message');
 const Group = require('./models/Group');
 
-// Set DNS servers for better Atlas connectivity
-dns.setServers(['8.8.8.8', '8.8.4.4',]);
-
 // Connect to database
-const connectDB = async () => {
-  try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/attendance';
-    console.log('🔗 MongoDB URI:', mongoUri ? 'Set' : 'Not set');
-    const conn = await mongoose.connect(mongoUri);
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database: ${conn.connection.name}`);
-    console.log(`🔗 Connection State: ${conn.connection.readyState}`);
-  } catch (error) {
-    console.error(`❌ MongoDB Connection Error: ${error.message}`);
-    console.error('Please ensure MongoDB is running and MONGODB_URI is set in .env file');
-    // Don't exit process, allow server to start without DB for testing
-    console.warn('⚠️  Server will start without database connection');
-  }
-};
 connectDB();
 
 const app = express();
@@ -45,15 +36,13 @@ const io = new Server(httpServer, {
 app.set('io', io);
 const PORT = process.env.PORT || 5005;
 
-// Middleware - Allow all origins for CORS   
+// Middleware
 app.use(cors({
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
-
-app.use(express.json());
 
 // Serve uploaded files statically
 const fs = require('fs');
@@ -63,11 +52,31 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// Debug: Log all incoming requests
-app.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.originalUrl}`);
-  next();
+// Security Middleware
+app.use(helmet({
+    crossOriginResourcePolicy: false, // Allow cross-origin images
+}));
+
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // limit each IP to 1000 requests per windowMs
+    message: 'Too many requests from this IP, please try again after 15 minutes'
 });
+app.use('/api/', limiter);
+
+// Logging Middleware
+app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
+app.use(express.json({ limit: '10mb' })); // Increased limit for AI data
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Debug: Log all incoming requests (optional, handled by morgan now)
+if (process.env.NODE_ENV === 'development') {
+    app.use((req, res, next) => {
+        logger.debug(`📥 ${req.method} ${req.originalUrl}`);
+        next();
+    });
+}
 
 // Swagger configuration
 const swaggerOptions = {
@@ -141,6 +150,10 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/payslip', payslipRoutes);
 app.use('/api/advanced-reports', advancedReportRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/health', healthRoutes);
+
+// Error Handling Middleware
+app.use(errorHandler);
 
 // Socket.io real-time messaging
 const onlineUsers = new Map(); // userId -> { socketId, lastSeen }
@@ -564,6 +577,8 @@ io.on('connection', (socket) => {
         }, 60000); // Remove after 1 minute
       }
       
+
+      
       // Broadcast offline status
       io.emit('user_status', {
         userId: socket.userId,
@@ -612,6 +627,7 @@ app.use((req, res) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
+  logger.info(`Server is running on port ${PORT}`);
+  logger.info(` Swagger docs: http://localhost:${PORT}/api-docs`);
+  logger.info(`  Health check: http://localhost:${PORT}/api/health`);
 });

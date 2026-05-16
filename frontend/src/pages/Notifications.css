@@ -62,8 +62,14 @@
   gap: 12px;
   margin-bottom: 24px;
   overflow-x: auto;
-  padding-bottom: 8px;
-  scrollbar-width: thin;
+  padding: 4px 0 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.notifications-page-filters::-webkit-scrollbar {
+  display: none;
 }
 
 .page-filter-btn {
@@ -225,12 +231,24 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+    padding: 16px;
   }
   
+  .header-title h1 {
+    font-size: 20px;
+  }
+
   .mark-all-read-btn {
     width: 100%;
+    padding: 12px;
+    font-size: 14px;
   }
   
+  .page-filter-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
   .page-notification-item {
     gap: 12px;
     padding: 16px;
@@ -241,4 +259,97 @@
     height: 40px;
     font-size: 20px;
   }
+
+  .item-title {
+    font-size: 14px;
+  }
+
+  .item-message {
+    font-size: 13px;
+  }
+
+  .notifications-page-filters {
+    margin-bottom: 16px;
+  }
+}
+
+/* Dark Mode Styles */
+body.dark-theme .notifications-page-header {
+  background: rgba(30, 30, 46, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .header-title h1 {
+  color: #ffffff;
+}
+
+body.dark-theme .unread-badge {
+  background: rgba(79, 70, 229, 0.2);
+  color: #818cf8;
+}
+
+body.dark-theme .page-filter-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+body.dark-theme .page-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: #4f46e5;
+}
+
+body.dark-theme .page-filter-btn.active {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+}
+
+body.dark-theme .page-notification-item {
+  background: rgba(30, 30, 46, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .page-notification-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(79, 70, 229, 0.3);
+}
+
+body.dark-theme .page-notification-item.unread {
+  background: rgba(79, 70, 229, 0.1);
+  border-left-color: #4f46e5;
+}
+
+body.dark-theme .page-notification-icon {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+body.dark-theme .item-title {
+  color: #ffffff;
+}
+
+body.dark-theme .item-message {
+  color: #94a3b8;
+}
+
+body.dark-theme .item-time {
+  color: #64748b;
+}
+
+body.dark-theme .page-empty-state {
+  background: rgba(30, 30, 46, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .page-empty-state h3 {
+  color: #ffffff;
+}
+
+body.dark-theme .page-empty-state p {
+  color: #94a3b8;
 }
