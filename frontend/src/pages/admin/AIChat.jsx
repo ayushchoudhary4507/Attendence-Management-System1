@@ -6,8 +6,9 @@ import {
   Maximize2, Minimize2, Terminal, Info
 } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL as BASE_URL } from '../../services/api';
 
-const API_BASE_URL = '/api/ai';
+const API_BASE_URL = `${BASE_URL}/ai`;
 
 const AIChat = () => {
   const [messages, setMessages] = useState([

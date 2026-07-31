@@ -341,7 +341,7 @@ const LoginPage = ({ onSignupClick, onLoginSuccess, skipWelcome = false }) => {
 
             type="submit" 
 
-            className={`login-button ${loading ? 'loading' : ''}`} 
+            className={`login-button ${loading ? 'btn-loading' : ''}`} 
 
             disabled={loading}
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, Brain, X, Minimize2, Maximize2, Sparkles, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../services/api';
 
 const AIChatAssistant = () => {
   const [query, setQuery] = useState('');
@@ -26,7 +27,7 @@ const AIChatAssistant = () => {
     setIsTyping(true);
 
     try {
-      const response = await axios.post('http://localhost:5005/api/ai/chat', { query });
+      const response = await axios.post(`${API_BASE_URL}/ai/chat`, { query });
       setMessages(prev => [...prev, { role: 'assistant', text: response.data.response }]);
     } catch (error) {
       console.error("Chat error:", error);

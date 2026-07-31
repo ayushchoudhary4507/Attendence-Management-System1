@@ -538,9 +538,9 @@ const Employees = ({ onLogout, userRole }) => {
 
   if (loading) {
     return (
-      <div className="page-container loading-container">
-        <div className="loading-content">
-          <div className="loading-spinner"></div>
+      <div className="page-container employees-loading-container">
+        <div className="employees-loading-content">
+          <div className="employees-loading-spinner"></div>
           <p className="loading-text">Loading employees from MongoDB Atlas...</p>
         </div>
       </div>

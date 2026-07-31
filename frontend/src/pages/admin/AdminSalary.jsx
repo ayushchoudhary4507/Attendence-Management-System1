@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { salaryAPI } from '../../services/api';
+import { salaryAPI, API_BASE_URL } from '../../services/api';
 import './AdminSalary.css';
 
 const AdminSalary = ({ user }) => {
@@ -42,7 +42,7 @@ const AdminSalary = ({ user }) => {
   const fetchEmployees = async () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:5005/api/employees', {
+      const response = await fetch(`${API_BASE_URL}/employees`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();

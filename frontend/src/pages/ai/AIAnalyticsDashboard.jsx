@@ -9,6 +9,7 @@ import {
   FileText, MessageSquare, Award, Zap, ShieldAlert
 } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../services/api';
 
 const AIAnalyticsDashboard = () => {
   const [rankings, setRankings] = useState([]);
@@ -24,10 +25,10 @@ const AIAnalyticsDashboard = () => {
   const fetchData = async () => {
     try {
       const [rRes, pRes, aRes, dRes] = await Promise.all([
-        axios.get('http://localhost:5005/api/ai/performance-ranking'),
-        axios.get('http://localhost:5005/api/ai/predictions'),
-        axios.get('http://localhost:5005/api/ai/anomalies'),
-        axios.get('http://localhost:5005/api/ai/department-report/all')
+        axios.get(`${API_BASE_URL}/ai/performance-ranking`),
+        axios.get(`${API_BASE_URL}/ai/predictions`),
+        axios.get(`${API_BASE_URL}/ai/anomalies`),
+        axios.get(`${API_BASE_URL}/ai/department-report/all`)
       ]);
       setRankings(rRes.data);
       setPredictions(pRes.data);

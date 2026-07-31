@@ -11,8 +11,9 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import { API_BASE_URL as BASE_URL } from '../../services/api';
 
-const API_BASE_URL = '/api/ai';
+const API_BASE_URL = `${BASE_URL}/ai`;
 
 const AIInsights = () => {
   const [rankings, setRankings] = useState([]);

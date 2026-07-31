@@ -82,7 +82,7 @@
   flex: 1;
 }
 
-.loading {
+.task-manager-loading {
   text-align: center;
   padding: 40px;
   color: #6b7280;

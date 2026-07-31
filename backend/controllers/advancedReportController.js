@@ -154,7 +154,7 @@ const getMonthlyReportCharts = async (req, res) => {
     const totalHalfDay = records.filter(r => r.status === 'Half Day').length;
     const totalLeave = records.filter(r => r.status === 'Leave').length;
 
-    // Employee-wise summary
+    // Employee-wise summary  yfyufryuryryur
     const employeeSummary = employees.map(emp => {
       const empRecords = records.filter(r => r.employeeId?._id?.toString() === emp._id.toString());
       return {

@@ -602,7 +602,7 @@ body.dark-theme .toggle-item p {
 }
 
 /* Loading State */
-.loading {
+.app-loading-state {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1362,6 +1362,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  outline: none;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);

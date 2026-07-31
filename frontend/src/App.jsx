@@ -610,9 +610,11 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                           className="avatar-action-btn edit-avatar-btn"
                           onClick={handleImageUploadClick}
                           title="Change profile picture"
+                          type="button"
                         >
-                          <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
-                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
                           </svg>
                         </button>
                         {profileImagePreview && (
@@ -620,9 +622,11 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                             className="avatar-action-btn delete-avatar-btn"
                             onClick={handleImageRemove}
                             title="Remove profile picture"
+                            type="button"
                           >
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
-                              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                             </svg>
                           </button>
                         )}

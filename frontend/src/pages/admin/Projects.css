@@ -432,7 +432,7 @@ body.dark-theme .loading-spinner {
   border-top-color: #94a3b8;
 }
 
-.loading {
+.projects-loading {
   display: flex;
   align-items: center;
   justify-content: center;
