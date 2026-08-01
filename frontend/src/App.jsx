@@ -351,6 +351,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
         mobileSidebarOpen={mobileSidebarOpen}
         isMobile={isMobile}
         onOverlayClick={handleOverlayClick}
+        user={user}
       />
 
       {/* Main Content */}

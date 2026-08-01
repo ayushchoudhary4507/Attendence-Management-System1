@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 // Conditional API URL based on environment
-const API_BASE_URL = import.meta.env.PROD
-  ? 'https://attendence-management-system1.onrender.com/api'
-  : 'http://127.0.0.1:5005/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD
+  ? 'https://backend-seven-puce-22.vercel.app/api'
+  : 'http://127.0.0.1:5005/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -767,5 +767,4 @@ export const aiAPI = {
   }
 };
 
-export { API_BASE_URL };
 export default api;
