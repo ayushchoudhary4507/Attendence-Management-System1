@@ -189,7 +189,7 @@ const Projects = ({ userRole }) => {
       <div className="projects-page loading-page">
         <div className="loading-spinner-container">
           <div className="loading-spinner"></div>
-          <p>Loading projects from Atlas...</p>
+          <p>Loading projects...</p>
         </div>
       </div>
     );

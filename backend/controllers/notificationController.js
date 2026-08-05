@@ -113,13 +113,31 @@ const getNotifications = async (req, res) => {
     console.log('🔍 Fetching notifications for user:', userId, 'Role:', user?.role);
     
     if (user && user.role !== 'admin') {
-      // Employees only see notifications where they are the receiver
-      // Support both new receiverId and old userId fields for backward compatibility
-      filter.$or = [
+      const Employee = require('../models/Employee');
+      const emp = await Employee.findOne({ 
+        $or: [
+          { email: { $regex: '^' + user.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', $options: 'i' } },
+          { name: { $regex: '^' + user.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', $options: 'i' } }
+        ]
+      });
+
+      const orConditions = [
         { receiverId: userId },
-        { userId: userId } // Legacy support
+        { userId: userId },
+        { employeeEmail: { $regex: '^' + user.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', $options: 'i' } }
       ];
-      console.log('🔍 Employee filter:', filter);
+
+      if (user.name) {
+        orConditions.push({ employeeName: { $regex: user.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } });
+      }
+
+      if (emp) {
+        orConditions.push({ receiverId: emp._id });
+        orConditions.push({ employeeId: emp._id });
+      }
+
+      filter.$or = orConditions;
+      console.log('🔍 Employee notification filter:', JSON.stringify(filter));
     } else {
       console.log('🔍 Admin - fetching all notifications');
     }

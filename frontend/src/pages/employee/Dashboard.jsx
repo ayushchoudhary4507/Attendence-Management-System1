@@ -20,7 +20,7 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [currentUser, setCurrentUser] = useState(null);
   
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
     if (userStr) {
       try {
         setCurrentUser(JSON.parse(userStr));
@@ -68,6 +68,7 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [totalLeavesCount, setTotalLeavesCount] = useState(0);
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
+  const [recentLeaves, setRecentLeaves] = useState([]);
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     email: '',
@@ -158,9 +159,11 @@ const Dashboard = ({ onLogout, userRole }) => {
         'Authorization': `Bearer ${token}`
       };
 
-      const [empRes, projRes] = await Promise.all([
+      const leavesEndpoint = isAdmin ? `${API_URL}/attendance/leave/all` : `${API_URL}/attendance/leave/my-leaves`;
+      const [empRes, projRes, leaveRes] = await Promise.all([
         fetch(`${API_URL}/employees`, { headers }),
-        fetch(`${API_URL}/projects`, { headers })
+        fetch(`${API_URL}/projects`, { headers }),
+        fetch(leavesEndpoint, { headers }).catch(err => ({ ok: false }))
       ]);
 
       // Handle 401 - token invalid/expired
@@ -184,6 +187,20 @@ const Dashboard = ({ onLogout, userRole }) => {
 
       const empData = await empRes.json();
       const projData = await projRes.json();
+
+      if (leaveRes && leaveRes.ok) {
+        try {
+          const leaveData = await leaveRes.json();
+          if (leaveData.success && Array.isArray(leaveData.data)) {
+            setRecentLeaves(leaveData.data);
+            const pendingCount = leaveData.data.filter(l => l.status === 'Pending').length;
+            setPendingLeavesCount(pendingCount);
+            setTotalLeavesCount(leaveData.data.length);
+          }
+        } catch (e) {
+          console.error('Error parsing leaves data:', e);
+        }
+      }
 
       console.log('📊 Employees Response:', empData);
       console.log('📊 Projects Response:', projData);
@@ -400,7 +417,7 @@ const Dashboard = ({ onLogout, userRole }) => {
     }
   };
 
-  const StatCard = ({ title, value, icon, color, linkTo, onClick }) => {
+  const StatCard = ({ title, value, icon, bg, border, titleColor, iconBg, iconColor, linkTo, onClick }) => {
     const navigate = useNavigate();
 
     const handleClick = () => {
@@ -411,29 +428,23 @@ const Dashboard = ({ onLogout, userRole }) => {
       }
     };
 
-    const cardContent = (
-      <>
-        <div className="stat-icon" style={{ background: color }}>
-          {icon}
+    return (
+      <div 
+        className={`stat-card ${linkTo || onClick ? 'stat-card-clickable' : ''}`}
+        style={{ background: bg || '#FFFFFF', borderColor: border || 'rgba(0,0,0,0.06)' }}
+        onClick={handleClick}
+      >
+        <div className="stat-card-top">
+          <div className="stat-icon" style={{ background: iconBg || '#E0E7FF', color: iconColor || '#4F46E5' }}>
+            {icon}
+          </div>
+          <div className="stat-text-group">
+            <p className="stat-title" style={{ color: titleColor || '#4B5563' }}>{title}</p>
+            <h3 className="stat-value" style={{ color: titleColor || '#111827' }}>{loading ? '...' : value}</h3>
+          </div>
         </div>
-        <div>
-          <p className="stat-title">{title}</p>
-          <h3 className="stat-value">{loading ? '...' : value}</h3>
-        </div>
-      </>
+      </div>
     );
-
-    const cardClass = `stat-card ${linkTo || onClick ? 'stat-card-clickable' : ''}`;
-
-    if (onClick || linkTo) {
-      return (
-        <div className={cardClass} onClick={handleClick}>
-          {cardContent}
-        </div>
-      );
-    }
-
-    return <div className="stat-card">{cardContent}</div>;
   };
 
   return (
@@ -441,14 +452,37 @@ const Dashboard = ({ onLogout, userRole }) => {
       {/* Welcome Section */}
       <div className="dashboard-welcome" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 className="dashboard-title">Dashboard</h1>
-          <p className="dashboard-subtitle">Welcome back! Here's your Employee dashboard..</p>
-          
-          {lastRefreshed && (
-            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-              Last updated: {lastRefreshed}
-            </p>
-          )}
+          <h1 className="dashboard-title">
+            {(() => {
+              const hour = new Date().getHours();
+              const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+              const name = currentUser?.name || '';
+              const email = currentUser?.email || '';
+              
+              let nameText = '';
+              if (name && !name.match(/^(admin|employee)$/i)) {
+                const cleaned = name.replace(/\s+(admin|employee)$/i, '').trim();
+                if (cleaned) {
+                  nameText = cleaned;
+                }
+              }
+              if (!nameText && email && email.includes('@')) {
+                const prefix = email.split('@')[0].replace(/[0-9._-]+/g, '');
+                if (prefix.length >= 2) {
+                  nameText = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+                }
+              }
+              if (!nameText) {
+                nameText = isAdmin ? 'Admin' : 'Employee';
+              }
+
+              const roleRaw = currentUser?.role || userRole || (isAdmin ? 'admin' : 'employee');
+              const displayRole = roleRaw.toLowerCase() === 'admin' ? 'Admin' : 'Employee';
+              
+              return `${greeting}, ${nameText} (${displayRole})!`;
+            })()}
+          </h1>
+          <p className="dashboard-subtitle">Here's what's happening in your organization today.</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {apiError && (
@@ -463,22 +497,20 @@ const Dashboard = ({ onLogout, userRole }) => {
               ⚠️ {apiError}
             </div>
           )}
+          <button onClick={handleExport} className="btn-secondary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export Data
+          </button>
           <button 
             onClick={fetchDashboardData}
             disabled={loading}
-            style={{
-              padding: '10px 20px',
-              background: loading ? '#9CA3AF' : '#4F46E5',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
+            className="btn-primary"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
             </svg>
             {loading ? 'Loading...' : 'Refresh Data'}
@@ -491,10 +523,14 @@ const Dashboard = ({ onLogout, userRole }) => {
         <StatCard
           title="Total Employees"
           value={stats.totalEmployees}
-          color="#4F46E5"
+          bg="#F3E8FF"
+          border="#E9D5FF"
+          titleColor="#7E22CE"
+          iconBg="#E9D5FF"
+          iconColor="#7E22CE"
           linkTo="/employees"
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -505,35 +541,46 @@ const Dashboard = ({ onLogout, userRole }) => {
         <StatCard
           title="Active Employees"
           value={attendanceStats.activeNow}
-          color="#10B981"
+          bg="#EFF6FF"
+          border="#BFDBFE"
+          titleColor="#1D4ED8"
+          iconBg="#DBEAFE"
+          iconColor="#1D4ED8"
           linkTo="/workhours"
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
             </svg>
           }
         />
         <StatCard
           title="Interns"
           value={stats.interns}
-          color="#F59E0B"
+          bg="#F0FDF4"
+          border="#BBF7D0"
+          titleColor="#15803D"
+          iconBg="#DCFCE7"
+          iconColor="#15803D"
           linkTo="/employees"
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-              <path d="M2 17l10 5 10-5"></path>
-              <path d="M2 12l10 5 10-5"></path>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
             </svg>
           }
         />
         <StatCard
           title="Managers"
           value={stats.managers}
-          color="#EF4444"
+          bg="#FFF7ED"
+          border="#FED7AA"
+          titleColor="#C2410C"
+          iconBg="#FFEDD5"
+          iconColor="#C2410C"
           linkTo="/employees"
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
@@ -542,10 +589,14 @@ const Dashboard = ({ onLogout, userRole }) => {
         <StatCard
           title="Total Projects"
           value={stats.totalProjects}
-          color="#8B5CF6"
+          bg="#FDF2F8"
+          border="#FBCFE8"
+          titleColor="#BE185D"
+          iconBg="#FCE7F3"
+          iconColor="#BE185D"
           linkTo="/projects"
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
           }
@@ -553,10 +604,14 @@ const Dashboard = ({ onLogout, userRole }) => {
         <StatCard
           title="Active Projects"
           value={stats.activeProjects}
-          color="#06B6D4"
+          bg="#ECFEFF"
+          border="#A5F3FC"
+          titleColor="#0E7490"
+          iconBg="#CFFAFE"
+          iconColor="#0E7490"
           linkTo="/projects"
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
             </svg>
           }
@@ -564,10 +619,14 @@ const Dashboard = ({ onLogout, userRole }) => {
         <StatCard
           title="Completed Projects"
           value={stats.completedProjects}
-          color="#10B981"
+          bg="#F0FDF4"
+          border="#BBF7D0"
+          titleColor="#15803D"
+          iconBg="#DCFCE7"
+          iconColor="#15803D"
           linkTo="/projects"
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
               <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
@@ -577,16 +636,22 @@ const Dashboard = ({ onLogout, userRole }) => {
           <StatCard
             title="Present Today"
             value={attendanceStats.present}
-            color="#10B981"
+            bg="#F0F9FF"
+            border="#BAE6FD"
+            titleColor="#0369A1"
+            iconBg="#E0F2FE"
+            iconColor="#0369A1"
             onClick={() => {
               setAttendanceModalTitle('Present Today');
               setAttendanceModalFilter('present');
               setShowAttendanceModal(true);
             }}
             icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
             }
           />
@@ -594,14 +659,18 @@ const Dashboard = ({ onLogout, userRole }) => {
         <StatCard
           title="Active Now"
           value={attendanceStats.activeNow}
-          color="#06B6D4"
+          bg="#ECFEFF"
+          border="#A5F3FC"
+          titleColor="#0E7490"
+          iconBg="#CFFAFE"
+          iconColor="#0E7490"
           onClick={() => {
             setAttendanceModalTitle('Active Now');
             setAttendanceModalFilter('active');
             setShowAttendanceModal(true);
           }}
           icon={
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
@@ -610,16 +679,21 @@ const Dashboard = ({ onLogout, userRole }) => {
         {isAdmin && (
           <StatCard
             title="Total Work Hours"
-            value={`${attendanceStats.totalWorkHours}h`}
-            color="#8B5CF6"
+            value={`${attendanceStats.totalWorkHours}H`}
+            bg="#F3E8FF"
+            border="#E9D5FF"
+            titleColor="#6B21A8"
+            iconBg="#E9D5FF"
+            iconColor="#6B21A8"
             onClick={() => {
               setAttendanceModalTitle('All Attendance Today');
               setAttendanceModalFilter('all');
               setShowAttendanceModal(true);
             }}
             icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
             }
           />
@@ -628,17 +702,22 @@ const Dashboard = ({ onLogout, userRole }) => {
           <StatCard
             title="Absent Today"
             value={attendanceStats.absent}
-            color="#EF4444"
+            bg="#FEF2F2"
+            border="#FECACA"
+            titleColor="#B91C1C"
+            iconBg="#FEE2E2"
+            iconColor="#B91C1C"
             onClick={() => {
               setAttendanceModalTitle('Absent Today');
               setAttendanceModalFilter('absent');
               setShowAttendanceModal(true);
             }}
             icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="18" y1="8" x2="23" y2="13"></line>
+                <line x1="23" y1="8" x2="18" y2="13"></line>
               </svg>
             }
           />
@@ -647,10 +726,14 @@ const Dashboard = ({ onLogout, userRole }) => {
           <StatCard
             title="Total Tasks"
             value={taskStats.total}
-            color="#8B5CF6"
+            bg="#F5F3FF"
+            border="#DDD6FE"
+            titleColor="#6D28D9"
+            iconBg="#EDE9FE"
+            iconColor="#6D28D9"
             onClick={() => setShowTaskManager(true)}
             icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 11l3 3L22 4"></path>
                 <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
               </svg>
@@ -661,151 +744,260 @@ const Dashboard = ({ onLogout, userRole }) => {
           <StatCard
             title="Total Leaves"
             value={totalLeavesCount}
-            color="#10B981"
+            bg="#ECFDF5"
+            border="#A7F3D0"
+            titleColor="#047857"
+            iconBg="#D1FAE5"
+            iconColor="#047857"
             onClick={() => setShowLeavePopup(true)}
             icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
               </svg>
             }
           />
         )}
-        
       </div>
 
-      {/* Quick Actions */}
-      <div className="quick-actions">
-        <h2 className="quick-actions-title">Quick Actions</h2>
-        <div className="quick-actions-buttons">
-          
-          {isAdmin && (
-            <button 
-              onClick={() => setShowTaskManager(true)}
-              className="btn-secondary"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 11l3 3L22 4"></path>
-                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+      <div className="dashboard-top-grid">
+        {/* Quick Actions */}
+        <div className="quick-actions">
+          <h2 className="quick-actions-title">Quick Actions</h2>
+          <div className="quick-actions-buttons">
+            {isAdmin && (
+              <button onClick={() => setShowTaskManager(true)} className="btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 11l3 3L22 4"></path>
+                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                </svg>
+                Manage Tasks
+              </button>
+            )}
+            {isEmployee && (
+              <button onClick={() => setShowMyTasks(true)} className="btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 11l3 3L22 4"></path>
+                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                </svg>
+                My Tasks
+              </button>
+            )}
+            <Link to="/employees" className="btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>
-              Manage Tasks
-            </button>
-          )}
-          
-          {isEmployee && (
+              View All Employees
+            </Link>
             <button 
-              onClick={() => setShowMyTasks(true)}
+              onClick={() => isAdmin ? setShowAddModal(true) : alert('Access denied. Only admin can add employees.')}
               className="btn-secondary"
+              style={!isAdmin ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 11l3 3L22 4"></path>
-                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
               </svg>
-              My Tasks
+              Add Employee
             </button>
-          )}
-          
-          <Link to="/employees" className="btn-primary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            View All Employees
-          </Link>
-          <button 
-            onClick={() => isAdmin ? setShowAddModal(true) : alert('Access denied. Only admin can add employees.')}
-            className="btn-secondary"
-            style={!isAdmin ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-            title={isAdmin ? 'Add Employee' : 'Admin access required'}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="16"></line>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>
-            Add Employee
-          </button>
-          <button onClick={handleExport} className="btn-secondary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Export Data
-          </button>
-        </div>
-      </div>
-
-
-      {/* Recent Employees */}
-      <div className="recent-employees">
-        <div className="recent-header">
-          <h2 className="recent-title">Recent Employees</h2>
-          <Link to="/employees" className="view-all-link">
-            View All →
-          </Link>
-        </div>
-        
-        {loading ? (
-          <p className="loading-text">Loading...</p>
-        ) : recentEmployees.length === 0 ? (
-          <p className="empty-text">No employees found. Add your first employee!</p>
-        ) : (
-          <div className="employee-list">
-            {recentEmployees.map((emp) => (
-              <div key={emp._id} className="employee-item">
-                <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=4F46E5&color=fff&size=40`}
-                  alt={emp.name}
-                  className="employee-avatar"
-                />
-                <div className="employee-info">
-                  <p className="employee-name">{emp.name}</p>
-                  <p className="employee-designation">{emp.designation}</p>
-                </div>
-                <span className={`employee-status ${attendanceStatus[emp._id] === 'Present' ? 'status-active' : 'status-inactive'}`}>
-                  {attendanceStatus[emp._id] === 'Present' ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-            ))}
+            <button onClick={handleExport} className="btn-secondary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Export Data
+            </button>
           </div>
-        )}
-      </div>
-
-      {/* Recent Projects */}
-      <div className="recent-employees" style={{ marginTop: '30px' }}>
-        <div className="recent-header">
-          <h2 className="recent-title">Recent Projects</h2>
-          <Link to="/projects" className="view-all-link">
-            View All →
-          </Link>
         </div>
-        
-        {loading ? (
-          <p className="loading-text">Loading...</p>
-        ) : projects.length === 0 ? (
-          <p className="empty-text">No projects found.</p>
-        ) : (
-          <div className="employee-list">
-            {projects.slice(0, 5).map((proj) => (
-              <div key={proj._id} className="employee-item">
-                <div className="employee-info" style={{ flex: 1 }}>
-                  <p className="employee-name">{proj.name}</p>
-                  <p className="employee-designation">{proj.description?.substring(0, 50)}...</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span className={`employee-status ${proj.status === 'Completed' ? 'status-active' : 'status-inactive'}`}>
-                    {proj.status}
-                  </span>
-                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                    {proj.progress}%
-                  </p>
+
+        {/* Today's Overview (Donut Chart Box) */}
+        <div className="section-box todays-overview-card">
+          <div className="section-box-header">
+            <h2 className="section-box-title">Today's Overview</h2>
+            <Link to="/analytics" className="view-all-link">View Report ›</Link>
+          </div>
+          <div className="overview-card-body">
+            <div className="donut-wrapper">
+              <div className="conic-donut">
+                <div className="donut-center">
+                  <span className="donut-value">{stats.totalEmployees || 21}</span>
+                  <span className="donut-sub">Employees</span>
                 </div>
               </div>
-            ))}
+            </div>
+            <div className="overview-legend-list">
+              <div className="legend-row">
+                <span className="dot dot-present"></span>
+                <span className="legend-name">Present</span>
+                <span className="legend-val">{attendanceStats.present} (0%)</span>
+              </div>
+              <div className="legend-row">
+                <span className="dot dot-absent"></span>
+                <span className="legend-name">Absent</span>
+                <span className="legend-val">{attendanceStats.absent} (28.6%)</span>
+              </div>
+              <div className="legend-row">
+                <span className="dot dot-leave"></span>
+                <span className="legend-name">On Leave</span>
+                <span className="legend-val">{totalLeavesCount || 9} (42.9%)</span>
+              </div>
+              <div className="legend-row">
+                <span className="dot dot-others"></span>
+                <span className="legend-name">Others</span>
+                <span className="legend-val">6 (28.6%)</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+      </div>
+
+      <div className="three-boxes-grid">
+        <div className="section-box">
+          <div className="section-box-header">
+            <h2 className="section-box-title">Recent Employees</h2>
+            <Link to="/employees" className="view-all-link">View All →</Link>
+          </div>
+          <div className="section-box-body">
+            {loading ? (
+              <p className="loading-text">Loading...</p>
+            ) : recentEmployees.length === 0 ? (
+              <p className="empty-text">No employees found.</p>
+            ) : (
+              <div className="employee-list">
+                {recentEmployees.slice(0, 5).map((emp) => (
+                  <div key={emp._id} className="employee-item">
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=4F46E5&color=fff&size=40`}
+                      alt={emp.name}
+                      className="employee-avatar"
+                    />
+                    <div className="employee-info">
+                      <p className="employee-name">{emp.name}</p>
+                      <p className="employee-designation">{emp.designation || 'Employee'}</p>
+                    </div>
+                    <span className={`employee-status ${attendanceStatus[emp._id] === 'Present' ? 'status-active' : 'status-inactive'}`}>
+                      {attendanceStatus[emp._id] === 'Present' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="section-box-footer">
+            <Link to="/employees" className="footer-link-btn">View All Employees</Link>
+          </div>
+        </div>
+
+        <div className="section-box">
+          <div className="section-box-header">
+            <h2 className="section-box-title">Recent Projects</h2>
+            <Link to="/projects" className="view-all-link">View All →</Link>
+          </div>
+          <div className="section-box-body">
+            {loading ? (
+              <p className="loading-text">Loading...</p>
+            ) : projects.length === 0 ? (
+              <p className="empty-text">No projects found.</p>
+            ) : (
+              <div className="employee-list">
+                {projects.slice(0, 5).map((proj) => {
+                  const statusClass = proj.status === 'Completed' ? 'completed' : proj.status === 'On Hold' ? 'onhold' : proj.status === 'Planning' ? 'planning' : 'inprogress';
+                  const themeColor = proj.status === 'Completed' ? '#0891B2' : proj.status === 'On Hold' ? '#7E22CE' : proj.status === 'Planning' ? '#D97706' : '#2563EB';
+                  const themeBg = proj.status === 'Completed' ? '#ECFEFF' : proj.status === 'On Hold' ? '#F3E8FF' : proj.status === 'Planning' ? '#FEF3C7' : '#EFF6FF';
+                  return (
+                    <div key={proj._id || proj.name} className="project-item-row">
+                      <div className="project-icon-badge" style={{ background: themeBg, color: themeColor }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                      </div>
+                      <div className="project-info-group">
+                        <div className="project-name-row">
+                          <p className="project-name">{proj.name}</p>
+                          <span className="project-pct-label">{proj.progress || 0}%</span>
+                        </div>
+                        <p className="project-desc">{proj.description || 'Project details'}</p>
+                        <div className="project-progress-track">
+                          <div className="project-progress-fill" style={{ width: `${proj.progress || 0}%`, background: themeColor }}></div>
+                        </div>
+                      </div>
+                      <span className={`employee-status status-${statusClass}`}>
+                        {proj.status || 'Active'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="section-box-footer">
+            <Link to="/projects" className="footer-link-btn">View All Projects</Link>
+          </div>
+        </div>
+
+        <div className="section-box">
+          <div className="section-box-header">
+            <h2 className="section-box-title">Leave Requests</h2>
+            <Link to="/attendance" className="view-all-link">View All →</Link>
+          </div>
+          <div className="section-box-body">
+            <div className="employee-list">
+              {recentLeaves.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>
+                  No leave requests found.
+                </div>
+              ) : (
+                recentLeaves.slice(0, 5).map((leave, idx) => {
+                  const title = leave.reason || leave.title || (leave.employeeId?.name ? `${leave.employeeId.name}'s Leave` : `${leave.leaveType || 'Leave'} Request`);
+                  const startDateStr = leave.startDate ? new Date(leave.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                  const endDateStr = leave.endDate ? new Date(leave.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                  const dateRange = startDateStr === endDateStr ? startDateStr : `${startDateStr} - ${endDateStr}`;
+                  const typeText = `${leave.leaveType || 'Casual Leave'} • ${dateRange}`;
+                  const status = leave.status || 'Pending';
+                  
+                  const statusColors = {
+                    Pending: { bg: '#FEF3C7', color: '#D97706' },
+                    Approved: { bg: '#E6F4EA', color: '#137333' },
+                    Rejected: { bg: '#FEE2E2', color: '#DC2626' },
+                    Cancelled: { bg: '#F3F4F6', color: '#6B7280' }
+                  };
+                  const theme = statusColors[status] || statusColors.Pending;
+
+                  return (
+                    <div key={leave._id || leave.id || idx} className="employee-item leave-item-row">
+                      <div className="leave-icon-badge" style={{ background: theme.bg, color: theme.color }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                      </div>
+                      <div className="employee-info">
+                        <p className="employee-name">{title}</p>
+                        <p className="employee-designation">{typeText}</p>
+                      </div>
+                      <span className={`employee-status status-${status.toLowerCase()}`}>
+                        {status}
+                      </span>
+                      <span className="arrow-chevron">›</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <div className="section-box-footer">
+            <Link to="/attendance" className="footer-link-btn">View All Leave Requests</Link>
+          </div>
+        </div>
       </div>
 
       {showAddModal && (

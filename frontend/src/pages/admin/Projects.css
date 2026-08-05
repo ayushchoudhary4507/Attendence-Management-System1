@@ -121,6 +121,19 @@
   color: #db2777;
 }
 
+.stat-card:nth-child(6) {
+  background: linear-gradient(145deg, #e0f2fe 0%, #bae6fd 100%);
+  border-color: rgba(14, 165, 233, 0.2);
+}
+
+.stat-card:nth-child(6)::before {
+  background: linear-gradient(90deg, #0284c7, #06b6d4);
+}
+
+.stat-card:nth-child(6) .stat-value {
+  color: #0284c7;
+}
+
 .stat-value {
   display: block;
   font-size: 28px;
@@ -385,35 +398,44 @@
   background: #BFDBFE;
 }
 
-/* Loading Page - Full screen dark mode */
+/* Loading Page - Light theme default */
 .loading-page {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background: #0f0f1a;
+  min-height: 65vh;
+  width: 100%;
+  background: #f5f7fa;
+  color: #374151;
+  text-align: center;
 }
 
 .loading-spinner-container {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 16px;
+  text-align: center;
 }
 
 .loading-spinner-container p {
-  color: #94a3b8;
-  font-size: 14px;
+  color: #4B5563;
+  font-size: 15px;
+  font-weight: 600;
   margin: 0;
+  letter-spacing: 0.2px;
 }
 
 .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(99, 102, 241, 0.3);
-  border-top-color: #6366f1;
+  width: 48px;
+  height: 48px;
+  border: 4px solid #E0E7FF;
+  border-top-color: #4F46E5;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
 }
 
 @keyframes spin {

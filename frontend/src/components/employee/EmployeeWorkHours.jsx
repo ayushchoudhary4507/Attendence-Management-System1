@@ -133,7 +133,10 @@ const EmployeeWorkHours = () => {
   if (loading) {
     return (
       <div className="work-hours-container">
-        <div className="loading-spinner">Loading work hours...</div>
+        <div className="loading-spinner-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Loading work hours...</p>
+        </div>
       </div>
     );
   }

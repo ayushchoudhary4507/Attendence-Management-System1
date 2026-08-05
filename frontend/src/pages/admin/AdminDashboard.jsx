@@ -296,13 +296,8 @@ const AdminDashboard = () => {
               <p className="stat-value">{stats.employeeCount}</p>
               <span className="card-hint">Click to manage users</span>
             </div>
-            <div className="stat-card employee-card clickable" onClick={() => navigate('/employees')}>
-              <h3>Total Employees</h3>
-              <p className="stat-value">{stats.totalEmployees}</p>
-              <span className="card-hint">Click to view employees</span>
-            </div>
             <div className="stat-card project-card clickable" onClick={() => navigate('/projects')}>
-              <h3>Total Projects</h3>
+              <h3>Active Projects</h3>
               <p className="stat-value">{stats.totalProjects}</p>
               <span className="card-hint">Click to view projects</span>
             </div>
@@ -311,12 +306,17 @@ const AdminDashboard = () => {
               <p className="stat-value">{stats.pendingLeaves || 0}</p>
               <span className="card-hint">Click to manage leaves</span>
             </div>
+            <div className="stat-card employee-card clickable" onClick={() => navigate('/employees')}>
+              <h3>Active Employees</h3>
+              <p className="stat-value">{stats.totalEmployees || stats.employeeCount}</p>
+              <span className="card-hint">Click to view employees</span>
+            </div>
           </div>
         </div>
       )}
 
-      {activeTab === 'users' && (
-        <div className="admin-users">
+      {(activeTab === 'dashboard' || activeTab === 'users') && (
+        <div className="admin-users" style={activeTab === 'dashboard' ? { marginTop: '28px' } : {}}>
           <div className="users-header">
             <h2>User Management</h2>
             <button className="btn-create" onClick={openCreateModal}>
@@ -375,8 +375,8 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {activeTab === 'leaves' && (
-        <div className="admin-leaves">
+      {(activeTab === 'dashboard' || activeTab === 'leaves') && (
+        <div className="admin-leaves" style={activeTab === 'dashboard' ? { marginTop: '28px' } : {}}>
           <div className="leaves-header">
             <h2>Leave Management</h2>
           </div>

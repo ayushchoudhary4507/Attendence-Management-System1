@@ -292,29 +292,54 @@ const deleteEmployee = async (req, res) => {
 
     const { id } = req.params;
 
-    // Try to find and delete from Employee collection first
-    let employee = await Employee.findById(id);
-    
+    // 1. Try to find in Employee collection (by _id or employeeId)
+    let employee = null;
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      employee = await Employee.findById(id);
+    }
+    if (!employee) {
+      employee = await Employee.findOne({ employeeId: id });
+    }
+
     if (employee) {
+      const email = employee.email;
       await employee.deleteOne();
+      
+      // Also delete corresponding record from User collection if it exists
+      if (email) {
+        await User.deleteMany({ email: { $regex: `^${email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, $options: 'i' } });
+      }
+
       return res.json({
         success: true,
         message: 'Employee deleted successfully'
       });
     }
 
-    // If not found in Employee, try User collection
-    // (since getEmployees returns merged data from both collections)
-    const user = await User.findById(id);
-    
+    // 2. If not found in Employee, try User collection
+    let user = null;
+    if (id && id.match(/^[0-9a-fA-F]{24}$/)) {
+      user = await User.findById(id);
+    }
+    if (!user) {
+      user = await User.findOne({ email: id });
+    }
+
     if (user) {
-      await User.findByIdAndDelete(id);
+      const email = user.email;
+      await User.findByIdAndDelete(user._id);
+
+      // Also delete corresponding record from Employee collection if it exists
+      if (email) {
+        await Employee.deleteMany({ email: { $regex: `^${email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, $options: 'i' } });
+      }
+
       return res.json({
         success: true,
         message: 'User deleted successfully'
       });
     }
-    
+
     // Not found in either collection
     return res.status(404).json({
       success: false,
@@ -324,7 +349,7 @@ const deleteEmployee = async (req, res) => {
     console.error('Delete employee error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };

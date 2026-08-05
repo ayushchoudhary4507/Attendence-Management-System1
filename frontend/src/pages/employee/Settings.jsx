@@ -26,11 +26,6 @@ const Settings = () => {
 
   const [theme, setTheme] = useState('light');
 
-  const [security, setSecurity] = useState({
-    twoFactor: false,
-    passwordLastChanged: 'Feb 15, 2026'
-  });
-
   // Fetch profile data on mount
   useEffect(() => {
     fetchProfile();
@@ -145,7 +140,6 @@ const Settings = () => {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
-    { id: 'security', label: 'Security', icon: '🔒' },
     { id: 'appearance', label: 'Appearance', icon: '🎨' },
   ];
 
@@ -291,32 +285,7 @@ const Settings = () => {
             </div>
           )}
 
-          {activeTab === 'security' && (
-            <div className="settings-section">
-              <h2>Security Settings</h2>
-              <div className="security-info">
-                <div className="info-item">
-                  <span className="label">Password Last Changed:</span>
-                  <span>{security.passwordLastChanged}</span>
-                </div>
-              </div>
-              <div className="toggle-item">
-                <div>
-                  <h4>Two-Factor Authentication</h4>
-                  <p>Add an extra layer of security</p>
-                </div>
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={security.twoFactor}
-                    onChange={(e) => setSecurity({ ...security, twoFactor: e.target.checked })}
-                  />
-                  <span className="toggle-slider"></span>
-                </label>
-              </div>
-              <button className="btn-secondary">Change Password</button>
-            </div>
-          )}
+
 
           {activeTab === 'appearance' && (
             <div className="settings-section">

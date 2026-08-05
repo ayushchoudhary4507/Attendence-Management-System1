@@ -197,7 +197,10 @@ const Employees = ({ onLogout, userRole }) => {
           email: emp.email,
           role: emp.role,
           reportingTo: emp.reportingTo,
-          status: emp.status
+          status: emp.status,
+          attendanceToday: emp.attendanceToday,
+          isCheckedIn: emp.isCheckedIn,
+          attendanceData: emp.attendanceData
         }));
         
         // Filter employees based on role
@@ -222,6 +225,19 @@ const Employees = ({ onLogout, userRole }) => {
     }
   };
 
+  const isEmployeePresent = (emp) => {
+    if (!emp) return false;
+    if (attendanceStatus[emp._id] === 'Present' || attendanceStatus[emp.id] === 'Present') return true;
+    if (attendanceStatus[emp._id] === 'Absent' || attendanceStatus[emp.id] === 'Absent') return false;
+
+    const attToday = String(emp.attendanceToday || '').toLowerCase();
+    if (attToday === 'active' || attToday === 'present' || attToday === 'true') return true;
+    if (emp.isCheckedIn === true) return true;
+
+    const st = String(emp.status || '').toLowerCase();
+    return st === 'active' || st === 'present';
+  };
+
   useEffect(() => {
     let filtered = employees;
     if (searchTerm) {
@@ -235,7 +251,16 @@ const Employees = ({ onLogout, userRole }) => {
       filtered = filtered.filter(emp => emp.role === roleFilter);
     }
     if (departmentFilter !== 'All') {
-      filtered = filtered.filter(emp => emp.designation === departmentFilter);
+      filtered = filtered.filter(emp => emp.designation === departmentFilter || emp.department === departmentFilter);
+    }
+    if (statusFilter !== 'All') {
+      if (statusFilter === 'Present') {
+        filtered = filtered.filter(emp => isEmployeePresent(emp));
+      } else if (statusFilter === 'On Leave') {
+        filtered = filtered.filter(emp => attendanceStatus[emp._id] === 'On Leave' || emp.status === 'On Leave' || emp.onLeave || emp.leaveStatus === 'Approved');
+      } else {
+        filtered = filtered.filter(emp => emp.status?.toLowerCase() === statusFilter.toLowerCase());
+      }
     }
     if (dateJoinedFilter) {
       filtered = filtered.filter(emp => {
@@ -246,11 +271,11 @@ const Employees = ({ onLogout, userRole }) => {
     }
     setFilteredEmployees(filtered);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [searchTerm, roleFilter, departmentFilter, dateJoinedFilter, employees]);
+  }, [searchTerm, roleFilter, departmentFilter, statusFilter, dateJoinedFilter, employees, attendanceStatus]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedEmployees(filteredEmployees.map(emp => emp.id));
+      setSelectedEmployees(filteredEmployees.map(emp => emp._id || emp.id));
     } else {
       setSelectedEmployees([]);
     }
@@ -561,32 +586,136 @@ const Employees = ({ onLogout, userRole }) => {
   return (
     <div className="page-container">
       {/* Page Header */}
-      <div className="page-header">
-        <h1>Employees ({employees.length})</h1>
-        <div className="page-actions">
+      <div className="employees-page-header">
+        <div className="header-title-block">
+          <h1>Employees ({employees.length})</h1>
+          <p className="header-subtitle">Manage your organization employees and attendance</p>
+        </div>
+        <div className="header-actions">
           {isAdmin && (
             <>
-              <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              <button className="btn-add-employee" onClick={() => setShowAddModal(true)}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
                 Add Employee
               </button>
-              <button className="btn btn-secondary" onClick={() => setShowInviteModal(true)}>
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              <button className="btn-invite-employee" onClick={() => setShowInviteModal(true)}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
                 Invite Employee
               </button>
             </>
           )}
-          <button className="btn btn-secondary export-dropdown-btn" onClick={() => setShowExportDropdown(!showExportDropdown)} style={{position: 'relative'}}>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-            Export
+          <div style={{ position: 'relative' }}>
+            <button className="btn-export-employee" onClick={() => setShowExportDropdown(!showExportDropdown)}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+              </svg>
+              Export
+            </button>
             {showExportDropdown && (
-              <div className="export-dropdown" style={{position: 'absolute', top: '100%', right: 0, background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', borderRadius: '8px', padding: '8px 0', minWidth: '150px', zIndex: 100}}>
-                <button onClick={() => handleExport('csv')} style={{display: 'block', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>Export as CSV</button>
-                <button onClick={() => handleExport('excel')} style={{display: 'block', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>Export as Excel</button>
-                <button onClick={() => handleExport('pdf')} style={{display: 'block', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer'}}>Export as PDF</button>
+              <div className="export-dropdown">
+                <button onClick={() => handleExport('csv')}>Export as CSV</button>
+                <button onClick={() => handleExport('excel')}>Export as Excel</button>
+                <button onClick={() => handleExport('pdf')}>Export as PDF</button>
               </div>
             )}
-          </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Employee Overview Stat Cards */}
+      <div className="employee-stats-cards">
+        <div 
+          className={`emp-stat-card ${statusFilter === 'All' && departmentFilter === 'All' ? 'active-stat-card' : ''}`}
+          onClick={() => {
+            setStatusFilter('All');
+            setDepartmentFilter('All');
+            setRoleFilter('All');
+            setSearchTerm('');
+          }}
+          title="Click to view all employees"
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="emp-stat-icon icon-purple">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+            </svg>
+          </div>
+          <div className="emp-stat-info">
+            <span className="emp-stat-number">{employees.length}</span>
+            <span className="emp-stat-label">Total Employees</span>
+          </div>
+        </div>
+
+        <div 
+          className={`emp-stat-card ${statusFilter === 'Present' ? 'active-stat-card' : ''}`}
+          onClick={() => {
+            setStatusFilter(statusFilter === 'Present' ? 'All' : 'Present');
+          }}
+          title="Click to filter Present employees"
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="emp-stat-icon icon-green">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+          </div>
+          <div className="emp-stat-info">
+            <span className="emp-stat-number">
+              {employees.filter(isEmployeePresent).length}
+            </span>
+            <span className="emp-stat-label">Present Today</span>
+          </div>
+        </div>
+
+        <div 
+          className={`emp-stat-card ${statusFilter === 'On Leave' ? 'active-stat-card' : ''}`}
+          onClick={() => {
+            setStatusFilter(statusFilter === 'On Leave' ? 'All' : 'On Leave');
+          }}
+          title="Click to filter employees On Leave"
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="emp-stat-icon icon-orange">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z" />
+            </svg>
+          </div>
+          <div className="emp-stat-info">
+            <span className="emp-stat-number">
+              {employees.filter(e => e.status === 'On Leave' || e.onLeave || e.leaveStatus === 'Approved').length}
+            </span>
+            <span className="emp-stat-label">On Leave Today</span>
+          </div>
+        </div>
+
+        <div 
+          className={`emp-stat-card ${departmentFilter !== 'All' ? 'active-stat-card' : ''}`}
+          onClick={() => {
+            const deptSelect = document.querySelector('.department-filter-select');
+            if (deptSelect) {
+              deptSelect.focus();
+            } else {
+              setDepartmentFilter(departmentFilter === 'All' ? 'Software Development' : 'All');
+            }
+          }}
+          title="Click to filter by Department"
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="emp-stat-icon icon-blue">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+            </svg>
+          </div>
+          <div className="emp-stat-info">
+            <span className="emp-stat-number">
+              {new Set(employees.map(e => e.department || e.designation).filter(Boolean)).size || 7}
+            </span>
+            <span className="emp-stat-label">Departments</span>
+          </div>
         </div>
       </div>
 
@@ -682,7 +811,7 @@ const Employees = ({ onLogout, userRole }) => {
           <tbody>
             {currentEmployees.map((employee, index) => (
               <tr key={employee._id || employee.id}>
-                <td><input type="checkbox" checked={selectedEmployees.includes(employee.id)} onChange={() => handleSelectEmployee(employee.id)} /></td>
+                <td><input type="checkbox" checked={selectedEmployees.includes(employee._id || employee.id)} onChange={() => handleSelectEmployee(employee._id || employee.id)} /></td>
                 <td className="serial-number">{(currentPage - 1) * employeesPerPage + index + 1}</td>
                 <td className="employee-id">{employee.id}</td>
                 <td>
@@ -710,10 +839,10 @@ const Employees = ({ onLogout, userRole }) => {
                           borderRadius: '12px',
                           fontSize: '10px',
                           fontWeight: '600',
-                          background: attendanceStatus[employee._id] === 'Present' ? '#D1FAE5' : '#FEE2E2',
-                          color: attendanceStatus[employee._id] === 'Present' ? '#065F46' : '#DC2626'
+                          background: isEmployeePresent(employee) ? '#D1FAE5' : '#FEE2E2',
+                          color: isEmployeePresent(employee) ? '#065F46' : '#DC2626'
                         }}>
-                          {attendanceStatus[employee._id] === 'Present' ? 'Active' : 'Inactive'}
+                          {isEmployeePresent(employee) ? 'Active' : 'Inactive'}
                         </span>
                       </div>
                     </div>
@@ -740,18 +869,16 @@ const Employees = ({ onLogout, userRole }) => {
                     >
                       Mark Attendance
                     </button>
-                    {attendanceStatus[employee._id] && (
-                      <span style={{
-                        padding: '3px 8px',
-                        background: attendanceStatus[employee._id] === 'Present' ? '#D1FAE5' : attendanceStatus[employee._id] === 'On Leave' ? '#FEF3C7' : '#FEE2E2',
-                        color: attendanceStatus[employee._id] === 'Present' ? '#065F46' : attendanceStatus[employee._id] === 'On Leave' ? '#92400E' : '#991B1B',
-                        borderRadius: '12px',
-                        fontSize: '11px',
-                        fontWeight: '600'
-                      }}>
-                        {attendanceStatus[employee._id] === 'Present' ? '✓ Present' : attendanceStatus[employee._id] === 'On Leave' ? ' On Leave' : '✗ Absent'}
-                      </span>
-                    )}
+                    <span style={{
+                      padding: '3px 8px',
+                      background: isEmployeePresent(employee) ? '#D1FAE5' : attendanceStatus[employee._id] === 'On Leave' ? '#FEF3C7' : '#FEE2E2',
+                      color: isEmployeePresent(employee) ? '#065F46' : attendanceStatus[employee._id] === 'On Leave' ? '#92400E' : '#991B1B',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: '600'
+                    }}>
+                      {isEmployeePresent(employee) ? '✓ Present' : (attendanceStatus[employee._id] === 'On Leave' ? ' On Leave' : '✗ Absent')}
+                    </span>
                   </div>
                 </td>
                 {isAdmin && (

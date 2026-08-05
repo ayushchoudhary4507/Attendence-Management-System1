@@ -1,15 +1,15 @@
 import axios from 'axios';
 
 // Conditional API URL based on environment
-export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD
-  ? 'https://backend-seven-puce-22.vercel.app/api'
-  : 'http://127.0.0.1:5005/api');
+export const API_BASE_URL = import.meta.env.PROD
+  ? 'https://attendence-management-system1.onrender.com/api'
+  : (import.meta.env.VITE_API_URL || 'http://127.0.0.1:5005/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-  },
+  },  
   timeout: 60000, // 60 seconds timeout
   timeoutErrorMessage: 'Request timed out. Server may be starting up, please try again.'
 });
