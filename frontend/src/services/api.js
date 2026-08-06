@@ -32,7 +32,7 @@ api.interceptors.response.use(
       sessionStorage.removeItem('token');
       localStorage.removeItem('token');
       sessionStorage.removeItem('user');
-      localStorage.removeItem('user');
+      localStorage.removeItem('user'); 
       // Redirect to login page if not already there
       if (window.location.pathname !== '/' && window.location.pathname !== '/login') {
         window.location.href = '/';

@@ -220,10 +220,16 @@ const Attendance = () => {
 
       const data = await response.json();
 
-      if (response.ok) {
-        setMessage('Checked out successfully!');
-        setMessageType('success');
+      if (response.ok && data.data) {
         setTodayAttendance(data.data);
+        const checkIn = new Date(data.data.checkInTime);
+        const checkOutTime = new Date(data.data.checkOutTime || Date.now());
+        const diffMs = Math.max(0, checkOutTime - checkIn);
+        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        setMessage(`🎉 Checked out successfully! Total work time today: ${hours} Hours ${minutes} Minutes.`);
+        setMessageType('success');
       } else {
         setMessage(data.message || 'Failed to check out');
         setMessageType('error');
@@ -233,7 +239,7 @@ const Attendance = () => {
       setMessageType('error');
     } finally {
       setLoading(false);
-      setTimeout(() => setMessage(''), 3000);
+      setTimeout(() => setMessage(''), 6000);
     }
   };
 

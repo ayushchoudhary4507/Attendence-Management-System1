@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import TaskManager from '../../components/admin/TaskManager';
 import MyTasks from '../../components/employee/MyTasks';
 import AdminLeavePopup from '../../components/admin/AdminLeavePopup';
+import { attendanceAPI } from '../../services/api';
 import '../../components/admin/TaskManager.css';
 import '../../components/employee/MyTasks.css';
 import './Dashboard.css';
@@ -13,11 +14,13 @@ const API_URL = import.meta.env.PROD
 
 const Dashboard = ({ onLogout, userRole }) => {
   const navigate = useNavigate();
-  const isAdmin = userRole === 'admin';
-  const isEmployee = userRole === 'employee';
   
   // Get current logged in user info
   const [currentUser, setCurrentUser] = useState(null);
+  
+  const effectiveRole = currentUser?.role?.toLowerCase() || userRole?.toLowerCase() || 'employee';
+  const isAdmin = effectiveRole === 'admin';
+  const isEmployee = !isAdmin;
   
   useEffect(() => {
     const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
@@ -77,6 +80,96 @@ const Dashboard = ({ onLogout, userRole }) => {
     reportingTo: '',
     employeeId: ''
   });
+
+  // Clock In / Clock Out state
+  const [myTodayAttendance, setMyTodayAttendance] = useState(null);
+  const [clockLoading, setClockLoading] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState('');
+  const [workSummaryModal, setWorkSummaryModal] = useState({
+    show: false,
+    hours: 0,
+    minutes: 0,
+    totalHoursFormatted: '',
+    checkInStr: '',
+    checkOutStr: ''
+  });
+
+  // Live timer for active clock in
+  useEffect(() => {
+    let timer;
+    if (myTodayAttendance && myTodayAttendance.checkInTime && !myTodayAttendance.checkOutTime) {
+      const updateElapsed = () => {
+        const checkIn = new Date(myTodayAttendance.checkInTime);
+        const now = new Date();
+        const diffMs = Math.max(0, now - checkIn);
+        const totalMins = Math.floor(diffMs / (1000 * 60));
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        setElapsedTime(`${h}h ${m}m`);
+      };
+      updateElapsed();
+      timer = setInterval(updateElapsed, 30000);
+    } else {
+      setElapsedTime('');
+    }
+    return () => clearInterval(timer);
+  }, [myTodayAttendance]);
+
+  // Handle Clock In
+  const handleClockIn = async () => {
+    try {
+      setClockLoading(true);
+      setApiError(null);
+      const res = await attendanceAPI.markAttendance('Present', 'Clocked in from Dashboard');
+      if (res && (res.success || res.data)) {
+        setMyTodayAttendance(res.data);
+      }
+      await fetchDashboardData();
+    } catch (err) {
+      console.error('Clock in error:', err);
+      setApiError(err.message || 'Failed to clock in');
+    } finally {
+      setClockLoading(false);
+    }
+  };
+
+  // Handle Clock Out & Show Work Time Summary
+  const handleClockOut = async () => {
+    try {
+      setClockLoading(true);
+      setApiError(null);
+      const res = await attendanceAPI.checkOut();
+      if (res && res.data) {
+        setMyTodayAttendance(res.data);
+
+        const checkInDate = new Date(res.data.checkInTime);
+        const checkOutDate = new Date(res.data.checkOutTime || Date.now());
+        const diffMs = Math.max(0, checkOutDate - checkInDate);
+        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        const checkInStr = checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const checkOutStr = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const formattedWorkTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} mins`;
+
+        setWorkSummaryModal({
+          show: true,
+          hours,
+          minutes,
+          totalHoursFormatted: formattedWorkTime,
+          checkInStr,
+          checkOutStr
+        });
+      }
+      await fetchDashboardData();
+    } catch (err) {
+      console.error('Clock out error:', err);
+      setApiError(err.message || 'Failed to clock out');
+    } finally {
+      setClockLoading(false);
+    }
+  };
 
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -160,10 +253,11 @@ const Dashboard = ({ onLogout, userRole }) => {
       };
 
       const leavesEndpoint = isAdmin ? `${API_URL}/attendance/leave/all` : `${API_URL}/attendance/leave/my-leaves`;
-      const [empRes, projRes, leaveRes] = await Promise.all([
+      const [empRes, projRes, leaveRes, myAttRes] = await Promise.all([
         fetch(`${API_URL}/employees`, { headers }),
         fetch(`${API_URL}/projects`, { headers }),
-        fetch(leavesEndpoint, { headers }).catch(err => ({ ok: false }))
+        fetch(leavesEndpoint, { headers }).catch(err => ({ ok: false })),
+        !isAdmin ? fetch(`${API_URL}/attendance/my-today`, { headers }).catch(err => ({ ok: false })) : Promise.resolve(null)
       ]);
 
       // Handle 401 - token invalid/expired
@@ -187,6 +281,19 @@ const Dashboard = ({ onLogout, userRole }) => {
 
       const empData = await empRes.json();
       const projData = await projRes.json();
+
+      if (myAttRes && myAttRes.ok) {
+        try {
+          const myAttData = await myAttRes.json();
+          if (myAttData.success && myAttData.data) {
+            setMyTodayAttendance(myAttData.data);
+          } else {
+            setMyTodayAttendance(null);
+          }
+        } catch (e) {
+          console.error('Error parsing my-today attendance:', e);
+        }
+      }
 
       if (leaveRes && leaveRes.ok) {
         try {
@@ -484,7 +591,7 @@ const Dashboard = ({ onLogout, userRole }) => {
           </h1>
           <p className="dashboard-subtitle">Here's what's happening in your organization today.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           {apiError && (
             <div style={{ 
               background: '#FEE2E2', 
@@ -497,6 +604,37 @@ const Dashboard = ({ onLogout, userRole }) => {
               ⚠️ {apiError}
             </div>
           )}
+
+          {/* Clock In / Clock Out Quick Action Button in Header (Employee Only) */}
+          {!isAdmin && (!myTodayAttendance || !myTodayAttendance.checkInTime) && (
+            <button
+              onClick={handleClockIn}
+              disabled={clockLoading}
+              className="btn-clockin"
+              title="Clock In for Today"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              {clockLoading ? 'Clocking In...' : 'Clock In'}
+            </button>
+          )}
+
+          {!isAdmin && myTodayAttendance && myTodayAttendance.checkInTime && !myTodayAttendance.checkOutTime && (
+            <button
+              onClick={handleClockOut}
+              disabled={clockLoading}
+              className="btn-clockout"
+              title="Clock Out & See Work Hours"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+              </svg>
+              {clockLoading ? 'Clocking Out...' : `Clock Out (${elapsedTime || 'Active'})`}
+            </button>
+          )}
+
           <button onClick={handleExport} className="btn-secondary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -517,6 +655,87 @@ const Dashboard = ({ onLogout, userRole }) => {
           </button>
         </div>
       </div>
+
+      {/* Attendance & Clock Card (Employee Only) */}
+      {!isAdmin && (
+        <div className="clock-card">
+          <div className="clock-card-info">
+            <h3 className="clock-card-title">
+              Attendance & Work Clock
+              {myTodayAttendance?.checkInTime && !myTodayAttendance?.checkOutTime && (
+                <span className="clock-card-badge">
+                  Active ({elapsedTime})
+                </span>
+              )}
+              {myTodayAttendance?.checkOutTime && (
+                <span className="clock-card-badge">
+                  ✓ Shift Completed
+                </span>
+              )}
+              {(!myTodayAttendance || !myTodayAttendance?.checkInTime) && (
+                <span className="clock-card-badge">
+                  Not Clocked In
+                </span>
+              )}
+            </h3>
+            <p className="clock-card-subtitle">
+              {!myTodayAttendance || !myTodayAttendance?.checkInTime
+                ? 'Mark your attendance to start tracking your work hours.'
+                : myTodayAttendance?.checkOutTime
+                ? `Shift Duration: ${
+                    Math.floor(myTodayAttendance.workHours || 0)
+                  }h ${Math.round(((myTodayAttendance.workHours || 0) % 1) * 60)}m (Check In: ${new Date(myTodayAttendance.checkInTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • Check Out: ${new Date(myTodayAttendance.checkOutTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})`
+                : `Checked in at ${new Date(myTodayAttendance.checkInTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}. Click Clock Out when you finish.`}
+            </p>
+          </div>
+          <div className="clock-card-actions">
+            {(!myTodayAttendance || !myTodayAttendance?.checkInTime) && (
+              <button
+                onClick={handleClockIn}
+                disabled={clockLoading}
+                className="btn-clockin"
+              >
+                {clockLoading ? 'Clocking In...' : 'Clock In'}
+              </button>
+            )}
+
+            {myTodayAttendance?.checkInTime && !myTodayAttendance?.checkOutTime && (
+              <button
+                onClick={handleClockOut}
+                disabled={clockLoading}
+                className="btn-clockout"
+              >
+                {clockLoading ? 'Clocking Out...' : 'Clock Out'}
+              </button>
+            )}
+
+            {myTodayAttendance?.checkOutTime && (
+              <button
+                onClick={() => {
+                  const checkInDate = new Date(myTodayAttendance.checkInTime);
+                  const checkOutDate = new Date(myTodayAttendance.checkOutTime);
+                  const diffMs = Math.max(0, checkOutDate - checkInDate);
+                  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+                  const hours = Math.floor(totalMinutes / 60);
+                  const minutes = totalMinutes % 60;
+                  const formattedWorkTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} mins`;
+                  setWorkSummaryModal({
+                    show: true,
+                    hours,
+                    minutes,
+                    totalHoursFormatted: formattedWorkTime,
+                    checkInStr: checkInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
+                    checkOutStr: checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+                  });
+                }}
+                className="btn-secondary"
+              >
+                View Shift Summary
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="stats-grid">
@@ -1198,6 +1417,48 @@ const Dashboard = ({ onLogout, userRole }) => {
 
       {showLeavePopup && isAdmin && (
         <AdminLeavePopup onClose={() => setShowLeavePopup(false)} />
+      )}
+
+      {/* Work Hours Summary Modal when Clock Out is pressed */}
+      {workSummaryModal.show && (
+        <div 
+          className="summary-modal-overlay"
+          onClick={() => setWorkSummaryModal({ show: false, hours: 0, minutes: 0, totalHoursFormatted: '', checkInStr: '', checkOutStr: '' })}
+        >
+          <div className="summary-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="summary-modal-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h2 className="summary-modal-title">Shift Completed</h2>
+            <p className="summary-modal-subtitle">Your work hours for today have been recorded.</p>
+            
+            <div className="summary-time-display">
+              <div className="summary-time-lbl">Total Time Worked</div>
+              <div className="summary-time-val">{workSummaryModal.totalHoursFormatted}</div>
+              
+              <div className="summary-time-grid">
+                <div className="summary-grid-box">
+                  <div className="summary-grid-lbl">Check In</div>
+                  <div className="summary-grid-val">{workSummaryModal.checkInStr}</div>
+                </div>
+                <div className="summary-grid-box">
+                  <div className="summary-grid-lbl">Check Out</div>
+                  <div className="summary-grid-val">{workSummaryModal.checkOutStr}</div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setWorkSummaryModal({ show: false, hours: 0, minutes: 0, totalHoursFormatted: '', checkInStr: '', checkOutStr: '' })}
+              className="btn-primary"
+              style={{ width: '100%', height: '42px', fontSize: '14px', fontWeight: '600' }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
