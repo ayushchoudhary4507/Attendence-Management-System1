@@ -3,8 +3,14 @@ const nodemailer = require('nodemailer');
 /**
  * Create a secure transporter using Gmail SMTP
  */
+const dns = require('dns');
+
+const customIpv4Lookup = (hostname, options, callback) => {
+  return dns.lookup(hostname, { family: 4 }, callback);
+};
+
 const createTransporter = () => {
-  console.log('Creating email transporter (port 465 SSL, IPv4)...');
+  console.log('Creating email transporter (port 465 SSL, strict IPv4)...');
   console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'NOT SET');
   console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'NOT SET');
   
@@ -12,7 +18,7 @@ const createTransporter = () => {
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
-    family: 4, // Force IPv4 to prevent Render ENETUNREACH error
+    lookup: customIpv4Lookup,
     auth: {
       user: (process.env.EMAIL_USER || '').trim(),
       pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, ''),
