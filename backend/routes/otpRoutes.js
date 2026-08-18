@@ -119,11 +119,13 @@ router.post('/send', async (req, res) => {
 
     res.json({
       success: true,
+      emailSent,
+      emailError,
       message: emailSent
-        ? `OTP sent to your email (${maskedEmail})`
-        : (targetEmail ? `OTP generated for ${maskedEmail}` : 'OTP generated successfully'),
+        ? OTP sent to your email ()
+        : Failed to send email to : ,
       targetEmail: maskedEmail,
-      otp: otp // Fallback for testing/reliability
+      otp: otp
     });
 
   } catch (error) {
