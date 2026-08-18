@@ -10,18 +10,17 @@ const customIpv4Lookup = (hostname, options, callback) => {
 };
 
 const createTransporter = () => {
-  console.log('Creating email transporter (port 465 SSL, strict IPv4)...');
-  console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'NOT SET');
-  console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'NOT SET');
+  const user = (process.env.EMAIL_USER || '').trim();
+  const pass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
+  console.log('Creating email transporter for Gmail...');
+  console.log('EMAIL_USER:', user ? 'Set (' + user + ')' : 'NOT SET');
+  console.log('EMAIL_PASS:', pass ? 'Set (length: ' + pass.length + ')' : 'NOT SET');
   
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    lookup: customIpv4Lookup,
+    service: 'gmail',
     auth: {
-      user: (process.env.EMAIL_USER || '').trim(),
-      pass: (process.env.EMAIL_PASS || '').replace(/\s+/g, ''),
+      user: user,
+      pass: pass,
     },
     tls: {
       rejectUnauthorized: false
