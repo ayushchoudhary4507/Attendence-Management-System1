@@ -42,16 +42,32 @@ router.post('/send', async (req, res) => {
         if (user) userModel = 'Employee';
       }
     } else if (inputMobile) {
-      const cleanDigits = inputMobile.replace(/\D/g, '');
+      const cleanDigits = String(inputMobile).replace(/\D/g, '');
       const clean10 = cleanDigits.length > 10 ? cleanDigits.slice(-10) : cleanDigits;
+      const phoneRegex = new RegExp(clean10);
 
-      user = await User.findOne({ phone: new RegExp(clean10 + '$') });
+      user = await User.findOne({
+        $or: [
+          { phone: phoneRegex },
+          { mobile: phoneRegex },
+          { phoneNumber: phoneRegex }
+        ]
+      });
+      
       if (!user) {
-        user = await Employee.findOne({ phone: new RegExp(clean10 + '$') });
+        user = await Employee.findOne({
+          $or: [
+            { phone: phoneRegex },
+            { mobile: phoneRegex },
+            { contact: phoneRegex },
+            { phoneNumber: phoneRegex }
+          ]
+        });
         if (user) userModel = 'Employee';
       }
-      if (user && user.email) {
-        targetEmail = user.email;
+
+      if (user) {
+        targetEmail = user.email || null;
       }
     }
     
@@ -64,7 +80,9 @@ router.post('/send', async (req, res) => {
 
     // Generate OTP
     const otp = generateOTP();
-    const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? inputMobile.replace(/\D/g, '') : 'default');
+    const otpKey = email 
+      ? email.trim().toLowerCase() 
+      : (inputMobile ? String(inputMobile).replace(/\D/g, '') : 'default');
     
     // Store OTP with expiry (5 minutes)
     otpStore.set(otpKey, {
@@ -130,7 +148,7 @@ router.post('/verify', async (req, res) => {
       });
     }
 
-    const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? inputMobile.replace(/\D/g, '') : '');
+    const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? String(inputMobile).replace(/\D/g, '') : '');
     const storedData = otpStore.get(otpKey);
 
     if (!storedData) {
@@ -217,7 +235,7 @@ router.post('/resend', async (req, res) => {
   try {
     const { email, mobile, phone } = req.body;
     const inputMobile = mobile || phone;
-    const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? inputMobile.replace(/\D/g, '') : null);
+    const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? String(inputMobile).replace(/\D/g, '') : null);
     
     if (!otpKey) {
       return res.status(400).json({ 
