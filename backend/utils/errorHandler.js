@@ -45,7 +45,7 @@ const errorHandler = (err, req, res, next) => {
             res.status(500).json({
                 success: false,
                 status: 'error',
-                message: 'Something went very wrong!'
+                message: err.message || 'Something went wrong'
             });
         }
     }
