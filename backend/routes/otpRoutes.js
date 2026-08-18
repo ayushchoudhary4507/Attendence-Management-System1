@@ -94,38 +94,25 @@ router.post('/send', async (req, res) => {
 
     console.log(`OTP for ${otpKey} (${targetEmail || 'no-email'}): ${otp}`);
 
-    let emailSent = false;
-    let emailError = null;
-
-    // Send OTP via Email if email is available
-    if (targetEmail) {
-      try {
-        const emailResult = await sendOTP(targetEmail, otp);
-        if (emailResult && emailResult.success) {
-          emailSent = true;
-        } else {
-          emailError = emailResult ? emailResult.message : 'Unknown error';
-          console.error('Email sending failed:', emailError);
-        }
-      } catch (err) {
-        emailError = err.message;
-        console.error('Email sending exception:', err.message);
-      }
-    }
-
     const maskedEmail = targetEmail 
       ? targetEmail.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.max(1, b.length)) + c)
       : '';
 
-    console.log('[OTP SEND RESULT] emailSent:', emailSent, 'emailError:', emailError);
+    // Trigger email in background without blocking HTTP response
+    if (targetEmail) {
+      sendOTP(targetEmail, otp)
+        .then(result => {
+          console.log('[ASYNC OTP RESULT]:', result);
+        })
+        .catch(err => {
+          console.error('[ASYNC OTP ERROR]:', err.message);
+        });
+    }
 
+    // Respond immediately in <50ms so client never gets connection timeout
     res.json({
       success: true,
-      emailSent,
-      emailError: emailSent ? null : emailError,
-      message: emailSent
-        ? `OTP sent successfully to your email (${maskedEmail})`
-        : (emailError ? `Email sending failed: ${emailError}` : `OTP generated for ${maskedEmail}`),
+      message: `OTP generated successfully for ${maskedEmail || 'account'}`,
       targetEmail: maskedEmail,
       otp: otp
     });
