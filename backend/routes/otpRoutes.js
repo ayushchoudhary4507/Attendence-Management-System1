@@ -117,7 +117,7 @@ router.post('/send', async (req, res) => {
   }
 });
 
-// Verify OTP and Login
+// Verify OTP and Reset Password / Login
 router.post('/verify', async (req, res) => {
   try {
     const { email, mobile, phone, otp, password, newPassword } = req.body;
@@ -167,13 +167,17 @@ router.post('/verify', async (req, res) => {
       });
     }
 
-    // Update password if provided
+    // Update password using base64 hashing (matching loginController & registerController)
     const nextPassword = newPassword || password;
     if (nextPassword) {
-      const bcrypt = require('bcryptjs');
-      const hashedPassword = await bcrypt.hash(nextPassword, 10);
+      const hashedPassword = Buffer.from(nextPassword).toString('base64');
       user.password = hashedPassword;
       await user.save();
+
+      // Also update in User collection if Model was Employee or vice-versa
+      if (user.email) {
+        await User.updateOne({ email: user.email }, { $set: { password: hashedPassword } });
+      }
     }
 
     // Clear OTP
@@ -189,7 +193,7 @@ router.post('/verify', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Verification and login successful',
+      message: 'Password reset and verification successful',
       token,
       user: {
         id: user._id,
@@ -203,7 +207,7 @@ router.post('/verify', async (req, res) => {
     console.error('Verify OTP error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to verify OTP' 
+      message: 'Failed to verify OTP: ' + (error.message || 'Unknown error') 
     });
   }
 });
