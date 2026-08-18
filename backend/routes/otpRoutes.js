@@ -117,13 +117,15 @@ router.post('/send', async (req, res) => {
       ? targetEmail.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.max(1, b.length)) + c)
       : '';
 
+    console.log('[OTP SEND RESULT] emailSent:', emailSent, 'emailError:', emailError);
+
     res.json({
       success: true,
       emailSent,
-      emailError,
+      emailError: emailSent ? null : emailError,
       message: emailSent
-        ? OTP sent to your email ()
-        : Failed to send email to : ,
+        ? `OTP sent successfully to your email (${maskedEmail})`
+        : (emailError ? `Email sending failed: ${emailError}` : `OTP generated for ${maskedEmail}`),
       targetEmail: maskedEmail,
       otp: otp
     });

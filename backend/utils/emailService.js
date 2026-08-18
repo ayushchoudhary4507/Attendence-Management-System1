@@ -1,34 +1,6 @@
 const nodemailer = require('nodemailer');
 
 /**
- * Create a secure transporter using Gmail SMTP
- */
-const dns = require('dns');
-
-const customIpv4Lookup = (hostname, options, callback) => {
-  return dns.lookup(hostname, { family: 4 }, callback);
-};
-
-const createTransporter = () => {
-  const user = (process.env.EMAIL_USER || '').trim();
-  const pass = (process.env.EMAIL_PASS || '').replace(/\s+/g, '');
-  console.log('Creating email transporter for Gmail...');
-  console.log('EMAIL_USER:', user ? 'Set (' + user + ')' : 'NOT SET');
-  console.log('EMAIL_PASS:', pass ? 'Set (length: ' + pass.length + ')' : 'NOT SET');
-  
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: user,
-      pass: pass,
-    },
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
-};
-
-/**
  * Send OTP email to user
  * @param {string} email - Recipient email address
  * @param {string} otp - 6-digit OTP code
@@ -36,28 +8,28 @@ const createTransporter = () => {
  */
 const sendOTP = async (email, otp) => {
   try {
-    // Validate environment variables
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('Email configuration missing. Please set EMAIL_USER and EMAIL_PASS in .env file');
+    const rawUser = process.env.EMAIL_USER || '';
+    const rawPass = process.env.EMAIL_PASS || '';
+
+    const user = rawUser.replace(/['"]+/g, '').trim();
+    const pass = rawPass.replace(/['"\s]+/g, '').trim();
+
+    if (!user || !pass) {
+      const errMsg = 'Email configuration missing in environment. EMAIL_USER=' + (user ? ('Set (' + user + ')') : 'Missing') + ', EMAIL_PASS=' + (pass ? ('Set (' + pass.length + ' chars)') : 'Missing');
+      console.error('[EMAIL OTP ERROR]:', errMsg);
+      return { success: false, message: errMsg };
     }
 
-    const transporter = createTransporter();
-    
-    // Verify transporter configuration
-    console.log('Verifying email transporter...');
-    await transporter.verify();
-    console.log('Transporter verified successfully');
-
     const mailOptions = {
-      from: `"Attendance System" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Your OTP for Attendance System',
+      from: '"Attendance System" <' + user + '>',
+      to: email.trim(),
+      subject: 'Your OTP for Attendance System: ' + otp,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
           <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h2 style="color: #4F46E5; margin-bottom: 20px;">Attendance System</h2>
             <p style="font-size: 16px; color: #333; margin-bottom: 20px;">
-              Your One-Time Password (OTP) for login is:
+              Your One-Time Password (OTP) for password reset / login is:
             </p>
             <div style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; border-radius: 8px; letter-spacing: 8px; margin: 20px 0;">
               ${otp}
@@ -73,20 +45,66 @@ const sendOTP = async (email, otp) => {
           </div>
         </div>
       `,
-      text: `Your OTP for Attendance System is: ${otp}\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.\n\nIf you didn't request this OTP, please ignore this email.`,
+      text: 'Your OTP for Attendance System is: ' + otp + '\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.\n\nIf you didn\'t request this OTP, please ignore this email.',
     };
 
-    console.log('Sending email to:', email);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✓ Email sent successfully! MessageId:', info.messageId);
-    
+    let lastError = null;
+
+    // Strategy 1: nodemailer service 'gmail'
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false }
+      });
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ [EMAIL SUCCESS via service:gmail]: MessageId:', info.messageId);
+      return { success: true, message: 'OTP email sent successfully' };
+    } catch (err1) {
+      console.warn('⚠️ [EMAIL Strategy 1 failed]:', err1.message);
+      lastError = err1;
+    }
+
+    // Strategy 2: smtp.gmail.com port 587 STARTTLS
+    try {
+      const transporter587 = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false }
+      });
+      const info = await transporter587.sendMail(mailOptions);
+      console.log('✅ [EMAIL SUCCESS via port 587]: MessageId:', info.messageId);
+      return { success: true, message: 'OTP email sent successfully' };
+    } catch (err2) {
+      console.warn('⚠️ [EMAIL Strategy 2 failed]:', err2.message);
+      lastError = err2;
+    }
+
+    // Strategy 3: smtp.gmail.com port 465 SSL
+    try {
+      const transporter465 = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false }
+      });
+      const info = await transporter465.sendMail(mailOptions);
+      console.log('✅ [EMAIL SUCCESS via port 465]: MessageId:', info.messageId);
+      return { success: true, message: 'OTP email sent successfully' };
+    } catch (err3) {
+      console.error('❌ [EMAIL Strategy 3 failed]:', err3.message);
+      lastError = err3;
+    }
+
     return {
-      success: true,
-      message: 'OTP email sent successfully',
+      success: false,
+      message: lastError ? lastError.message : 'Failed to send email through all strategies'
     };
   } catch (error) {
-    console.error('✗ Failed to send OTP email:', error.message);
-    console.error('Full error:', error);
+    console.error('❌ Failed to send OTP email:', error.message);
     return {
       success: false,
       message: error.message || 'Failed to send OTP email',
@@ -104,25 +122,30 @@ const sendOTP = async (email, otp) => {
  */
 const sendLateLoginAlert = async (adminEmail, employeeName, employeeEmail, loginTime) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('Email configuration missing. Please set EMAIL_USER and EMAIL_PASS in .env file');
+    const user = (process.env.EMAIL_USER || '').replace(/['"]+/g, '').trim();
+    const pass = (process.env.EMAIL_PASS || '').replace(/['"\s]+/g, '').trim();
+    if (!user || !pass) {
+      return { success: false, message: 'Email credentials missing' };
     }
 
-    const transporter = createTransporter();
-    await transporter.verify();
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false }
+    });
 
     const mailOptions = {
-      from: `"Attendance System" <${process.env.EMAIL_USER}>`,
+      from: '"Attendance System" <' + user + '>',
       to: adminEmail,
-      subject: '🚨 Late Login Alert - Attendance System',
+      subject: 'Late Login Alert - Attendance System',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
           <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-              <h2 style="color: #EF4444; margin: 0; font-size: 20px;">⚠️ Late Login Alert</h2>
+            <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+              <h2 style="color: #B45309; margin: 0; font-size: 20px;">Late Login Alert</h2>
             </div>
             <p style="font-size: 16px; color: #333; margin-bottom: 15px;">
-              An employee has logged in late today:
+              Employee <strong>${employeeName}</strong> logged in late today.
             </p>
             <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 8px 0;"><strong>Employee Name:</strong> ${employeeName}</p>
@@ -130,150 +153,104 @@ const sendLateLoginAlert = async (adminEmail, employeeName, employeeEmail, login
               <p style="margin: 8px 0;"><strong>Login Time:</strong> ${loginTime}</p>
               <p style="margin: 8px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
             </div>
-            <p style="font-size: 14px; color: #666; margin-top: 20px;">
-              Please review this employee's attendance record.
-            </p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #999; text-align: center;">
-              This is an automated notification from the Attendance System.<br>
-              &copy; ${new Date().getFullYear()} Attendance System. All rights reserved.
-            </p>
           </div>
         </div>
       `,
-      text: `Late Login Alert\n\nEmployee: ${employeeName}\nEmail: ${employeeEmail}\nLogin Time: ${loginTime}\nDate: ${new Date().toLocaleDateString()}\n\nPlease review this employee's attendance record.`,
+      text: 'Late Login Alert\n\nEmployee: ' + employeeName + '\nEmail: ' + employeeEmail + '\nLogin Time: ' + loginTime,
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('✓ Late login alert email sent to admin:', adminEmail, 'MessageId:', info.messageId);
-    
     return { success: true, message: 'Late login alert email sent successfully' };
   } catch (error) {
-    console.error('✗ Failed to send late login alert email:', error.message);
     return { success: false, message: error.message };
   }
 };
 
 /**
  * Send leave approval email to employee
- * @param {string} employeeEmail - Employee email address
- * @param {string} employeeName - Employee name
- * @param {string} leaveType - Type of leave (sick, casual, etc.)
- * @param {string} startDate - Leave start date
- * @param {string} endDate - Leave end date
- * @returns {Promise<{success: boolean, message: string}>}
  */
 const sendLeaveApprovalEmail = async (employeeEmail, employeeName, leaveType, startDate, endDate) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('Email configuration missing. Please set EMAIL_USER and EMAIL_PASS in .env file');
-    }
+    const user = (process.env.EMAIL_USER || '').replace(/['"]+/g, '').trim();
+    const pass = (process.env.EMAIL_PASS || '').replace(/['"\s]+/g, '').trim();
+    if (!user || !pass) return { success: false, message: 'Email credentials missing' };
 
-    const transporter = createTransporter();
-    await transporter.verify();
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false }
+    });
 
     const mailOptions = {
-      from: `"Attendance System" <${process.env.EMAIL_USER}>`,
+      from: '"Attendance System" <' + user + '>',
       to: employeeEmail,
-      subject: '✅ Leave Approved - Attendance System',
+      subject: 'Leave Approved - Attendance System',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
           <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-              <h2 style="color: #10B981; margin: 0; font-size: 20px;">✅ Leave Approved</h2>
+              <h2 style="color: #10B981; margin: 0; font-size: 20px;">Leave Approved</h2>
             </div>
-            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">
-              Dear ${employeeName},
-            </p>
-            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">
-              Your leave request has been approved:
-            </p>
+            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">Dear ${employeeName},</p>
+            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">Your leave request has been approved:</p>
             <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 8px 0;"><strong>Leave Type:</strong> ${leaveType}</p>
               <p style="margin: 8px 0;"><strong>Start Date:</strong> ${startDate}</p>
               <p style="margin: 8px 0;"><strong>End Date:</strong> ${endDate}</p>
             </div>
-            <p style="font-size: 14px; color: #666; margin-top: 20px;">
-              Have a great time off!
-            </p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #999; text-align: center;">
-              This is an automated notification from the Attendance System.<br>
-              &copy; ${new Date().getFullYear()} Attendance System. All rights reserved.
-            </p>
           </div>
         </div>
       `,
-      text: `Leave Approved\n\nDear ${employeeName},\n\nYour leave request has been approved:\n\nLeave Type: ${leaveType}\nStart Date: ${startDate}\nEnd Date: ${endDate}\n\nHave a great time off!`,
+      text: 'Leave Approved\n\nDear ' + employeeName + ',\n\nYour leave request has been approved: ' + leaveType + ' from ' + startDate + ' to ' + endDate,
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('✓ Leave approval email sent to:', employeeEmail, 'MessageId:', info.messageId);
-    
     return { success: true, message: 'Leave approval email sent successfully' };
   } catch (error) {
-    console.error('✗ Failed to send leave approval email:', error.message);
     return { success: false, message: error.message };
   }
 };
 
 /**
  * Send leave rejection email to employee
- * @param {string} employeeEmail - Employee email address
- * @param {string} employeeName - Employee name
- * @param {string} leaveType - Type of leave (sick, casual, etc.)
- * @param {string} rejectionReason - Reason for rejection
- * @returns {Promise<{success: boolean, message: string}>}
  */
 const sendLeaveRejectionEmail = async (employeeEmail, employeeName, leaveType, rejectionReason) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('Email configuration missing. Please set EMAIL_USER and EMAIL_PASS in .env file');
-    }
+    const user = (process.env.EMAIL_USER || '').replace(/['"]+/g, '').trim();
+    const pass = (process.env.EMAIL_PASS || '').replace(/['"\s]+/g, '').trim();
+    if (!user || !pass) return { success: false, message: 'Email credentials missing' };
 
-    const transporter = createTransporter();
-    await transporter.verify();
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false }
+    });
 
     const mailOptions = {
-      from: `"Attendance System" <${process.env.EMAIL_USER}>`,
+      from: '"Attendance System" <' + user + '>',
       to: employeeEmail,
-      subject: '❌ Leave Rejected - Attendance System',
+      subject: 'Leave Rejected - Attendance System',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
           <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <div style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-              <h2 style="color: #EF4444; margin: 0; font-size: 20px;">❌ Leave Rejected</h2>
+              <h2 style="color: #EF4444; margin: 0; font-size: 20px;">Leave Rejected</h2>
             </div>
-            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">
-              Dear ${employeeName},
-            </p>
-            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">
-              Your leave request has been rejected:
-            </p>
+            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">Dear ${employeeName},</p>
+            <p style="font-size: 16px; color: #333; margin-bottom: 15px;">Your leave request has been rejected:</p>
             <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 8px 0;"><strong>Leave Type:</strong> ${leaveType}</p>
               <p style="margin: 8px 0;"><strong>Reason:</strong> ${rejectionReason || 'No reason provided'}</p>
             </div>
-            <p style="font-size: 14px; color: #666; margin-top: 20px;">
-              If you have any questions, please contact your admin.
-            </p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="font-size: 12px; color: #999; text-align: center;">
-              This is an automated notification from the Attendance System.<br>
-              &copy; ${new Date().getFullYear()} Attendance System. All rights reserved.
-            </p>
           </div>
         </div>
       `,
-      text: `Leave Rejected\n\nDear ${employeeName},\n\nYour leave request has been rejected:\n\nLeave Type: ${leaveType}\nReason: ${rejectionReason || 'No reason provided'}\n\nIf you have any questions, please contact your admin.`,
+      text: 'Leave Rejected\n\nDear ' + employeeName + ',\n\nYour leave request has been rejected: ' + (rejectionReason || 'No reason provided'),
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('✓ Leave rejection email sent to:', employeeEmail, 'MessageId:', info.messageId);
-    
     return { success: true, message: 'Leave rejection email sent successfully' };
   } catch (error) {
-    console.error('✗ Failed to send leave rejection email:', error.message);
     return { success: false, message: error.message };
   }
 };
