@@ -16,6 +16,50 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// Flutter-side OTP registration: Flutter generates OTP, sends email itself, and stores OTP here
+// This route NEVER sends email - just verifies user + stores OTP. Responds in <100ms.
+router.post('/register-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP required' });
+    }
+
+    const targetEmail = email.trim().toLowerCase();
+
+    // Verify user exists
+    let user = await User.findOne({ email: targetEmail });
+    let userModel = 'User';
+    if (!user) {
+      user = await Employee.findOne({ email: targetEmail });
+      if (user) userModel = 'Employee';
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Store OTP (provided by Flutter) with 5 minute expiry
+    otpStore.set(targetEmail, {
+      otp: String(otp).trim(),
+      userId: user._id,
+      userModel,
+      expiresAt: Date.now() + 5 * 60 * 1000
+    });
+
+    console.log('[register-otp] OTP stored for:', targetEmail, '| OTP:', otp);
+
+    // Respond immediately - no email sending here (Flutter handles email)
+    return res.json({ success: true, message: 'OTP registered successfully' });
+  } catch (error) {
+    console.error('register-otp error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to register OTP' });
+  }
+});
+
 // Send OTP
 router.post('/send', async (req, res) => {
   console.log('OTP /send route handler called');
