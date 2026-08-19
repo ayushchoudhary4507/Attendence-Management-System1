@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
 import { settingsAPI } from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const { theme, setTheme: setGlobalTheme } = useTheme();
 
   const [profile, setProfile] = useState({
     name: '',
@@ -24,12 +27,9 @@ const Settings = () => {
     systemAlerts: true
   });
 
-  const [theme, setTheme] = useState('light');
-
   // Fetch profile data on mount
   useEffect(() => {
     fetchProfile();
-    loadTheme();
   }, []);
 
   const fetchProfile = async () => {
@@ -49,7 +49,7 @@ const Settings = () => {
           setNotifications(data.settings.notifications);
         }
         if (data.settings?.appearance?.theme) {
-          setTheme(data.settings.appearance.theme);
+          setGlobalTheme(data.settings.appearance.theme);
         }
       }
     } catch (err) {
@@ -57,30 +57,6 @@ const Settings = () => {
       console.error('Error loading profile:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadTheme = () => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-    applyTheme(savedTheme);
-  };
-
-  const applyTheme = (newTheme) => {
-    const body = document.body;
-    body.classList.remove('light-theme', 'dark-theme');
-    
-    if (newTheme === 'dark') {
-      body.classList.add('dark-theme');
-    } else if (newTheme === 'auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        body.classList.add('dark-theme');
-      } else {
-        body.classList.add('light-theme');
-      }
-    } else {
-      body.classList.add('light-theme');
     }
   };
 
@@ -111,10 +87,6 @@ const Settings = () => {
       const themeRes = await settingsAPI.updateAppearance(theme);
       console.log('Theme update response:', themeRes);
       
-      // Save theme to localStorage
-      localStorage.setItem('theme', theme);
-      applyTheme(theme);
-      
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -126,9 +98,7 @@ const Settings = () => {
   };
 
   const handleThemeChange = async (newTheme) => {
-    setTheme(newTheme);
-    applyTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
+    setGlobalTheme(newTheme);
     
     try {
       await settingsAPI.updateAppearance(newTheme);

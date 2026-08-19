@@ -28,6 +28,7 @@ import EmployeeReports from './pages/employee/EmployeeReports';
 import AdminSidebar from './components/sidebar/admin/AdminSidebar';
 import { settingsAPI, API_BASE_URL } from './services/api';
 import { NotificationProvider, useNotifications, timeAgo } from './context/NotificationContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import ToastNotification from './components/ToastNotification';
 import './App.css';
 import './styles/responsive.css';
@@ -50,6 +51,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   const currentPath = location.pathname;
   
   const { notifications, filteredNotifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, filter, setFilter } = useNotifications();
+  const { theme, isDarkMode, toggleTheme } = useTheme();
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -84,7 +86,6 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileData, setProfileData] = useState({
     name: '',
@@ -155,11 +156,6 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     navigate(item.path);
   };
   
-  // Load theme on mount
-  useEffect(() => {
-    loadTheme();
-  }, []);
-
   // Close notification dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -174,13 +170,6 @@ const Layout = ({ children, onLogout, userRole, user }) => {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showNotifications]);
-
-  const loadTheme = () => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    const isDark = savedTheme === 'dark' || (savedTheme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    setIsDarkMode(isDark);
-    applyTheme(savedTheme);
-  };
 
   // Load profile data when modal opens
   const loadProfileData = () => {
@@ -331,18 +320,6 @@ const Layout = ({ children, onLogout, userRole, user }) => {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showProfileModal]);
-
-  const applyTheme = (theme) => {
-    document.body.classList.remove('light-theme', 'dark-theme');
-    if (theme === 'dark') {
-      document.body.classList.add('dark-theme');
-    } else if (theme === 'auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.body.classList.add(prefersDark ? 'dark-theme' : 'light-theme');
-    } else {
-      document.body.classList.add('light-theme');
-    }
-  };
 
   return (
     <div className="dashboard-container">
@@ -530,17 +507,29 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                     </div>
                   )}
                 </div>
-                <button className="icon-btn theme-btn" onClick={() => {
-                  const isDark = document.body.classList.contains('dark-theme');
-                  const newTheme = isDark ? 'light' : 'dark';
-                  setIsDarkMode(!isDark);
-                  localStorage.setItem('theme', newTheme);
-                  document.body.classList.remove('light-theme', 'dark-theme');
-                  document.body.classList.add(newTheme + '-theme');
-                }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 9c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 00-1.41 0 .996.996 0 000 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 000-1.41.996.996 0 00-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 000 1.41.996.996 0 001.41 0l1.06-1.06c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06z"/>
-                  </svg>
+                <button 
+                  className="icon-btn theme-btn" 
+                  onClick={toggleTheme}
+                  title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                  aria-label="Toggle theme"
+                >
+                  {isDarkMode ? (
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="5"></circle>
+                      <line x1="12" y1="1" x2="12" y2="3"></line>
+                      <line x1="12" y1="21" x2="12" y2="23"></line>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                      <line x1="1" y1="12" x2="3" y2="12"></line>
+                      <line x1="21" y1="12" x2="23" y2="12"></line>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                  )}
                 </button>
               </div>
               <div
@@ -789,21 +778,6 @@ function App() {
       }
     }
     setIsLoading(false);
-    
-    // Load theme on app start
-    const loadAppTheme = () => {
-      const savedTheme = localStorage.getItem('theme') || 'light';
-      document.body.classList.remove('light-theme', 'dark-theme');
-      if (savedTheme === 'dark') {
-        document.body.classList.add('dark-theme');
-      } else if (savedTheme === 'auto') {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.body.classList.add(prefersDark ? 'dark-theme' : 'light-theme');
-      } else {
-        document.body.classList.add('light-theme');
-      }
-    };
-    loadAppTheme();
   }, []);
 
   const handleLogin = (userData, token) => {
@@ -839,9 +813,10 @@ function App() {
   }
 
   return (
-    <NotificationProvider>
-      <ToastNotification />
-      <Router>
+    <ThemeProvider>
+      <NotificationProvider>
+        <ToastNotification />
+        <Router>
         <Routes>
         {/* Public Routes */}
         <Route path="/landing" element={<LandingPage />} />
@@ -1024,6 +999,7 @@ function App() {
       </Routes>
       </Router>
     </NotificationProvider>
+    </ThemeProvider>
   );
 }
 

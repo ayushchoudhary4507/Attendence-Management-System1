@@ -609,154 +609,184 @@ body.dark-theme .theme-toggle-btn {
   color: #475569;
 }
 
-/* Dark mode support - Matching Landing Page */
-@media (prefers-color-scheme: dark) {
-  .admin-dashboard {
-    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
-    color: #ffffff;
-  }
-
-  .admin-header,
-  .admin-stats,
-  .admin-users {
-    background: rgba(30, 30, 46, 0.8);
-    -webkit-backdrop-filter: blur(20px);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-  }
-
-  .admin-header h1,
-  .admin-stats h2,
-  .users-header h2,
-  .modal h3 {
-    color: #ffffff;
-    background: linear-gradient(135deg, #ffffff 0%, #4F46E5 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .admin-nav button {
-    background: rgba(30, 30, 46, 0.8);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #94a3b8;
-  }
-
-  .admin-nav button:hover {
-    border-color: #4F46E5;
-    color: #4F46E5;
-  }
-
-  .admin-nav button.active {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    color: white;
-  }
-
-  .stat-card {
-    background: rgba(30, 30, 46, 0.8) !important;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .stat-card h3 {
-    color: #94a3b8;
-  }
-
-  .stat-value {
-    color: #ffffff;
-  }
-
-  .users-table th {
-    background: rgba(30, 30, 46, 0.8);
-    color: #94a3b8;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .users-table td {
-    border-color: rgba(255, 255, 255, 0.05);
-    color: #e2e8f0;
-  }
-
-  .users-table tbody tr:hover {
-    background: rgba(79, 70, 229, 0.1);
-  }
-
-  .form-group input,
-  .form-group select,
-  .role-select {
-    background: rgba(30, 30, 46, 0.8);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-  }
-
-  .form-group label {
-    color: #94a3b8;
-  }
-
-  .btn-cancel {
-    background: rgba(30, 30, 46, 0.8);
-    color: #94a3b8;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .btn-cancel:hover {
-    background: rgba(79, 70, 229, 0.2);
-  }
-
-  .modal {
-    background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .admin-error {
-    background: rgba(127, 29, 29, 0.8);
-    border-color: rgba(153, 27, 27, 0.5);
-    color: #fecaca;
-  }
-}
-
-/* Body dark-theme class support */
-body.dark-theme .admin-dashboard {
+/* ==========================================================================
+   DARK MODE SUPPORT (App Theme Control - Independent of Browser Scheme)
+   ========================================================================== */
+.admin-dashboard.dark,
+body.dark-theme .admin-dashboard,
+[data-theme="dark"] .admin-dashboard {
   background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
   color: #ffffff;
 }
 
+.admin-dashboard.dark .admin-header,
+.admin-dashboard.dark .admin-stats,
+.admin-dashboard.dark .admin-users,
+.admin-dashboard.dark .admin-leaves,
 body.dark-theme .admin-header,
 body.dark-theme .admin-stats,
-body.dark-theme .admin-users {
-  background: rgba(30, 30, 46, 0.8);
+body.dark-theme .admin-users,
+body.dark-theme .admin-leaves,
+[data-theme="dark"] .admin-header,
+[data-theme="dark"] .admin-stats,
+[data-theme="dark"] .admin-users,
+[data-theme="dark"] .admin-leaves {
+  background: rgba(30, 30, 46, 0.95);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
+.admin-dashboard.dark .admin-header h1,
+.admin-dashboard.dark .admin-stats h2,
+.admin-dashboard.dark .users-header h2,
+.admin-dashboard.dark .leaves-header h2,
+.admin-dashboard.dark .modal h3,
 body.dark-theme .admin-header h1,
 body.dark-theme .admin-stats h2,
-body.dark-theme .users-header h2 {
-  background: linear-gradient(135deg, #ffffff 0%, #4F46E5 100%);
+body.dark-theme .users-header h2,
+body.dark-theme .leaves-header h2,
+body.dark-theme .modal h3,
+[data-theme="dark"] .admin-header h1,
+[data-theme="dark"] .admin-stats h2,
+[data-theme="dark"] .users-header h2,
+[data-theme="dark"] .leaves-header h2,
+[data-theme="dark"] .modal h3 {
+  color: #ffffff;
+  background: linear-gradient(135deg, #ffffff 0%, #818CF8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-body.dark-theme .admin-nav button {
+.admin-dashboard.dark .admin-nav button,
+body.dark-theme .admin-nav button,
+[data-theme="dark"] .admin-nav button {
   background: rgba(30, 30, 46, 0.8);
   border-color: rgba(255, 255, 255, 0.1);
   color: #94a3b8;
 }
 
-body.dark-theme .admin-nav button:hover {
+.admin-dashboard.dark .admin-nav button:hover,
+body.dark-theme .admin-nav button:hover,
+[data-theme="dark"] .admin-nav button:hover {
   border-color: #4F46E5;
-  color: #4F46E5;
+  color: #818cf8;
 }
 
-body.dark-theme .admin-nav button.active {
+.admin-dashboard.dark .admin-nav button.active,
+body.dark-theme .admin-nav button.active,
+[data-theme="dark"] .admin-nav button.active {
   background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
   color: white;
 }
 
-body.dark-theme .stat-card {
-  background: rgba(30, 30, 46, 0.8) !important;
+.admin-dashboard.dark .stat-card,
+body.dark-theme .admin-dashboard .stat-card,
+[data-theme="dark"] .admin-dashboard .stat-card {
+  background: rgba(30, 30, 46, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.admin-dashboard.dark .stat-card h3,
+body.dark-theme .admin-dashboard .stat-card h3,
+[data-theme="dark"] .admin-dashboard .stat-card h3 {
+  color: #94a3b8 !important;
+}
+
+.admin-dashboard.dark .stat-value,
+body.dark-theme .admin-dashboard .stat-value,
+[data-theme="dark"] .admin-dashboard .stat-value {
+  color: #ffffff !important;
+}
+
+.admin-dashboard.dark .card-hint,
+body.dark-theme .admin-dashboard .card-hint,
+[data-theme="dark"] .admin-dashboard .card-hint {
+  color: #64748b !important;
+}
+
+.admin-dashboard.dark .users-table th,
+.admin-dashboard.dark .leaves-table th,
+body.dark-theme .users-table th,
+body.dark-theme .leaves-table th,
+[data-theme="dark"] .users-table th,
+[data-theme="dark"] .leaves-table th {
+  background: rgba(20, 20, 35, 0.95);
+  color: #94a3b8;
   border-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-dashboard.dark .users-table td,
+.admin-dashboard.dark .leaves-table td,
+body.dark-theme .users-table td,
+body.dark-theme .leaves-table td,
+[data-theme="dark"] .users-table td,
+[data-theme="dark"] .leaves-table td {
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+}
+
+.admin-dashboard.dark .users-table tbody tr:hover,
+.admin-dashboard.dark .leaves-table tbody tr:hover,
+body.dark-theme .users-table tbody tr:hover,
+body.dark-theme .leaves-table tbody tr:hover,
+[data-theme="dark"] .users-table tbody tr:hover,
+[data-theme="dark"] .leaves-table tbody tr:hover {
+  background: rgba(79, 70, 229, 0.15);
+}
+
+.admin-dashboard.dark .form-group input,
+.admin-dashboard.dark .form-group select,
+.admin-dashboard.dark .role-select,
+body.dark-theme .form-group input,
+body.dark-theme .form-group select,
+body.dark-theme .role-select,
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .role-select {
+  background: rgba(30, 30, 46, 0.9);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.admin-dashboard.dark .form-group label,
+body.dark-theme .form-group label,
+[data-theme="dark"] .form-group label {
+  color: #94a3b8;
+}
+
+.admin-dashboard.dark .btn-cancel,
+body.dark-theme .btn-cancel,
+[data-theme="dark"] .btn-cancel {
+  background: rgba(30, 30, 46, 0.8);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-dashboard.dark .btn-cancel:hover,
+body.dark-theme .btn-cancel:hover,
+[data-theme="dark"] .btn-cancel:hover {
+  background: rgba(79, 70, 229, 0.2);
+  color: #ffffff;
+}
+
+.admin-dashboard.dark .modal,
+body.dark-theme .modal,
+[data-theme="dark"] .modal {
+  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.admin-dashboard.dark .admin-error,
+body.dark-theme .admin-error,
+[data-theme="dark"] .admin-error {
+  background: rgba(127, 29, 29, 0.8);
+  border-color: rgba(153, 27, 27, 0.5);
+  color: #fecaca;
 }
 
 body.dark-theme .stat-card h3 {

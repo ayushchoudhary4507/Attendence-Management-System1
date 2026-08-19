@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 import { attendanceAPI, adminAPI } from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -27,20 +28,8 @@ const AdminDashboard = () => {
   const [presentEmployees, setPresentEmployees] = useState([]);
   const [presentCount, setPresentCount] = useState(0);
   
-  // Dark mode state
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    return savedTheme === 'dark';
-  });
-
-  const toggleTheme = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
-    // Apply theme to body
-    document.body.classList.remove('light-theme', 'dark-theme');
-    document.body.classList.add(newDarkMode ? 'dark-theme' : 'light-theme');
-  };
+  // Centralized theme
+  const { isDarkMode, toggleTheme } = useTheme();
 
   // Fetch dashboard stats
   const fetchStats = async () => {
@@ -80,9 +69,6 @@ const AdminDashboard = () => {
     fetchUsers();
     fetchEmployeesForAttendance();
     fetchLeaves();
-    // Apply initial theme
-    document.body.classList.remove('light-theme', 'dark-theme');
-    document.body.classList.add(isDarkMode ? 'dark-theme' : 'light-theme');
   }, []);
 
   // Create new user

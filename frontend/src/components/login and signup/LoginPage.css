@@ -889,37 +889,47 @@
   color: #059669;
 }
 
-/* Dark mode support - fallback for system preference */
-@media (prefers-color-scheme: dark) {
-  .login-card {
-    background: rgba(30, 30, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .login-title {
-    background: linear-gradient(135deg, #8b9dc3 0%, #dfe3ee 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  
-  .form-label {
-    color: #ecf0f1;
-  }
-  
-  .form-input {
-    background: rgba(50, 50, 50, 0.8);
-    border-color: #444;
-    color: #ecf0f1;
-  }
-  
-  .form-input::placeholder {
-    color: #95a5a6;
-  }
-  
-  .signup-link {
-    color: #bdc3c7;
-  }
+/* Dark mode support - via App Theme */
+body.dark-theme .login-card,
+.dark .login-card,
+[data-theme="dark"] .login-card {
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .login-title,
+.dark .login-title,
+[data-theme="dark"] .login-title {
+  background: linear-gradient(135deg, #8b9dc3 0%, #dfe3ee 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+body.dark-theme .form-label,
+.dark .form-label,
+[data-theme="dark"] .form-label {
+  color: #ecf0f1;
+}
+
+body.dark-theme .form-input,
+.dark .form-input,
+[data-theme="dark"] .form-input {
+  background: rgba(50, 50, 50, 0.8);
+  border-color: #444;
+  color: #ecf0f1;
+}
+
+body.dark-theme .form-input::placeholder,
+.dark .form-input::placeholder,
+[data-theme="dark"] .form-input::placeholder {
+  color: #95a5a6;
+}
+
+body.dark-theme .signup-link,
+.dark .signup-link,
+[data-theme="dark"] .signup-link {
+  color: #bdc3c7;
 }
 
 /* ============================================

@@ -4,6 +4,7 @@ import TaskManager from '../../components/admin/TaskManager';
 import MyTasks from '../../components/employee/MyTasks';
 import AdminLeavePopup from '../../components/admin/AdminLeavePopup';
 import { attendanceAPI } from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
 import '../../components/admin/TaskManager.css';
 import '../../components/employee/MyTasks.css';
 import './Dashboard.css';
@@ -171,26 +172,11 @@ const Dashboard = ({ onLogout, userRole }) => {
     }
   };
 
-  // Dark mode state
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    return savedTheme === 'dark';
-  });
-
-  const toggleTheme = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
-    // Apply theme to body
-    document.body.classList.remove('light-theme', 'dark-theme');
-    document.body.classList.add(newDarkMode ? 'dark-theme' : 'light-theme');
-  };
+  // Centralized theme
+  const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
     fetchDashboardData();
-    // Apply initial theme
-    document.body.classList.remove('light-theme', 'dark-theme');
-    document.body.classList.add(isDarkMode ? 'dark-theme' : 'light-theme');
     
     // Auto-refresh attendance data every 30 seconds
     const interval = setInterval(() => {
@@ -538,16 +524,26 @@ const Dashboard = ({ onLogout, userRole }) => {
     return (
       <div 
         className={`stat-card ${linkTo || onClick ? 'stat-card-clickable' : ''}`}
-        style={{ background: bg || '#FFFFFF', borderColor: border || 'rgba(0,0,0,0.06)' }}
+        style={!isDarkMode ? { 
+          background: bg || 'var(--card-bg, #FFFFFF)', 
+          borderColor: border || 'var(--border-color, #E5E7EB)' 
+        } : {}}
         onClick={handleClick}
       >
         <div className="stat-card-top">
-          <div className="stat-icon" style={{ background: iconBg || '#E0E7FF', color: iconColor || '#4F46E5' }}>
+          <div 
+            className="stat-icon" 
+            style={{ 
+              background: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : (iconBg || '#E0E7FF'), 
+              color: isDarkMode ? (iconColor || '#818CF8') : (iconColor || '#4F46E5'),
+              border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'
+            }}
+          >
             {icon}
           </div>
           <div className="stat-text-group">
-            <p className="stat-title" style={{ color: titleColor || '#4B5563' }}>{title}</p>
-            <h3 className="stat-value" style={{ color: titleColor || '#111827' }}>{loading ? '...' : value}</h3>
+            <p className="stat-title" style={{ color: !isDarkMode ? (titleColor || '#4B5563') : '#94A3B8' }}>{title}</p>
+            <h3 className="stat-value" style={{ color: !isDarkMode ? (titleColor || '#111827') : '#F8FAFC' }}>{loading ? '...' : value}</h3>
           </div>
         </div>
       </div>
