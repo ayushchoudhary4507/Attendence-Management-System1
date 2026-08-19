@@ -109,10 +109,10 @@ const sendOTP = async (email, otp) => {
     '</div>' +
     '<p style="font-size: 14px; color: #666; margin-top: 20px;">This OTP is valid for <strong>5 minutes</strong>. Do not share it with anyone.</p>' +
     '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">' +
-    '<p style="font-size: 12px; color: #999; text-align: center;">If you didn\\'t request this OTP, please ignore this email.<br>&copy; ' + new Date().getFullYear() + ' Attendance System. All rights reserved.</p>' +
+    '<p style="font-size: 12px; color: #999; text-align: center;">If you didn\'t request this OTP, please ignore this email.<br>&copy; ' + new Date().getFullYear() + ' Attendance System. All rights reserved.</p>' +
     '</div></div>';
 
-  const textBody = 'Your OTP for Attendance System is: ' + otp + '\\n\\nThis OTP is valid for 5 minutes. Do not share it with anyone.\\n\\nIf you didn\\'t request this OTP, please ignore this email.';
+  const textBody = 'Your OTP for Attendance System is: ' + otp + '\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.\n\nIf you didn\'t request this OTP, please ignore this email.';
 
   // 1. Check if RESEND_API_KEY is available (Fastest, 100% reliable HTTPS)
   const resendApiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;

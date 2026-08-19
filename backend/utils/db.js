@@ -10,11 +10,13 @@ const connectDB = async () => {
     }
 
     // Hardening DNS resolution for MongoDB Atlas SRV records
-    try {
-        const dns = require('node:dns');
-        dns.setServers(['8.8.8.8', '8.8.4.4']);
-    } catch (e) {
-        logger.warn('DNS hardening failed, using system defaults');
+    if (mongoUri.startsWith('mongodb+srv://')) {
+        try {
+            const dns = require('node:dns');
+            dns.setServers(['8.8.8.8', '8.8.4.4']);
+        } catch (e) {
+            logger.warn('DNS hardening failed, using system defaults');
+        }
     }
 
     const options = {
