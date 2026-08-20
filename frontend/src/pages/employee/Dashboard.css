@@ -2,6 +2,9 @@
 
 /* Main Container */
 .dashboard-home {
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
   padding: 24px;
 }
 
@@ -1672,8 +1675,11 @@ body.dark-theme .btn-cancel {
 
 body.dark-theme .dashboard-home,
 .dashboard-home.dark {
-  background-color: #0F172A !important;
+  background: transparent !important;
   color: #F8FAFC !important;
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 body.dark-theme .dashboard-welcome h1,

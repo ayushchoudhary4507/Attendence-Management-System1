@@ -701,31 +701,6 @@ const Employees = ({ onLogout, userRole }) => {
           </div>
         </div>
 
-        <div 
-          className={`emp-stat-card ${departmentFilter !== 'All' ? 'active-stat-card' : ''}`}
-          onClick={() => {
-            const deptSelect = document.querySelector('.department-filter-select');
-            if (deptSelect) {
-              deptSelect.focus();
-            } else {
-              setDepartmentFilter(departmentFilter === 'All' ? 'Software Development' : 'All');
-            }
-          }}
-          title="Click to filter by Department"
-          style={{ cursor: 'pointer' }}
-        >
-          <div className="emp-stat-icon icon-blue">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-            </svg>
-          </div>
-          <div className="emp-stat-info">
-            <span className="emp-stat-number">
-              {new Set(employees.map(e => e.department || e.designation).filter(Boolean)).size || 7}
-            </span>
-            <span className="emp-stat-label">Departments</span>
-          </div>
-        </div>
       </div>
 
       {/* Bulk Actions Bar */}
@@ -1119,13 +1094,13 @@ const Employees = ({ onLogout, userRole }) => {
       )}
 
       {filteredEmployees.length === 0 && (
-        <div className="no-results no-results-container" style={{textAlign: 'center', padding: '60px 20px', background: '#F9FAFB', borderRadius: '12px', marginTop: '20px'}}>
-          <svg viewBox="0 0 24 24" width="64" height="64" fill="#D1D5DB" style={{marginBottom: '16px'}}>
+        <div className="no-results no-results-container">
+          <svg className="no-results-icon" viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
           </svg>
-          <h3 style={{color: '#374151', marginBottom: '8px', fontSize: '18px'}}>No employees found</h3>
-          <p style={{color: '#6B7280', marginBottom: '20px'}}>Try adjusting your search or filters</p>
+          <h3>No employees found</h3>
+          <p>Try adjusting your search or filters</p>
           {isAdmin && (
             <button className="btn btn-primary no-results-btn" onClick={() => setShowAddModal(true)} style={{padding: '10px 20px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer'}}>
               Add First Employee

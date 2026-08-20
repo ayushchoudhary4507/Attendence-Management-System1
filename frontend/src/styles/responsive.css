@@ -136,6 +136,8 @@ body.dark-theme .mobile-menu-toggle:hover {
   display: flex;
   min-height: 100vh;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Main Content Area */
@@ -143,17 +145,22 @@ body.dark-theme .mobile-menu-toggle:hover {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Prevent flex item overflow */
+  min-width: 0;
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
   overflow-x: hidden;
 }
 
 /* Page Content */
 .page-content {
   flex: 1;
-  padding: var(--space-md);
+  width: 100%;
+  padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
 }
 
 /* ============================================
