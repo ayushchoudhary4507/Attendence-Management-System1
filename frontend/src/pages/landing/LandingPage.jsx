@@ -1,16 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
+import HeroVisualCarousel from './HeroVisualCarousel';
 import './LandingPage.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5005';
 
+const BG_IMAGES = [
+  { 
+    url: '/images/backgrounds/bg1.jpg', 
+    title: 'AI Facial Recognition Attendance Scanner',
+    subtitle: 'Lightning-fast contactless identity verification with real-time sync',
+    badge: '⚡ AI Face Recognition Scanner'
+  },
+  { 
+    url: '/images/backgrounds/bg2.jpg', 
+    title: 'Smart Biometric & NFC Check-In Terminal',
+    subtitle: 'Enterprise-grade biometric access point with cloud synchronization',
+    badge: '💳 Smart Biometric Card Terminal'
+  },
+  { 
+    url: '/images/backgrounds/bg3.jpg', 
+    title: 'Contactless Mobile QR Code Attendance',
+    subtitle: 'Dynamic QR geo-fenced check-in for modern workplace teams',
+    badge: '📱 Mobile QR Attendance System'
+  }
+];
+
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { isDarkMode, toggleTheme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    return savedTheme === 'dark';
-  });
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [stats, setStats] = useState([
     { label: 'Total Employees', value: '0', change: '+0%', trend: 'up', icon: '' },
     { label: 'Present Today', value: '0', change: '+0%', trend: 'up', icon: '' },
@@ -24,12 +45,21 @@ const LandingPage = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showBannerControls, setShowBannerControls] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Automatic Background Image Rotation every 7 seconds
+  useEffect(() => {
+    const imageTimer = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % BG_IMAGES.length);
+    }, 7000);
+    return () => clearInterval(imageTimer);
   }, []);
 
   // Fetch disabled - using static 0 values
@@ -172,14 +202,22 @@ const LandingPage = () => {
   // Get current chart data based on selected period - always use demo data for switching
   const currentChartData = chartDataByPeriod[chartPeriod];
 
-  const toggleTheme = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
-  };
-
   return (
     <div className={`landing-page ${isDarkMode ? 'dark' : 'light'}`}>
+      {/* Subtle Ambient Background Layer */}
+      <div className="landing-page-bg-ambient" aria-hidden="true">
+        <div className="bg-blob blob-purple" />
+        <div className="bg-blob blob-blue" />
+        <div className="bg-blob blob-cyan" />
+        <div className="bg-grid-overlay" />
+        <div className="bg-particles-container">
+          <span className="floating-dot d1" />
+          <span className="floating-dot d2" />
+          <span className="floating-dot d3" />
+          <span className="floating-dot d4" />
+        </div>
+      </div>
+
       {/* Navigation */}
       <nav className="landing-nav">
         <div className="nav-logo">
@@ -188,7 +226,7 @@ const LandingPage = () => {
         </div>
         <div className="nav-links">
           <a href="#features">Features</a>
-          <a href="#demo">Live Preview</a>
+          <a href="#demo-carousel">Live Preview</a>
           <button className="theme-toggle" onClick={toggleTheme}>
             {isDarkMode ? '☀️' : '🌙'}
           </button>
@@ -203,224 +241,124 @@ const LandingPage = () => {
 
       {/* Hero Section */}
       <section className="hero-section">
-        <div className="hero-content">
-          <div className="hero-text">
-            <h1 className="hero-title">
-              <span className="gradient-text">ATTENDANCE WEB SYSTEM</span>
-            </h1>
-            <p className="hero-subtitle">
-              Modern dashboard UI with Light & Dark Mode
-            </p>
-            <p className="hero-description">
-              Streamline your workforce management with our intelligent attendance tracking system.
-              Real-time insights, automated reporting, and seamless integration.
-            </p>
-            <div className="hero-stats">
-              <div className="stat-item">
-                <span className="stat-number">Smart</span>
-                <span className="stat-label">Attendance Tracking</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">Real-time</span>
-                <span className="stat-label">Dashboard Analytics</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">Secure</span>
-                <span className="stat-label">Cloud Based System</span>
-              </div>
-            </div> 
+        <div className="hero-container">
+          {/* Top Dedicated Attendance Photo Slider Banner */}
+          <div className="hero-top-photo-banner">
+            <div className="banner-slider-track">
+              {BG_IMAGES.map((bg, idx) => (
+                <div
+                  key={bg.url}
+                  className={`banner-slide ${currentImageIndex === idx ? 'active' : ''}`}
+                  style={{ backgroundImage: `url(${bg.url})` }}
+                >
+                  <div className="banner-slide-overlay">
+                    <div className="banner-slide-content">
+                      <h3 className="banner-slide-title">{bg.title}</h3>
+                      <p className="banner-slide-desc">{bg.subtitle}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Left & Right floating arrows (hidden by default, appear on hover/click) */}
+            <button
+              className="hero-banner-arrow hero-banner-arrow-left"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentImageIndex((prev) => (prev - 1 + BG_IMAGES.length) % BG_IMAGES.length);
+              }}
+              aria-label="Previous Slide"
+              type="button"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+
+            <button
+              className="hero-banner-arrow hero-banner-arrow-right"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentImageIndex((prev) => (prev + 1) % BG_IMAGES.length);
+              }}
+              aria-label="Next Slide"
+              type="button"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
           </div>
 
-          {/* Dashboard Preview */}
-          <div id="demo" className="dashboard-preview">
-            <div className="dashboard-card">
-              {/* Dashboard Header */}
-              <div className="db-header">
-                <div className="db-title">
-                  <span className="db-icon">📊</span>
-                  <span>Dashboard</span>
-                  <span className="db-badge">Live</span>
-                </div>
-                <div className="db-search" onClick={() => setShowSearchModal(true)} style={{ cursor: 'pointer' }}>
-                
-                  <span className="search-text">Quick Search...</span>
-                </div>
-              </div>
+          {/* Main Hero Content (Left Text + Right Dashboard Preview) */}
+          <div className="hero-content">
+            {/* Left Hero Content */}
+            <div className="hero-text">
+              <h1 className="hero-title">
+                <span className="gradient-text">ATTENDANCE WEB SYSTEM</span>
+              </h1>
 
-              {/* Breadcrumb */}
-              <div className="db-breadcrumb">
-                <span onClick={() => navigate('/login')} style={{ cursor: 'pointer' }}>Dashboard</span>
-                <span className="separator">›</span>
-                <span className="active" onClick={() => setShowConfigModal(true)} style={{ cursor: 'pointer' }}>Attendance Insights</span>
-              </div>
+              <p className="hero-subtitle">
+                Modern dashboard UI with Light & Dark Mode
+              </p>
 
-              {/* Time Widget */}
-              <div className="time-widget">
-                <div className="time-display">
-                  <span className="time-icon">☀️</span>
-                  <span className="time-text">{formatTime(currentTime)}</span>
-                  <span className="time-label">Realtime Insight</span>
-                </div>
-                <div className="date-display">
-                  <div className="today-label">Today:</div>
-                  <div className="date-text">{formatDate(currentTime)}</div>
-                  <button className="config-btn" onClick={() => setShowConfigModal(true)}> Advanced Configuration</button>
-                </div>
-              </div>
+              <p className="hero-description">
+                Streamline your workforce management with our intelligent attendance tracking system.
+                Real-time insights, automated reporting, and seamless integration.
+              </p>
 
-              {/* Stats Grid */}
-              <div className="stats-grid">
-                {stats.map((stat, index) => (
-                  <div 
-                    className="stat-card" 
-                    key={index}
-                    onClick={() => navigate('/login')}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="stat-card-header">
-                      <span className="stat-card-value">{stat.value}</span>
-                    </div>
-                    <div className="stat-card-label">{stat.label}</div>
-                    <div className={`stat-card-change ${stat.trend}`}>
-                      <span className="change-indicator">{stat.trend === 'up' ? '↑' : '↓'}</span>
-                      {stat.change} {stat.trend === 'up' ? 'vs yesterday' : 'Less than yesterday'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Chart Section */}
-              <div className="chart-section">
-                <div className="chart-header">
-                  <span className="chart-title">Attendance Comparison Chart</span>
-                  <div className="chart-controls">
-                    {['Daily', 'Weekly', 'Monthly'].map((period) => (
-                      <button
-                        key={period}
-                        className={`control ${chartPeriod === period ? 'active' : ''}`}
-                        onClick={() => setChartPeriod(period)}
-                        type="button"
-                      >
-                        {period}
-                      </button>
-                    ))}
-                    <span className="chart-icon">📊</span>
-                  </div>
+              {/* Feature Stat Cards (Smart / Real-time / Secure) */}
+              <div className="hero-stats">
+                <div className="stat-item">
+                  <span className="stat-number">Smart</span>
+                  <span className="stat-label">Attendance Tracking</span>
                 </div>
-                <div className="chart-container">
-                  <svg viewBox="0 0 600 200" className="attendance-chart">
-                    {/* Grid lines */}
-                    {[0, 25, 50, 75, 100].map((y, i) => (
-                      <line
-                        key={i}
-                        x1="0"
-                        y1={180 - (y * 1.6)}
-                        x2="600"
-                        y2={180 - (y * 1.6)}
-                        stroke="rgba(100, 100, 100, 0.3)"
-                        strokeWidth="1"
-                        strokeDasharray="4,4"
-                      />
-                    ))}
-                    
-                    {/* Area under the curve */}
-                    <defs>
-                      <linearGradient id={`areaGradient${chartPeriod}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="#4F46E5" stopOpacity="0.05" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      d={`M 0,180 ${currentChartData.map((p, i) => {
-                        const x = (i / (currentChartData.length - 1)) * 580 + 10;
-                        const y = 180 - (p.value * 1.6);
-                        return `L ${x},${y}`;
-                      }).join(' ')} L 590,180 Z`}
-                      fill={`url(#areaGradient${chartPeriod})`}
-                    />
-                    
-                    {/* Line */}
-                    <path
-                      d={`M 0,180 ${currentChartData.map((p, i) => {
-                        const x = (i / (currentChartData.length - 1)) * 580 + 10;
-                        const y = 180 - (p.value * 1.6);
-                        return `L ${x},${y}`;
-                      }).join(' ')}`}
-                      fill="none"
-                      stroke="#4F46E5"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                    
-                    {/* Data points */}
-                    {currentChartData.map((p, i) => {
-                      const x = (i / (currentChartData.length - 1)) * 580 + 10;
-                      const y = 180 - (p.value * 1.6);
-                      const isHighlighted = i === Math.floor(currentChartData.length / 2);
-                      return (
-                        <circle
-                          key={i}
-                          cx={x}
-                          cy={y}
-                          r={isHighlighted ? 6 : 3}
-                          fill={isHighlighted ? '#60A5FA' : '#4F46E5'}
-                          stroke={isHighlighted ? '#fff' : 'none'}
-                          strokeWidth={isHighlighted ? 3 : 0}
-                          style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
-                        />
-                      );
-                    })}
-                    
-                    {/* Highlight tooltip */}
-                    <g transform="translate(335, 90)">
-                      <rect x="-25" y="-30" width="50" height="24" rx="4" fill="#4F46E5" />
-                      <text x="0" y="-14" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">91%</text>
-                      <polygon points="0,0 -6,-6 6,-6" fill="#4F46E5" transform="translate(0, -6)" />
-                    </g>
-                    
-                    {/* X-axis labels */}
-                    {currentChartData.filter((_, i) => i % Math.ceil(currentChartData.length / 5) === 0).map((p, i) => {
-                      const originalIndex = i * Math.ceil(currentChartData.length / 5);
-                      const x = (originalIndex / (currentChartData.length - 1)) * 580 + 10;
-                      return (
-                        <text
-                          key={i}
-                          x={x}
-                          y="195"
-                          textAnchor="middle"
-                          fill="#888"
-                          fontSize="9"
-                        >
-                          {currentChartData[originalIndex]?.day || p.day}
-                        </text>
-                      );
-                    })}
-                  </svg>
+                <div className="stat-item">
+                  <span className="stat-number">Real-time</span>
+                  <span className="stat-label">Dashboard Analytics</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">Secure</span>
+                  <span className="stat-label">Cloud Based System</span>
                 </div>
               </div>
             </div>
 
-            {/* Floating elements */}
-            <div className="floating-card card-1">
-              <span className="floating-icon"></span>
-              <span className="floating-text">+24% Productivity</span>
+            {/* Right Dynamic Visual Area */}
+            <div id="demo-carousel" className="hero-dynamic-visual-area">
+              <HeroVisualCarousel 
+                isDarkMode={isDarkMode} 
+                currentTime={currentTime}
+                stats={stats}
+                chartPeriod={chartPeriod}
+                setChartPeriod={setChartPeriod}
+                currentChartData={currentChartData}
+                setShowSearchModal={setShowSearchModal}
+                setShowConfigModal={setShowConfigModal}
+                formatTime={formatTime}
+                formatDate={formatDate}
+                onNavigate={navigate}
+              />
             </div>
-            {true && <div className="floating-card card-2">
-              <span className="floating-icon"></span>
-              <span className="floating-text">98% Accuracy</span>
-            </div>}
           </div>
         </div>
       </section>
 
       {/* Features Section */}
       <section id="features" className="features-section">
-        <h2 className="section-title">
-          Powerful <span className="gradient-text">Features</span>
-        </h2>
-        <p className="section-subtitle">
-          Everything you need to manage your workforce efficiently
-        </p>
+        <div className="features-header-card">
+          <div className="features-badge">
+            <span className="badge-sparkle">✦</span>
+            <span>CORE CAPABILITIES</span>
+          </div>
+          <h2 className="section-title">
+            Powerful <span className="gradient-text">Features</span>
+          </h2>
+          <p className="section-subtitle">
+            Everything you need to manage your workforce efficiently
+          </p>
+        </div>
         <div className="features-grid">
           {features.map((feature, index) => (
             <div className="feature-card" key={index}>
@@ -432,78 +370,83 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="cta-section">
-        <div className="cta-content">
-          <h2 className="cta-title">Ready to Transform Your Attendance Management?</h2>
-          <p className="cta-desc">
-            Join thousands of companies already using AttendancePro to streamline their workforce
-          </p>
-          <div className="cta-buttons">
-            <button className="btn-primary large" onClick={() => navigate('/signup')}>
-              Start Free Trial
-            </button>
-            <button className="btn-secondary large" onClick={() => navigate('/login')}>
-              Admin Login
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
+      {/* Premium Modern Footer */}
       <footer className="landing-footer">
         <div className="footer-content">
-          <div className="footer-columns">
-            <div className="footer-column">
-              <h4>Features</h4>
-              <ul>
-                <li><a href="#" onClick={() => navigate('/login')}>Attendance Tracking</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Leave Management</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Employee Directory</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Reports & Analytics</a></li>
+          <div className="footer-top-grid">
+            {/* Column 1: Brand & Info */}
+            <div className="footer-brand-col">
+              <div className="footer-brand-header">
+                <div className="footer-logo-box">📋</div>
+                <span className="footer-brand-name">AttendancePro</span>
+              </div>
+              <p className="footer-brand-desc">
+                Next-generation smart attendance and workforce management system. Seamless biometric integration, real-time analytics, and enterprise cloud security.
+              </p>
+              <div className="footer-social-pills">
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter" className="social-pill">
+                  <span>𝕏</span>
+                </a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="social-pill">
+                  <span>in</span>
+                </a>
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="social-pill">
+                  <span>⌨</span>
+                </a>
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="social-pill">
+                  <span>📷</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Column 2: Product & Features */}
+            <div className="footer-nav-col">
+              <h4 className="footer-heading">Features</h4>
+              <ul className="footer-links">
+                <li><a href="#demo-carousel" onClick={(e) => { e.preventDefault(); document.getElementById('demo-carousel')?.scrollIntoView({ behavior: 'smooth' }); }}>AI Face Recognition</a></li>
+                <li><a href="#demo-carousel" onClick={(e) => { e.preventDefault(); document.getElementById('demo-carousel')?.scrollIntoView({ behavior: 'smooth' }); }}>Smart Biometrics</a></li>
+                <li><a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Live Analytics</a></li>
+                <li><a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Leave Management</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Geo-Fenced QR Scanner</a></li>
               </ul>
             </div>
-            <div className="footer-column">
-              <h4>Solutions</h4>
-              <ul>
-                <li><a href="#" onClick={() => navigate('/login')}>Small Business</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Enterprise</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Remote Teams</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Shift Workers</a></li>
+
+            {/* Column 3: Solutions */}
+            <div className="footer-nav-col">
+              <h4 className="footer-heading">Solutions</h4>
+              <ul className="footer-links">
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Enterprise Businesses</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Small & Mid Teams</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Remote Workforce</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Shift Scheduling</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Automated Payroll Sync</a></li>
               </ul>
             </div>
-            <div className="footer-column">
-              <h4>Support</h4>
-              <ul>
-                <li><a href="#" onClick={() => navigate('/login')}>Help Center</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>User Guides</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Contact Us</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>FAQs</a></li>
-              </ul>
-            </div>
-            <div className="footer-column">
-              <h4>Legal</h4>
-              <ul>
-                <li><a href="#" onClick={() => navigate('/login')}>Privacy Policy</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Terms of Service</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>GDPR Compliance</a></li>
-                <li><a href="#" onClick={() => navigate('/login')}>Data Security</a></li>
+
+            {/* Column 4: Resources & Support */}
+            <div className="footer-nav-col">
+              <h4 className="footer-heading">Resources</h4>
+              <ul className="footer-links">
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Documentation</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>API Reference</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Security & Compliance</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Help Center</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>System Status 🟢</a></li>
               </ul>
             </div>
           </div>
-          <div className="footer-bottom">
-            <div className="footer-brand">
-              <div className="logo-icon">📋</div>
-              <span>AttendancePro</span>
+
+          {/* Footer Bottom Bar */}
+          <div className="footer-bottom-bar">
+            <div className="footer-copyright-text">
+              © {new Date().getFullYear()} <strong>AttendancePro</strong>. All rights reserved. Empowering modern workplace teams.
             </div>
-            <p className="footer-copyright">
-              © 2024 AttendancePro. All rights reserved.
-            </p>
-            <div className="footer-social">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">Facebook</a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">Twitter</a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">LinkedIn</a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">Instagram</a>
+            <div className="footer-legal-links">
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Privacy Policy</a>
+              <span className="dot-divider">•</span>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Terms of Service</a>
+              <span className="dot-divider">•</span>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login'); }}>Security</a>
             </div>
           </div>
         </div>

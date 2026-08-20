@@ -39,6 +39,13 @@ const getAvatarColor = (name) => {
   return AVATAR_COLORS[charCode % AVATAR_COLORS.length];
 };
 
+const getImageUrl = (imgPath) => {
+  if (!imgPath) return null;
+  if (imgPath.startsWith('http')) return imgPath;
+  const base = API_URL.replace('/api', '');
+  return `${base}${imgPath}`;
+};
+
 const Employees = ({ onLogout, userRole }) => {
   const isAdmin = userRole === 'admin';
   const isEmployee = userRole === 'employee';
@@ -93,6 +100,7 @@ const Employees = ({ onLogout, userRole }) => {
     message: ''
   });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -198,6 +206,7 @@ const Employees = ({ onLogout, userRole }) => {
           role: emp.role,
           reportingTo: emp.reportingTo,
           status: emp.status,
+          profileImage: emp.profileImage || '',
           attendanceToday: emp.attendanceToday,
           isCheckedIn: emp.isCheckedIn,
           attendanceData: emp.attendanceData
@@ -816,20 +825,58 @@ const Employees = ({ onLogout, userRole }) => {
                 <td className="employee-id">{employee.id}</td>
                 <td>
                   <div className="employee-info" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      background: `linear-gradient(135deg, ${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      flexShrink: 0
-                    }}>
-                    </div>
+                    {employee.profileImage ? (
+                      <img
+                        src={getImageUrl(employee.profileImage)}
+                        alt={employee.name}
+                        onClick={() => setPreviewImage({
+                          url: getImageUrl(employee.profileImage),
+                          title: employee.name,
+                          subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
+                        })}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                        }}
+                        title="Click to view photo"
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div 
+                        onClick={() => setPreviewImage({
+                          url: `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=${getAvatarColor(employee.name)}&color=fff&size=200`,
+                          title: employee.name,
+                          subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
+                        })}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: `linear-gradient(135deg, ${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          flexShrink: 0,
+                          cursor: 'pointer'
+                        }}
+                        title="Click to view"
+                      >
+                        {employee.name ? employee.name.charAt(0).toUpperCase() : 'U'}
+                      </div>
+                    )}
                     <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
                       <span className="employee-name" style={{fontWeight: '600', fontSize: '14px'}}>{employee.name}</span>
                       <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
@@ -929,11 +976,46 @@ const Employees = ({ onLogout, userRole }) => {
         {currentEmployees.map((employee, index) => (
           <div className="employee-mobile-card" key={employee._id || employee.id}>
             <div className="employee-card-header">
-              <div className="employee-card-avatar" style={{
-                background: `linear-gradient(135deg, ${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`
-              }}>
-                {employee.name?.charAt(0).toUpperCase()}
-              </div>
+              {employee.profileImage ? (
+                <img
+                  src={getImageUrl(employee.profileImage)}
+                  alt={employee.name}
+                  className="employee-card-avatar"
+                  onClick={() => setPreviewImage({
+                    url: getImageUrl(employee.profileImage),
+                    title: employee.name,
+                    subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
+                  })}
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    cursor: 'pointer'
+                  }}
+                  title="Click to view photo"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div 
+                  className="employee-card-avatar" 
+                  onClick={() => setPreviewImage({
+                    url: `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=${getAvatarColor(employee.name)}&color=fff&size=200`,
+                    title: employee.name,
+                    subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
+                  })}
+                  style={{
+                    background: `linear-gradient(135deg, ${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`,
+                    cursor: 'pointer'
+                  }}
+                  title="Click to view"
+                >
+                  {employee.name?.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="employee-card-info">
                 <h4 className="employee-card-name">{employee.name}</h4>
                 <p className="employee-card-designation">{employee.designation}</p>
@@ -1240,6 +1322,56 @@ const Employees = ({ onLogout, userRole }) => {
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button>
               <button className="btn btn-primary delete-btn-danger" onClick={handleDeleteEmployee}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Lightbox */}
+      {previewImage && (
+        <div 
+          className="image-lightbox-overlay"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            className="image-lightbox-container"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="image-lightbox-header">
+              <div className="image-lightbox-info">
+                <h4>{previewImage.title}</h4>
+                {previewImage.subtitle && <span>{previewImage.subtitle}</span>}
+              </div>
+              <div className="image-lightbox-actions">
+                <a 
+                  href={previewImage.url} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  download={`${previewImage.title || 'photo'}.jpg`}
+                  className="image-lightbox-btn"
+                  title="Download / Open Full Photo"
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                </a>
+                <button 
+                  className="image-lightbox-btn close-btn"
+                  onClick={() => setPreviewImage(null)}
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="image-lightbox-body">
+              <img 
+                src={previewImage.url} 
+                alt={previewImage.title || 'Preview'} 
+                className="image-lightbox-img" 
+              />
             </div>
           </div>
         </div>

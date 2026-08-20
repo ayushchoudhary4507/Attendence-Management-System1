@@ -13,6 +13,15 @@ const API_URL = import.meta.env.PROD
   ? 'https://attendence-management-system1.onrender.com/api'
   : 'http://127.0.0.1:5005/api';
 
+const getEmployeeAvatar = (emp) => {
+  if (emp?.profileImage) {
+    if (emp.profileImage.startsWith('http')) return emp.profileImage;
+    const base = API_URL.replace('/api', '');
+    return `${base}${emp.profileImage}`;
+  }
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(emp?.name || 'User')}&background=4F46E5&color=fff&size=45`;
+};
+
 const Dashboard = ({ onLogout, userRole }) => {
   const navigate = useNavigate();
   
@@ -1089,9 +1098,14 @@ const Dashboard = ({ onLogout, userRole }) => {
                 {recentEmployees.slice(0, 5).map((emp) => (
                   <div key={emp._id} className="employee-item">
                     <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=4F46E5&color=fff&size=40`}
+                      src={getEmployeeAvatar(emp)}
                       alt={emp.name}
                       className="employee-avatar"
+                      style={{ objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || 'User')}&background=4F46E5&color=fff&size=40`;
+                      }}
                     />
                     <div className="employee-info">
                       <p className="employee-name">{emp.name}</p>
@@ -1368,10 +1382,14 @@ const Dashboard = ({ onLogout, userRole }) => {
                     gap: '15px'
                   }}>
                     <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=4F46E5&color=fff&size=45`}
+                      src={getEmployeeAvatar(emp)}
                       alt={emp.name}
                       className="employee-avatar"
-                      style={{ width: '45px', height: '45px', borderRadius: '50%' }}
+                      style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || 'User')}&background=4F46E5&color=fff&size=45`;
+                      }}
                     />
                     <div className="employee-info" style={{ flex: 1 }}>
                       <p className="employee-name" style={{ fontWeight: '600', margin: '0 0 4px 0' }}>{emp.name}</p>

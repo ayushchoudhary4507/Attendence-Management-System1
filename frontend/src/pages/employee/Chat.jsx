@@ -1053,7 +1053,12 @@ const Chat = ({ user }) => {
   const messageGroups = groupMessagesByDate();
 
   // Get user avatar URL
-  const getAvatarUrl = (name) => {
+  const getAvatarUrl = (name, profileImage) => {
+    if (profileImage) {
+      if (profileImage.startsWith('http')) return profileImage;
+      const base = API_BASE_URL.replace('/api', '');
+      return `${base}${profileImage}`;
+    }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=4F46E5&color=fff&size=40`;
   };
 
@@ -1220,7 +1225,8 @@ const Chat = ({ user }) => {
                       setSelectedUser({
                         id: item.userId,
                         name: item.userName,
-                        email: item.userEmail
+                        email: item.userEmail,
+                        profileImage: item.profileImage
                       });
                       setSelectedGroup(null);
                       // Hide sidebar on mobile after selection
@@ -1230,7 +1236,15 @@ const Chat = ({ user }) => {
                     }}
                   >
                     <div className="chat-user-avatar">
-                      <img src={getAvatarUrl(item.userName)} alt={item.userName} />
+                      <img 
+                        src={getAvatarUrl(item.userName, item.profileImage)} 
+                        alt={item.userName} 
+                        style={{ objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.userName || 'User')}&background=4F46E5&color=fff&size=40`;
+                        }}
+                      />
                       {onlineUsers.has(item.userId) && (
                         <span className="online-indicator"></span>
                       )}
@@ -1350,7 +1364,15 @@ const Chat = ({ user }) => {
                     </svg>
                   </button>
                   <div className="chat-header-avatar">
-                    <img src={getAvatarUrl(selectedUser.name)} alt={selectedUser.name} />
+                    <img 
+                      src={getAvatarUrl(selectedUser.name, selectedUser.profileImage)} 
+                      alt={selectedUser.name} 
+                      style={{ objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.name || 'User')}&background=4F46E5&color=fff&size=40`;
+                      }}
+                    />
                     {onlineUsers.has(selectedUser.id) && (
                       <span className="online-indicator"></span>
                     )}

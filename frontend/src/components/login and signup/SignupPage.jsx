@@ -74,76 +74,136 @@ const SignupPage = ({ onLoginClick }) => {
 
   return (
     <div className={`signup-page ${isDarkMode ? 'dark' : 'light'}`}>
-      {/* Navigation */}
-      <nav className="signup-nav">
-        <div className="nav-logo">
-          <div className="logo-icon">📋</div>
-          <span>AttendancePro</span>
-        </div>
-        <div className="nav-links">
-          <button className="theme-toggle" onClick={toggleTheme}>
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
-        </div>
-      </nav>
+      {/* Ambient background glows */}
+      <div className="signup-bg-ambient" aria-hidden="true">
+        <div className="bg-blob blob-purple" />
+        <div className="bg-blob blob-blue" />
+        <div className="bg-grid-overlay" />
+      </div>
 
-      <div className="signup-container">
-        <div className="signup-card">
-          <h2 className="signup-title">Create Account</h2>
-          <p className="signup-subtitle">Sign up with your Gmail account</p>
-          <form onSubmit={handleSubmit} className="signup-form">
-            <div className="form-group">
-              <input
-                type="text"
-                name="name"
-                placeholder="Enter your name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="form-input"
-              />
+      <div className="signup-layout-wrapper">
+        {/* Left Side Feature Showcase Panel */}
+        <div className="signup-showcase-panel">
+          <div className="showcase-brand">
+            <div className="showcase-logo-icon">📋</div>
+            <span className="showcase-brand-name">AttendancePro</span>
+          </div>
+
+          <div className="showcase-hero">
+            <h1 className="showcase-title">
+              Your Attendance Management <br />
+              <span className="showcase-highlight-text">account awaits.</span>
+            </h1>
+            <p className="showcase-subtitle">
+              Create your account to start tracking smart employee attendance, automated biometric sync, and instant team payroll analytics.
+            </p>
+          </div>
+
+          <div className="showcase-features">
+            <div className="showcase-feature-item">
+              <div className="feature-icon-box">
+                <span className="f-icon">📷</span>
+              </div>
+              <div className="feature-text-group">
+                <h4 className="feature-item-title">Automated AI Captures</h4>
+                <p className="feature-item-desc">High-speed facial & biometric verification on schedule</p>
+              </div>
             </div>
-            <div className="form-group">
-              <input
-                type="email"
-                name="email"
-                placeholder="Enter your Gmail address"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="form-input"
-              />
+
+            <div className="showcase-feature-item">
+              <div className="feature-icon-box">
+                <span className="f-icon">🔔</span>
+              </div>
+              <div className="feature-text-group">
+                <h4 className="feature-item-title">Real-Time Attendance Alerts</h4>
+                <p className="feature-item-desc">Instant alerts when late arrival or early departure occurs</p>
+              </div>
             </div>
-            <div className="form-group">
-              <input
-                type="tel"
-                name="phone"
-                placeholder="Enter your phone number (optional)"
-                value={formData.phone}
-                onChange={handleChange}
-                className="form-input"
-                maxLength="10"
-              />
+
+            <div className="showcase-feature-item">
+              <div className="feature-icon-box">
+                <span className="f-icon">📄</span>
+              </div>
+              <div className="feature-text-group">
+                <h4 className="feature-item-title">Audit & Payroll Reports</h4>
+                <p className="feature-item-desc">One-click compliance packages and payroll ready export</p>
+              </div>
             </div>
-            <div className="form-group">
-              <input
-                type="password"
-                name="password"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                className="form-input"
-              />
-            </div>
-            <button type="submit" className="signup-button" disabled={loading}>
-              {loading ? 'Signing up...' : 'Sign Up'}
-            </button>
-          </form>
-          {error && <div className="error-message">{error}</div>}
-          <p className="login-link">
-            Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); onLoginClick(); }}>Login</a>
-          </p>
+          </div>
+
+          <div className="showcase-trust-badge">
+            <span className="trust-dot" />
+            <span>Trusted by 10,000+ modern workplaces across the globe</span>
+          </div>
+        </div>
+
+        {/* Right Side: Signup Card */}
+        <div className="signup-card-section">
+          <div className="signup-card">
+            <h2 className="signup-title">Create Account</h2>
+            <p className="signup-subtitle">Sign up with your details to get started</p>
+            <form onSubmit={handleSubmit} className="signup-form">
+              <div className="form-group">
+                <label className="form-label" htmlFor="signup-name">Full Name</label>
+                <input
+                  type="text"
+                  id="signup-name"
+                  name="name"
+                  placeholder="Enter your full name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="signup-email">Email Address</label>
+                <input
+                  type="email"
+                  id="signup-email"
+                  name="email"
+                  placeholder="Enter your email address"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="form-input"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="signup-phone">Phone Number (Optional)</label>
+                <input
+                  type="tel"
+                  id="signup-phone"
+                  name="phone"
+                  placeholder="Enter 10-digit phone number"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="form-input"
+                  maxLength="10"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="signup-password">Password</label>
+                <input
+                  type="password"
+                  id="signup-password"
+                  name="password"
+                  placeholder="Create a strong password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  className="form-input"
+                />
+              </div>
+              <button type="submit" className="signup-button" disabled={loading}>
+                {loading ? '⏳ Creating Account...' : 'Sign Up for Free'}
+              </button>
+            </form>
+            {error && <div className="error-message">{error}</div>}
+            <p className="login-link">
+              Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); onLoginClick(); }}>Login</a>
+            </p>
+          </div>
         </div>
       </div>
 

@@ -43,11 +43,19 @@ const getEmployees = async (req, res) => {
     console.log('Employees found:', employees.length);
     console.log('First employee:', employees[0]);
     
-    // Also fetch users from User collection (for messaging compatibility)
+    // Also fetch users from User collection (for messaging compatibility and avatar sync)
     const users = await User.find({
       role: { $in: ['admin', 'employee'] }
-    }).select('name email role createdAt lastLogin');
+    }).select('name email role profileImage createdAt lastLogin');
     console.log('Users found:', users.length);
+
+    // Build user map for fast profileImage lookup by email
+    const userMap = {};
+    users.forEach(u => {
+      if (u.email) {
+        userMap[u.email.toLowerCase()] = u;
+      }
+    });
 
     // Get today's attendance for all employees
     const today = new Date();
@@ -68,10 +76,12 @@ const getEmployees = async (req, res) => {
       }
     });
 
-    // Add attendance status to each employee
+    // Add attendance status and profileImage to each employee
     const employeesWithAttendance = employees.map(emp => {
       const empObj = emp.toObject();
       const attendance = attendanceMap[emp._id.toString()];
+      const matchingUser = emp.email ? userMap[emp.email.toLowerCase()] : null;
+      const profileImage = emp.profileImage || (matchingUser ? matchingUser.profileImage : '') || '';
       
       // Determine status: checked in (isActive=true) = active, checked out or no attendance = inactive
       let status = 'inactive';
@@ -81,6 +91,7 @@ const getEmployees = async (req, res) => {
       
       return {
         ...empObj,
+        profileImage,
         attendanceToday: status,
         attendanceData: attendance || null,
         isCheckedIn: attendance ? attendance.isActive : false,
@@ -104,6 +115,7 @@ const getEmployees = async (req, res) => {
       employeeId: 'USER-' + user._id.toString().slice(-4),
       status: 'Active',
       reportingTo: 'Admin',
+      profileImage: user.profileImage || '',
       createdAt: user.createdAt,
       isUser: true, // Flag to identify user vs employee
       attendanceToday: 'inactive',

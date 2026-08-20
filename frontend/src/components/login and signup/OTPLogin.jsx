@@ -213,146 +213,206 @@ const OTPLogin = ({ onBack, onLoginSuccess }) => {
 
   return (
     <div className={`otp-login-page ${isDarkMode ? 'dark' : 'light'}`}>
-      {/* Navigation */}
-      <nav className="otp-login-nav">
-        <div className="nav-logo">
-          <div className="logo-icon">📋</div>
-          <span>AttendancePro</span>
-        </div>
-        <div className="nav-links">
-          <button className="theme-toggle" onClick={toggleTheme}>
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
-        </div>
-      </nav>
+      {/* Ambient background glows */}
+      <div className="otp-bg-ambient" aria-hidden="true">
+        <div className="bg-blob blob-purple" />
+        <div className="bg-blob blob-blue" />
+        <div className="bg-grid-overlay" />
+      </div>
 
-      <div className="otp-login-container">
-        <div className="otp-login-card">
-          <div className="otp-login-header">
-            {onBack && (
-              <button className="back-btn" onClick={onBack}>← Back</button>
-            )}
-            <h1>Welcome Back</h1>
-            <p>Login with OTP for secure access</p>
+      <div className="otp-layout-wrapper">
+        {/* Left Side Feature Showcase Panel */}
+        <div className="otp-showcase-panel">
+          <div className="showcase-brand">
+            <div className="showcase-logo-icon">📋</div>
+            <span className="showcase-brand-name">AttendancePro</span>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
-          {message && <div className="success-message">{message}</div>}
+          <div className="showcase-hero">
+            <h1 className="showcase-title">
+              Your Attendance Management <br />
+              <span className="showcase-highlight-text">dashboard awaits.</span>
+            </h1>
+            <p className="showcase-subtitle">
+              Sign in with one-time verification to securely access employee attendance, real-time rosters, and workforce management.
+            </p>
+          </div>
 
-          {step === 'input' ? (
-            <form onSubmit={handleSendOTP} className="otp-input-form">
-              <div className="contact-type-toggle">
-                <button
-                  type="button"
-                  className={contactType === 'email' ? 'active' : ''}
-                  onClick={() => setContactType('email')}
-                >
-                  Email
-                </button>
-                <button
-                  type="button"
-                  className={contactType === 'mobile' ? 'active' : ''}
-                  onClick={() => setContactType('mobile')}
-                >
-                  Mobile
-                </button>
+          <div className="showcase-features">
+            <div className="showcase-feature-item">
+              <div className="feature-icon-box">
+                <span className="f-icon">📷</span>
               </div>
-
-              <div className="form-group">
-                <label>
-                  {contactType === 'email' ? 'Email Address' : 'Mobile Number'}
-                </label>
-                {contactType === 'email' ? (
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    required
-                  />
-                ) : (
-                  <input
-                    type="tel"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                    placeholder="Enter your mobile number"
-                    required
-                  />
-                )}
+              <div className="feature-text-group">
+                <h4 className="feature-item-title">Automated AI Captures</h4>
+                <p className="feature-item-desc">High-speed facial & biometric verification on schedule</p>
               </div>
+            </div>
 
-              <button 
-                type="submit" 
-                className="btn-send-otp"
-                disabled={loading}
-              >
-                {loading ? 'Sending...' : 'Send OTP'}
-              </button>
-
-              <div className="login-options">
-                <a href="/login">Login with password instead</a>
+            <div className="showcase-feature-item">
+              <div className="feature-icon-box">
+                <span className="f-icon">🔔</span>
               </div>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOTP} className="otp-verify-form">
-              <div className="otp-sent-info">
-                <p>OTP sent to {contactType === 'email' ? email : mobile}</p>
-                <button 
-                  type="button" 
-                  className="btn-change"
-                  onClick={() => setStep('input')}
-                >
-                  Change
-                </button>
+              <div className="feature-text-group">
+                <h4 className="feature-item-title">Real-Time Attendance Alerts</h4>
+                <p className="feature-item-desc">Instant alerts when late arrival or early departure occurs</p>
               </div>
+            </div>
 
-              <div className="form-group">
-                <label>Enter 6-digit OTP</label>
-                <div className="otp-inputs" onPaste={handlePaste}>
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={el => otpRefs.current[index] = el}
-                      type="text"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      className="otp-digit"
-                    />
-                  ))}
+            <div className="showcase-feature-item">
+              <div className="feature-icon-box">
+                <span className="f-icon">📄</span>
+              </div>
+              <div className="feature-text-group">
+                <h4 className="feature-item-title">Audit & Payroll Reports</h4>
+                <p className="feature-item-desc">One-click compliance packages and payroll ready export</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="showcase-trust-badge">
+            <span className="trust-dot" />
+            <span>Trusted by 10,000+ modern workplaces across the globe</span>
+          </div>
+        </div>
+
+        {/* Right Side: OTP Card */}
+        <div className="otp-card-section">
+          <div className="otp-login-card">
+            <div className="otp-login-header">
+              {onBack && (
+                <button className="back-btn" onClick={onBack} type="button">← Back</button>
+              )}
+              <h2 className="otp-title">Welcome Back</h2>
+              <p className="otp-subtitle">Login with OTP for secure access</p>
+            </div>
+
+            {error && <div className="error-message">{error}</div>}
+            {message && <div className="success-message">{message}</div>}
+
+            {step === 'input' ? (
+              <form onSubmit={handleSendOTP} className="otp-input-form">
+                <div className="contact-type-toggle">
+                  <button
+                    type="button"
+                    className={contactType === 'email' ? 'active' : ''}
+                    onClick={() => setContactType('email')}
+                  >
+                    Email
+                  </button>
+                  <button
+                    type="button"
+                    className={contactType === 'mobile' ? 'active' : ''}
+                    onClick={() => setContactType('mobile')}
+                  >
+                    Mobile
+                  </button>
                 </div>
-              </div>
 
-              <button 
-                type="submit" 
-                className="btn-verify-otp"
-                disabled={loading || otp.join('').length !== 6}
-              >
-                {loading ? 'Verifying...' : 'Verify OTP'}
-              </button>
+                <div className="form-group">
+                  <label className="form-label">
+                    {contactType === 'email' ? 'Email Address' : 'Mobile Number'}
+                  </label>
+                  {contactType === 'email' ? (
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      required
+                      className="form-input"
+                    />
+                  ) : (
+                    <input
+                      type="tel"
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value)}
+                      placeholder="Enter your mobile number"
+                      required
+                      className="form-input"
+                    />
+                  )}
+                </div>
 
-              <div className="resend-section">
-                {canResend ? (
+                <button 
+                  type="submit" 
+                  className="btn-send-otp"
+                  disabled={loading}
+                >
+                  {loading ? 'Sending...' : 'Send OTP'}
+                </button>
+
+                <div className="login-options">
                   <button 
                     type="button" 
-                    className="btn-resend"
-                    onClick={handleResendOTP}
-                    disabled={loading}
+                    className="link-btn-text" 
+                    onClick={onBack ? onBack : () => window.location.href = '/login'}
                   >
-                    Resend OTP
+                    Login with password instead
                   </button>
-                ) : (
-                  <p className="timer-text">
-                    Resend OTP in {timer}s
-                  </p>
-                )}
-              </div>
-            </form>
-          )}
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOTP} className="otp-verify-form">
+                <div className="otp-sent-info">
+                  <p>OTP sent to {contactType === 'email' ? email : mobile}</p>
+                  <button 
+                    type="button" 
+                    className="btn-change"
+                    onClick={() => setStep('input')}
+                  >
+                    Change
+                  </button>
+                </div>
 
-          <div className="otp-login-footer">
-            <p>Don't have an account? <a href="/signup">Sign up</a></p>
+                <div className="form-group">
+                  <label className="form-label">Enter 6-digit OTP</label>
+                  <div className="otp-inputs" onPaste={handlePaste}>
+                    {otp.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={el => otpRefs.current[index] = el}
+                        type="text"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        className="otp-digit"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="btn-verify-otp"
+                  disabled={loading || otp.join('').length !== 6}
+                >
+                  {loading ? 'Verifying...' : 'Verify & Login'}
+                </button>
+
+                <div className="resend-section">
+                  {canResend ? (
+                    <button 
+                      type="button" 
+                      className="btn-resend"
+                      onClick={handleResendOTP}
+                      disabled={loading}
+                    >
+                      Resend OTP
+                    </button>
+                  ) : (
+                    <p className="timer-text">
+                      Resend OTP in {timer}s
+                    </p>
+                  )}
+                </div>
+              </form>
+            )}
+
+            <div className="otp-login-footer">
+              <p>Don't have an account? <a href="/signup">Sign up</a></p>
+            </div>
           </div>
         </div>
       </div>

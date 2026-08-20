@@ -45,7 +45,7 @@ const SignupPageWrapper = () => {
 };
 
 // Layout Component with Sidebar - using React Router
-const Layout = ({ children, onLogout, userRole, user }) => {
+const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
@@ -93,13 +93,15 @@ const Layout = ({ children, onLogout, userRole, user }) => {
     phone: '',
     department: '',
     role: '',
-    profileImage: ''
+    profileImage: '',
+    removeProfileImage: false
   });
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const profileModalRef = useRef(null);
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [previewModalImage, setPreviewModalImage] = useState(null);
   const fileInputRef = useRef(null);
 
   // Helper: convert relative image path to full URL, or return as-is if already full
@@ -179,7 +181,8 @@ const Layout = ({ children, onLogout, userRole, user }) => {
       phone: user?.phone || '',
       department: user?.department || '',
       role: user?.role || '',
-      profileImage: user?.profileImage || ''
+      profileImage: user?.profileImage || '',
+      removeProfileImage: false
     });
     // Handle both relative and full URLs
     setProfileImagePreview(getImageUrl(user?.profileImage) || null);
@@ -201,6 +204,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
         return;
       }
       setProfileImageFile(file);
+      setProfileData((prev) => ({ ...prev, removeProfileImage: false }));
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -214,7 +218,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
   const handleImageRemove = () => {
     setProfileImageFile(null);
     setProfileImagePreview(null);
-    setProfileData({ ...profileData, profileImage: '' });
+    setProfileData({ ...profileData, profileImage: '', removeProfileImage: true });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -256,43 +260,54 @@ const Layout = ({ children, onLogout, userRole, user }) => {
         });
         const data = await response.json();
         if (data.success) {
-          // Update user object in both localStorage and sessionStorage
+          const rawImagePath = data.data.profileImage || null;
           const updatedUser = { 
             ...user, 
             ...profileData, 
-            profileImage: data.data.profileImage ? getImageUrl(data.data.profileImage) : null 
+            profileImage: rawImagePath
           };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           sessionStorage.setItem('user', JSON.stringify(updatedUser));
+          if (onUserUpdate) onUserUpdate(updatedUser);
           setProfileImageFile(null);
-          setProfileImagePreview(updatedUser.profileImage || null);
+          setProfileImagePreview(getImageUrl(rawImagePath) || null);
           setIsEditing(false);
           alert('Profile updated successfully!');
         } else {
           alert('Failed to update profile');
         }
       } else {
-        // No image file, regular JSON update
+        // No new image file, regular JSON update
+        const payload = {
+          name: profileData.name,
+          email: profileData.email,
+          phone: profileData.phone,
+          department: profileData.department,
+          role: profileData.role,
+          profileImage: profileData.removeProfileImage ? null : (user?.profileImage || null),
+          removeProfileImage: !!profileData.removeProfileImage
+        };
+
         const response = await fetch(`${API_BASE_URL}/settings/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
           },
-          body: JSON.stringify(profileData)
+          body: JSON.stringify(payload)
         });
         const data = await response.json();
         if (data.success) {
-          // Update user object in both localStorage and sessionStorage
-          // If user explicitly removed image (profileImage === ''), clear it
+          const finalProfileImage = profileData.removeProfileImage ? null : (data.data.profileImage || user?.profileImage || null);
           const updatedUser = {
             ...user,
             ...profileData,
-            profileImage: profileData.profileImage === '' ? null : (user?.profileImage || null)
+            profileImage: finalProfileImage
           };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           sessionStorage.setItem('user', JSON.stringify(updatedUser));
-          setProfileImagePreview(updatedUser.profileImage);
+          if (onUserUpdate) onUserUpdate(updatedUser);
+          setProfileImagePreview(getImageUrl(finalProfileImage) || null);
           setIsEditing(false);
           alert('Profile updated successfully!');
         } else {
@@ -587,18 +602,40 @@ const Layout = ({ children, onLogout, userRole, user }) => {
               </div>
               <div className="profile-modal-content">
                 <div className="profile-avatar-section">
-                  <div className="avatar-wrapper">
+                  <div 
+                    className="avatar-wrapper"
+                    onClick={() => {
+                      const currentSrc = profileImagePreview || getImageUrl(user?.profileImage) || fallbackAvatar(profileData.name, profileData.email);
+                      if (currentSrc) {
+                        setPreviewModalImage({
+                          url: currentSrc,
+                          title: profileData.name || user?.name || 'Profile Photo',
+                          subtitle: profileData.role || user?.role || 'Employee'
+                        });
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                    title="Click to view full photo"
+                  >
                     <img
                       src={profileImagePreview || fallbackAvatar(profileData.name, profileData.email)}
                       alt="Profile"
                       className="profile-modal-avatar"
                       onError={(e) => { e.target.onerror = null; e.target.src = fallbackAvatar(profileData.name, profileData.email); }}
                     />
+                    <div className="avatar-zoom-overlay" title="Click to view photo">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <line x1="11" y1="8" x2="11" y2="14"></line>
+                        <line x1="8" y1="11" x2="14" y2="11"></line>
+                      </svg>
+                    </div>
                     {isEditing && (
-                      <div className="avatar-action-buttons">
+                      <div className="avatar-action-buttons" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="avatar-action-btn edit-avatar-btn"
-                          onClick={handleImageUploadClick}
+                          onClick={(e) => { e.stopPropagation(); handleImageUploadClick(); }}
                           title="Change profile picture"
                           type="button"
                         >
@@ -610,7 +647,7 @@ const Layout = ({ children, onLogout, userRole, user }) => {
                         {profileImagePreview && (
                           <button
                             className="avatar-action-btn delete-avatar-btn"
-                            onClick={handleImageRemove}
+                            onClick={(e) => { e.stopPropagation(); handleImageRemove(); }}
                             title="Remove profile picture"
                             type="button"
                           >
@@ -726,6 +763,56 @@ const Layout = ({ children, onLogout, userRole, user }) => {
           </div>
         )}
 
+        {/* Full Image Preview Modal / Lightbox */}
+        {previewModalImage && (
+          <div 
+            className="image-lightbox-overlay"
+            onClick={() => setPreviewModalImage(null)}
+          >
+            <div 
+              className="image-lightbox-container"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="image-lightbox-header">
+                <div className="image-lightbox-info">
+                  <h4>{previewModalImage.title}</h4>
+                  {previewModalImage.subtitle && <span>{previewModalImage.subtitle}</span>}
+                </div>
+                <div className="image-lightbox-actions">
+                  <a 
+                    href={previewModalImage.url} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    download={`${previewModalImage.title || 'profile'}.jpg`}
+                    className="image-lightbox-btn"
+                    title="Download / Open Full Photo"
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                  </a>
+                  <button 
+                    className="image-lightbox-btn close-btn"
+                    onClick={() => setPreviewModalImage(null)}
+                    title="Close"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <div className="image-lightbox-body">
+                <img 
+                  src={previewModalImage.url} 
+                  alt={previewModalImage.title || 'Preview'} 
+                  className="image-lightbox-img" 
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Page Content */}
         <div className="page-content">
           {children}
@@ -789,6 +876,10 @@ function App() {
     window.dispatchEvent(new Event('app-login'));
   };
 
+  const handleUserUpdate = (newUserData) => {
+    setUser(newUserData);
+  };
+
   const handleLogout = () => {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
@@ -836,7 +927,7 @@ function App() {
         {/* Protected Routes with Layout */}
         <Route path="/" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Dashboard onLogout={handleLogout} userRole={user?.role} />
             </Layout>
           </ProtectedRoute>
@@ -844,7 +935,7 @@ function App() {
         
         <Route path="/attendance" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Attendance />
             </Layout>
           </ProtectedRoute>
@@ -852,7 +943,7 @@ function App() {
         
         <Route path="/employees" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Employees userRole={user?.role} />
             </Layout>
           </ProtectedRoute>
@@ -860,7 +951,7 @@ function App() {
         
         <Route path="/workhours" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <EmployeeWorkHours />
             </Layout>
           </ProtectedRoute>
@@ -868,7 +959,7 @@ function App() {
         
         <Route path="/projects" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Projects userRole={user?.role} />
             </Layout>
           </ProtectedRoute>
@@ -876,7 +967,7 @@ function App() {
         
         <Route path="/holidays" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Holidays user={user} />
             </Layout>
           </ProtectedRoute>
@@ -884,7 +975,7 @@ function App() {
         
         <Route path="/analytics" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Analytics userRole={user?.role} />
             </Layout>
           </ProtectedRoute>
@@ -892,7 +983,7 @@ function App() {
 
         <Route path="/ai-insights" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <AIInsights />
             </Layout>
           </ProtectedRoute>
@@ -900,7 +991,7 @@ function App() {
 
         <Route path="/ai-chat" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <AIChat />
             </Layout>
           </ProtectedRoute>
@@ -908,7 +999,7 @@ function App() {
 
         <Route path="/ai-predictions" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <AttendancePredictions />
             </Layout>
           </ProtectedRoute>
@@ -916,7 +1007,7 @@ function App() {
         
         <Route path="/settings" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Settings />
             </Layout>
           </ProtectedRoute>
@@ -924,7 +1015,7 @@ function App() {
         
         <Route path="/chat" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <Chat user={user} />
             </Layout>
           </ProtectedRoute>
@@ -932,7 +1023,7 @@ function App() {
 
         <Route path="/notifications" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <NotificationsPage />
             </Layout>
           </ProtectedRoute>
@@ -941,7 +1032,7 @@ function App() {
         {/* Shifts - Role-based: Admin sees management, Employee sees their shifts */}
         <Route path="/shifts" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               {user?.role === 'admin' ? <ShiftManagement user={user} /> : <MyShifts user={user} />}
             </Layout>
           </ProtectedRoute>
@@ -950,7 +1041,7 @@ function App() {
         {/* Salary - Role-based: Admin sees management, Employee sees their salary */}
         <Route path="/salary" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               {user?.role === 'admin' ? <AdminSalary user={user} /> : <EmployeeSalary user={user} />}
             </Layout>
           </ProtectedRoute>
@@ -959,7 +1050,7 @@ function App() {
         {/* Reports - Role-based: Admin sees all, Employee sees their own */}
         <Route path="/reports" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               {user?.role === 'admin' ? <MonthlyReports user={user} /> : <EmployeeReports user={user} />}
             </Layout>
           </ProtectedRoute>
@@ -968,7 +1059,7 @@ function App() {
         {/* My Shifts - Employee (alias) */}
         <Route path="/my-shifts" element={
           <ProtectedRoute isAuthenticated={isAuthenticated} user={user}>
-            <Layout onLogout={handleLogout} userRole={user?.role} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
               <MyShifts user={user} />
             </Layout>
           </ProtectedRoute>

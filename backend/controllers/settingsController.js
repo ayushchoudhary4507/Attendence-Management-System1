@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Employee = require('../models/Employee');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -116,18 +117,39 @@ exports.updateProfile = async (req, res) => {
       user.role = role;
     }
     
-    // Update profile image if uploaded
+    // Update profile image if newly uploaded
     if (profileImagePath) {
       console.log('Updating profile image:', profileImagePath);
       user.profileImage = profileImagePath;
-    } else if (req.body.profileImage === '' || req.body.profileImage === null) {
-      // User explicitly removed profile image
-      console.log('Removing profile image');
+    } else if (req.body.removeProfileImage === true || req.body.removeProfileImage === 'true' || req.body.removeImage === 'true') {
+      // User explicitly requested to remove profile image
+      console.log('Explicitly removing profile image');
       user.profileImage = null;
+    } else if (req.body.profileImage && typeof req.body.profileImage === 'string' && req.body.profileImage.trim() !== '') {
+      // Keep or update existing path/url
+      let cleaned = req.body.profileImage.trim();
+      if (cleaned.includes('/uploads/')) {
+        cleaned = cleaned.substring(cleaned.indexOf('/uploads/'));
+      }
+      user.profileImage = cleaned;
     }
+    // Note: If no new image and not explicitly removed, user.profileImage remains unchanged (old photo is preserved)!
 
     await user.save();
-    console.log('✅ User saved successfully');
+    console.log('✅ User saved successfully with profileImage:', user.profileImage);
+
+    // Sync profileImage with Employee collection if employee exists with this email
+    if (user.email) {
+      try {
+        await Employee.updateMany(
+          { email: { $regex: `^${user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, $options: 'i' } },
+          { profileImage: user.profileImage || '' }
+        );
+        console.log('✅ Synchronized profile image with Employee collection');
+      } catch (empSyncErr) {
+        console.warn('⚠️ Could not sync employee profile image:', empSyncErr.message);
+      }
+    }
 
     const responseData = {
       name: user.name,

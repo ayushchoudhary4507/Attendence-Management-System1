@@ -255,9 +255,6 @@ const AdminDashboard = () => {
           <button className="attendance-btn" onClick={openAttendanceModal}>
             📋 Present Today
           </button>
-          <button className="theme-toggle-btn" onClick={toggleTheme}>
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
         </div>
       </div>
 

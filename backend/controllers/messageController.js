@@ -20,7 +20,7 @@ const getUsers = async (req, res) => {
     const users = await User.find(
       { _id: { $ne: currentUserIdStr } },
       { password: 0 }
-    ).select('name email role department phone');
+    ).select('name email role department phone profileImage');
 
     res.status(200).json({
       success: true,
@@ -30,7 +30,8 @@ const getUsers = async (req, res) => {
         email: user.email,
         role: user.role,
         department: user.department,
-        phone: user.phone
+        phone: user.phone,
+        profileImage: user.profileImage || ''
       }))
     });
   } catch (error) {
@@ -383,6 +384,7 @@ const getConversations = async (req, res) => {
           userId: '$_id',
           userName: '$user.name',
           userEmail: '$user.email',
+          profileImage: '$user.profileImage',
           lastMessage: {
             message: '$lastMessage.message',
             timestamp: '$lastMessage.timestamp',
