@@ -465,6 +465,47 @@ body.dark-theme .filter-btn.active {
   font-size: 14px;
 }
 
+/* Dark Mode Search Dropdown */
+.search-dropdown.dark-mode {
+  background: rgba(30, 30, 46, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.search-dropdown.dark-mode .search-header {
+  background: rgba(20, 20, 30, 0.8);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.search-dropdown.dark-mode .search-input {
+  color: #fff;
+}
+
+.search-dropdown.dark-mode .search-input::placeholder {
+  color: #64748b;
+}
+
+.search-dropdown.dark-mode .search-item {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.search-dropdown.dark-mode .search-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.search-dropdown.dark-mode .search-item-label {
+  color: #f8fafc;
+}
+
+.search-dropdown.dark-mode .search-item-category {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.search-dropdown.dark-mode .search-section-title {
+  color: #94a3b8;
+}
+
 /* Dark Mode Styles */
 .dark-theme {
   --bg-primary: #111827;

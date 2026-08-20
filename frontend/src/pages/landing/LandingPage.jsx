@@ -6,26 +6,43 @@ import './LandingPage.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5005';
 
-const BG_IMAGES = [
-  { 
-    url: '/images/backgrounds/bg1.jpg', 
+const BG_CONFIGS = {
+  'bg1.jpg': {
     title: 'AI Facial Recognition Attendance Scanner',
     subtitle: 'Lightning-fast contactless identity verification with real-time sync',
     badge: '⚡ AI Face Recognition Scanner'
   },
-  { 
-    url: '/images/backgrounds/bg2.jpg', 
+  'bg2.jpg': {
     title: 'Smart Biometric & NFC Check-In Terminal',
     subtitle: 'Enterprise-grade biometric access point with cloud synchronization',
     badge: '💳 Smart Biometric Card Terminal'
   },
-  { 
-    url: '/images/backgrounds/bg3.jpg', 
+  'bg3.jpg': {
     title: 'Contactless Mobile QR Code Attendance',
     subtitle: 'Dynamic QR geo-fenced check-in for modern workplace teams',
     badge: '📱 Mobile QR Attendance System'
   }
-];
+};
+
+const imageModules = import.meta.glob('/public/images/**/*.{jpg,jpeg,png,webp,avif}', { eager: true, as: 'url' });
+const BG_IMAGES = Object.keys(imageModules).map(path => {
+  const fileName = path.split('/').pop();
+  const config = BG_CONFIGS[fileName] || {
+    title: 'Advanced Attendance System',
+    subtitle: 'Efficiently manage your workforce with our smart platform',
+    badge: '✨ Next-Gen Workspace'
+  };
+  return {
+    url: path.replace(/^\/public/, ''),
+    title: config.title,
+    subtitle: config.subtitle,
+    badge: config.badge
+  };
+});
+
+if (BG_IMAGES.length === 0) {
+  BG_IMAGES.push({ url: '', title: 'Welcome', subtitle: 'Attendance System', badge: '👋 Welcome' });
+}
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -54,11 +71,11 @@ const LandingPage = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Automatic Background Image Rotation every 7 seconds
+  // Automatic Background Image Rotation every 3 seconds
   useEffect(() => {
     const imageTimer = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % BG_IMAGES.length);
-    }, 7000);
+      setCurrentImageIndex((prev) => (prev + 1) % Math.max(1, BG_IMAGES.length));
+    }, 3000);
     return () => clearInterval(imageTimer);
   }, []);
 
@@ -228,7 +245,18 @@ const LandingPage = () => {
           <a href="#features">Features</a>
           <a href="#demo-carousel">Live Preview</a>
           <button className="theme-toggle" onClick={toggleTheme}>
-            {isDarkMode ? '☀️' : '🌙'}
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <path d="M12 7a5 5 0 0 1 0 10v-10z" fill="currentColor"></path>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
           </button>
           <button className="nav-btn primary" onClick={() => navigate('/login')}>
             Login
@@ -249,7 +277,7 @@ const LandingPage = () => {
                 <div
                   key={bg.url}
                   className={`banner-slide ${currentImageIndex === idx ? 'active' : ''}`}
-                  style={{ backgroundImage: `url(${bg.url})` }}
+                  style={{ backgroundImage: `url("${bg.url}")` }}
                 >
                   <div className="banner-slide-overlay">
                     <div className="banner-slide-content">
