@@ -166,9 +166,9 @@ const Employees = ({ onLogout, userRole }) => {
     return () => clearInterval(interval);
   }, [employees]);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (showLoader = false) => {
     try {
-      setLoading(true);
+      if (showLoader || employees.length === 0) setLoading(true);
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       
       if (!token) {
@@ -824,8 +824,8 @@ const Employees = ({ onLogout, userRole }) => {
                 <td className="serial-number">{(currentPage - 1) * employeesPerPage + index + 1}</td>
                 <td className="employee-id">{employee.id}</td>
                 <td>
-                  <div className="employee-info" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                    {employee.profileImage ? (
+                  <div className="employee-info" style={{display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px'}}>
+                    {employee.profileImage && (
                       <img
                         src={getImageUrl(employee.profileImage)}
                         alt={employee.name}
@@ -849,34 +849,34 @@ const Employees = ({ onLogout, userRole }) => {
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.style.display = 'none';
+                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                         }}
                       />
-                    ) : (
-                      <div 
-                        onClick={() => setPreviewImage({
-                          url: `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=${getAvatarColor(employee.name)}&color=fff&size=200`,
-                          title: employee.name,
-                          subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
-                        })}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: `linear-gradient(135deg, ${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          flexShrink: 0,
-                          cursor: 'pointer'
-                        }}
-                        title="Click to view"
-                      >
-                        {employee.name ? employee.name.charAt(0).toUpperCase() : 'U'}
-                      </div>
                     )}
+                    <div 
+                      onClick={() => setPreviewImage({
+                        url: `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=${getAvatarColor(employee.name)}&color=fff&size=200`,
+                        title: employee.name,
+                        subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
+                      })}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, #${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`,
+                        display: employee.profileImage ? 'none' : 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        flexShrink: 0,
+                        cursor: 'pointer'
+                      }}
+                      title="Click to view"
+                    >
+                      {employee.name ? employee.name.charAt(0).toUpperCase() : 'U'}
+                    </div>
                     <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
                       <span className="employee-name" style={{fontWeight: '600', fontSize: '14px'}}>{employee.name}</span>
                       <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
@@ -940,21 +940,21 @@ const Employees = ({ onLogout, userRole }) => {
                         ⋮
                       </button>
                       {activeDropdown === employee._id && (
-                        <div className="action-dropdown" style={{position: 'absolute', top: '100%', right: 0, background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', borderRadius: '8px', padding: '8px 0', minWidth: '160px', zIndex: 100, marginTop: '4px'}}>
-                          <button onClick={() => {openEditModal(employee); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px'}}>
+                        <div className="action-dropdown" style={{position: 'absolute', top: '100%', right: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', borderRadius: '8px', padding: '8px 0', minWidth: '160px', zIndex: 100, marginTop: '4px'}}>
+                          <button type="button" className="dropdown-action-btn" onClick={() => {openEditModal(employee); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px'}}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                             Edit Profile
                           </button>
-                          <button onClick={() => {handleDeactivateEmployee(employee); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: employee.status === 'Active' ? '#EF4444' : '#10B981'}}>
+                          <button type="button" className={`dropdown-action-btn ${employee.status === 'Active' ? 'text-red' : 'text-green'}`} onClick={() => {handleDeactivateEmployee(employee); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px'}}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                             {employee.status === 'Active' ? 'Deactivate' : 'Activate'}
                           </button>
-                          <button onClick={() => {setResetPasswordTarget(employee); setShowResetPasswordModal(true); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px'}}>
+                          <button type="button" className="dropdown-action-btn" onClick={() => {setResetPasswordTarget(employee); setShowResetPasswordModal(true); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px'}}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2H8v4h4v-1h4v-3c0-2.21-1.79-4-4-4z"/></svg>
                             Reset Password
                           </button>
-                          <div style={{borderTop: '1px solid #E5E7EB', margin: '4px 0'}}></div>
-                          <button onClick={() => {setDeleteTarget(employee); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px', color: '#EF4444'}}>
+                          <div className="dropdown-divider" style={{borderTop: '1px solid #E5E7EB', margin: '4px 0'}}></div>
+                          <button type="button" className="dropdown-action-btn text-red" onClick={() => {setDeleteTarget(employee); setActiveDropdown(null);}} style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '13px'}}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             Delete
                           </button>
@@ -976,7 +976,7 @@ const Employees = ({ onLogout, userRole }) => {
         {currentEmployees.map((employee, index) => (
           <div className="employee-mobile-card" key={employee._id || employee.id}>
             <div className="employee-card-header">
-              {employee.profileImage ? (
+              {employee.profileImage && (
                 <img
                   src={getImageUrl(employee.profileImage)}
                   alt={employee.name}
@@ -997,25 +997,26 @@ const Employees = ({ onLogout, userRole }) => {
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.style.display = 'none';
+                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                   }}
                 />
-              ) : (
-                <div 
-                  className="employee-card-avatar" 
-                  onClick={() => setPreviewImage({
-                    url: `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=${getAvatarColor(employee.name)}&color=fff&size=200`,
-                    title: employee.name,
-                    subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
-                  })}
-                  style={{
-                    background: `linear-gradient(135deg, ${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`,
-                    cursor: 'pointer'
-                  }}
-                  title="Click to view"
-                >
-                  {employee.name?.charAt(0).toUpperCase()}
-                </div>
               )}
+              <div 
+                className="employee-card-avatar" 
+                onClick={() => setPreviewImage({
+                  url: `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=${getAvatarColor(employee.name)}&color=fff&size=200`,
+                  title: employee.name,
+                  subtitle: `${employee.designation || ''} • ${employee.role || 'Employee'}`
+                })}
+                style={{
+                  background: `linear-gradient(135deg, #${getAvatarColor(employee.name)} 0%, ${ROLE_COLORS[employee.role]?.text || '#7C3AED'} 100%)`,
+                  display: employee.profileImage ? 'none' : 'flex',
+                  cursor: 'pointer'
+                }}
+                title="Click to view"
+              >
+                {employee.name?.charAt(0).toUpperCase()}
+              </div>
               <div className="employee-card-info">
                 <h4 className="employee-card-name">{employee.name}</h4>
                 <p className="employee-card-designation">{employee.designation}</p>

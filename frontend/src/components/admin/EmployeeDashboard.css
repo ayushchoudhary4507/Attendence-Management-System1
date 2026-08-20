@@ -439,7 +439,13 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+}
+
+.employees-table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+.employees-table thead th:last-child {
+  border-top-right-radius: 12px;
 }
 
 .employees-table {
