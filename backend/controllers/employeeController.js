@@ -49,11 +49,15 @@ const getEmployees = async (req, res) => {
     }).select('name email role profileImage createdAt lastLogin');
     console.log('Users found:', users.length);
 
-    // Build user map for fast profileImage lookup by email
+    // Build user map for fast profileImage lookup by email and by name
     const userMap = {};
+    const userNameMap = {};
     users.forEach(u => {
       if (u.email) {
-        userMap[u.email.toLowerCase()] = u;
+        userMap[u.email.toLowerCase().trim()] = u;
+      }
+      if (u.name) {
+        userNameMap[u.name.toLowerCase().trim()] = u;
       }
     });
 
@@ -80,7 +84,9 @@ const getEmployees = async (req, res) => {
     const employeesWithAttendance = employees.map(emp => {
       const empObj = emp.toObject();
       const attendance = attendanceMap[emp._id.toString()];
-      const matchingUser = emp.email ? userMap[emp.email.toLowerCase()] : null;
+      const cleanEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+      const cleanName = emp.name ? emp.name.toLowerCase().trim() : '';
+      const matchingUser = (cleanEmail ? userMap[cleanEmail] : null) || (cleanName ? userNameMap[cleanName] : null);
       const profileImage = emp.profileImage || (matchingUser ? matchingUser.profileImage : '') || '';
       
       // Determine status: checked in (isActive=true) = active, checked out or no attendance = inactive
@@ -248,7 +254,7 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    const { name, email, designation, role, reportingTo, status } = req.body;
+    const { name, email, designation, role, reportingTo, status, profileImage } = req.body;
     
     let employee = await Employee.findById(req.params.id);
     
@@ -270,11 +276,28 @@ const updateEmployee = async (req, res) => {
       }
     }
     
+    const updateData = { name, email, designation, role, reportingTo, status };
+    if (profileImage !== undefined) {
+      updateData.profileImage = profileImage;
+    }
+
     employee = await Employee.findByIdAndUpdate(
       req.params.id,
-      { name, email, designation, role, reportingTo, status },
+      updateData,
       { new: true, runValidators: true }
     );
+
+    // Sync profileImage with User if changed
+    if (profileImage && employee.email) {
+      try {
+        await User.updateMany(
+          { email: { $regex: `^${employee.email.trim()}$`, $options: 'i' } },
+          { profileImage }
+        );
+      } catch (uErr) {
+        console.warn('Could not sync user profileImage:', uErr.message);
+      }
+    }
     
     res.json({
       success: true,

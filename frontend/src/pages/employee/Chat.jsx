@@ -1054,9 +1054,12 @@ const Chat = ({ user }) => {
 
   // Get user avatar URL
   const getAvatarUrl = (name, profileImage) => {
-    if (profileImage) {
-      if (profileImage.startsWith('http') || profileImage.startsWith('data:image')) return profileImage;
-      return `${SOCKET_URL}${profileImage}`;
+    if (profileImage && typeof profileImage === 'string' && profileImage.trim() !== '') {
+      const clean = profileImage.trim().replace(/\\/g, '/');
+      if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:image')) return clean;
+      const base = (SOCKET_URL || 'http://127.0.0.1:5005').replace(/\/api\/?$/, '').replace(/\/$/, '');
+      const normalized = clean.startsWith('/') ? clean : `/${clean}`;
+      return `${base}${normalized}`;
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=4F46E5&color=fff&size=45`;
   };

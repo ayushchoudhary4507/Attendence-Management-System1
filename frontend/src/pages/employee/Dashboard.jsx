@@ -14,10 +14,13 @@ const API_URL = import.meta.env.PROD
   : 'http://127.0.0.1:5005/api';
 
 const getEmployeeAvatar = (emp) => {
-  if (emp?.profileImage) {
-    if (emp.profileImage.startsWith('http') || emp.profileImage.startsWith('data:image')) return emp.profileImage;
-    const base = API_URL.replace('/api', '');
-    return `${base}${emp.profileImage}`;
+  const imgPath = emp?.profileImage || emp?.photo || emp?.avatar || emp?.image;
+  if (imgPath && typeof imgPath === 'string' && imgPath.trim() !== '') {
+    const clean = imgPath.trim().replace(/\\/g, '/');
+    if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:image')) return clean;
+    const base = (API_URL || 'http://127.0.0.1:5005/api').replace(/\/api\/?$/, '');
+    const normalized = clean.startsWith('/') ? clean : `/${clean}`;
+    return `${base}${normalized}`;
   }
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(emp?.name || 'User')}&background=4F46E5&color=fff&size=45`;
 };

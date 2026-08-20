@@ -252,6 +252,24 @@ export const attendanceAPI = {
     const response = await api.post('/attendance/mark', { status, notes });
     return response.data;
   },
+
+  // Mark attendance with live QR / Geolocation verification
+  markAttendanceVerified: async (verificationData) => {
+    const response = await api.post('/attendance/mark-verified', verificationData);
+    return response.data;
+  },
+
+  // Get rolling live QR token for Office Display / Kiosk
+  getLiveQRToken: async () => {
+    const response = await api.get('/attendance/qr-token');
+    return response.data;
+  },
+
+  // Get Office location coordinates and geo-fence settings
+  getOfficeLocation: async () => {
+    const response = await api.get('/attendance/office-location');
+    return response.data;
+  },
   
   // Check out
   checkOut: async () => {
@@ -289,6 +307,12 @@ export const attendanceAPI = {
   // Get attendance by specific date
   getAttendanceByDate: async (date) => {
     const response = await api.get('/attendance/by-date', { params: { date } });
+    return response.data;
+  },
+
+  // Update attendance record (Admin edit checkin/checkout time, status, notes)
+  updateAttendance: async (id, data) => {
+    const response = await api.put(`/attendance/${id}`, data);
     return response.data;
   },
 

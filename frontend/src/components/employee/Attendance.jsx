@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { API_BASE_URL } from '../../services/api';
+import { API_BASE_URL, attendanceAPI } from '../../services/api';
+import LiveQRGeoVerificationModal from './LiveQRGeoVerificationModal';
 import './Attendance.css';
 
 const Attendance = () => {
+  // Role-based system: admin sees GPS + Standard check-in controls, employee sees simple check-in
+  const storedUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+  const userRole = (storedUser.role || localStorage.getItem('role') || sessionStorage.getItem('role') || 'employee').toLowerCase();
+  const isAdmin = userRole === 'admin';
   const [status, setStatus] = useState('Present');
   const [notes, setNotes] = useState('');
   const [todayAttendance, setTodayAttendance] = useState(null);
@@ -26,6 +31,27 @@ const Attendance = () => {
   const [myLeaves, setMyLeaves] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Admin-only: GPS & Standard Time verification state
+  const [adminCheckMode, setAdminCheckMode] = useState(null); // 'gps' | 'standard' | null
+  const [gpsStatus, setGpsStatus] = useState('idle'); // idle | fetching | success | error
+  const [gpsCoords, setGpsCoords] = useState(null);
+  const [standardTimeNote, setStandardTimeNote] = useState('');
+  const [adminCheckLoading, setAdminCheckLoading] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false); // QR/Barcode scan modal
+
+  // Admin-only: Staff Attendance Records & Time Editing
+  const [allStaffAttendance, setAllStaffAttendance] = useState([]);
+  const [staffAttendanceLoading, setStaffAttendanceLoading] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editForm, setEditForm] = useState({
+    checkInTime: '',
+    checkOutTime: '',
+    status: 'Present',
+    notes: '',
+    clearCheckOut: false
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const leaveTypes = [
     { id: 'Paid Leave', label: ' Paid Leave', color: '#10B981' },
@@ -144,20 +170,215 @@ const Attendance = () => {
     }
   };
 
+  // Fetch today's staff attendance records for admin
+  const fetchStaffAttendance = async () => {
+    if (!isAdmin) return;
+    try {
+      setStaffAttendanceLoading(true);
+      const res = await attendanceAPI.getTodayAttendanceStatus();
+      if (res && res.success && Array.isArray(res.data)) {
+        // Filter employees with active or marked attendance today
+        const markedEmployees = res.data.filter(emp => emp.attendanceToday && (emp.attendanceToday.checkInTime || emp.attendanceToday.status));
+        setAllStaffAttendance(markedEmployees);
+      }
+    } catch (err) {
+      console.error('Error fetching staff attendance for admin:', err);
+    } finally {
+      setStaffAttendanceLoading(false);
+    }
+  };
+
+  const toTimeInputValue = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${mins}`;
+  };
+
+  const handleOpenEditAttendance = (employeeRecord) => {
+    const att = employeeRecord.attendanceToday;
+    if (!att) return;
+    setEditingRecord({
+      ...att,
+      employeeName: employeeRecord.name,
+      employeeEmail: employeeRecord.email,
+      empId: employeeRecord._id
+    });
+    setEditForm({
+      checkInTime: toTimeInputValue(att.checkInTime) || '09:30',
+      checkOutTime: toTimeInputValue(att.checkOutTime) || '',
+      status: att.status || 'Present',
+      notes: att.notes || '',
+      clearCheckOut: false
+    });
+  };
+
+  const handleSaveAttendanceEdit = async (e) => {
+    e.preventDefault();
+    if (!editingRecord?._id) return;
+    
+    try {
+      setSavingEdit(true);
+      const updatePayload = {
+        status: editForm.status,
+        notes: editForm.notes
+      };
+
+      const baseDate = editingRecord.date ? new Date(editingRecord.date) : new Date();
+
+      if (editForm.checkInTime) {
+        const [h, m] = editForm.checkInTime.split(':');
+        const checkInDate = new Date(baseDate);
+        checkInDate.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+        updatePayload.checkInTime = checkInDate.toISOString();
+      }
+
+      if (editForm.checkOutTime) {
+        const [h, m] = editForm.checkOutTime.split(':');
+        const checkOutDate = new Date(baseDate);
+        checkOutDate.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+        updatePayload.checkOutTime = checkOutDate.toISOString();
+      } else if (editForm.clearCheckOut) {
+        updatePayload.checkOutTime = null;
+      }
+
+      const res = await attendanceAPI.updateAttendance(editingRecord._id, updatePayload);
+      if (res && res.success) {
+        setMessage(`✅ Updated attendance time for ${editingRecord.employeeName || 'employee'}`);
+        setMessageType('success');
+        setEditingRecord(null);
+        fetchStaffAttendance();
+        checkTodayAttendance();
+        setTimeout(() => setMessage(''), 4000);
+      } else {
+        alert(res.message || 'Failed to update attendance time');
+      }
+    } catch (err) {
+      console.error('Error updating attendance:', err);
+      alert('Error updating attendance: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   useEffect(() => {
     console.log('Attendance component mounted');
     checkTodayAttendance();
     fetchMyLeaves();
+    if (isAdmin) {
+      fetchStaffAttendance();
+    }
     
     // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
       console.log('🔄 Auto-refreshing attendance data...');
       checkTodayAttendance();
       fetchMyLeaves();
+      if (isAdmin) {
+        fetchStaffAttendance();
+      }
     }, 30000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isAdmin]);
+
+  // Admin GPS Check-In
+  const handleGpsCheckIn = async () => {
+    if (!navigator.geolocation) {
+      setMessage('GPS not supported on this device/browser');
+      setMessageType('error');
+      return;
+    }
+    setGpsStatus('fetching');
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        setGpsCoords({ latitude, longitude, accuracy });
+        setGpsStatus('success');
+        // Now mark attendance with GPS metadata
+        const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+        setAdminCheckLoading(true);
+        try {
+          const response = await fetch(`${API_BASE_URL}/attendance/mark`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+            body: JSON.stringify({
+              status: 'Present',
+              notes: `GPS Check-in | Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)} | Accuracy: ${Math.round(accuracy)}m`,
+              verificationMethod: 'gps',
+              location: { lat: latitude, lng: longitude, accuracy }
+            })
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setMessage(`✅ GPS Check-in successful! Location captured with ${Math.round(accuracy)}m accuracy.`);
+            setMessageType('success');
+            setTodayAttendance(data.data);
+            setAdminCheckMode(null);
+          } else {
+            setMessage(data.message || 'GPS check-in failed');
+            setMessageType('error');
+          }
+        } catch (err) {
+          setMessage('Server error during GPS check-in');
+          setMessageType('error');
+        } finally {
+          setAdminCheckLoading(false);
+          setTimeout(() => setMessage(''), 5000);
+        }
+      },
+      (err) => {
+        setGpsStatus('error');
+        setMessage('Unable to get location. Please allow location access.');
+        setMessageType('error');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  // Admin Standard Time Check-In
+  const handleStandardCheckIn = async () => {
+    const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
+    setAdminCheckLoading(true);
+    try {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const shiftStart = new Date();
+      shiftStart.setHours(9, 30, 0, 0);
+      const gracePeriod = new Date();
+      gracePeriod.setHours(9, 45, 0, 0);
+      const isOnTime = now <= gracePeriod;
+      const isLate = now > gracePeriod;
+      const noteText = standardTimeNote || `Standard Time Check-in at ${timeStr} | ${isOnTime ? 'On Time' : 'Late Arrival'}`;
+      const response = await fetch(`${API_BASE_URL}/attendance/mark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+        body: JSON.stringify({
+          status: isLate ? 'Half Day' : 'Present',
+          notes: noteText,
+          verificationMethod: 'standard'
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setMessage(`✅ Standard check-in at ${timeStr}${isLate ? ' (Late Arrival - marked Half Day)' : ' - On Time!'}`);
+        setMessageType('success');
+        setTodayAttendance(data.data);
+        setAdminCheckMode(null);
+        setStandardTimeNote('');
+      } else {
+        setMessage(data.message || 'Check-in failed');
+        setMessageType('error');
+      }
+    } catch (err) {
+      setMessage('Server error. Please try again.');
+      setMessageType('error');
+    } finally {
+      setAdminCheckLoading(false);
+      setTimeout(() => setMessage(''), 5000);
+    }
+  };
 
   // Mark attendance (Check In)
   const markAttendance = async () => {
@@ -323,8 +544,8 @@ const Attendance = () => {
     <div className="attendance-page">
       <div className="attendance-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
         <div>
-          <h1>My Attendance</h1>
-          <p>Mark your daily attendance and check-out when you leave</p>
+          <h1>Attendance & Leaves</h1>
+          <p>Mark daily presence, track shift durations, and manage leave applications</p>
           <div style={{ 
             fontSize: '12px', 
             color: '#6B7280', 
@@ -465,7 +686,193 @@ const Attendance = () => {
               )}
             </div>
           </div>
+        ) : isAdmin ? (
+          /* ── ADMIN ROLE: GPS + Standard Time Check-in Panel ── */
+          <div className="admin-checkin-panel">
+            <div className="admin-checkin-header">
+              <span className="admin-role-badge">🛡️ Admin Mode</span>
+              <h3>Select Verification Method</h3>
+              <p>Choose how to record today's attendance — GPS capture, standard shift-time, or QR / Barcode scan</p>
+            </div>
+
+            <div className="admin-checkin-methods">
+              {/* GPS Method */}
+              <div
+                className={`checkin-method-card ${adminCheckMode === 'gps' ? 'selected' : ''}`}
+                onClick={() => { setAdminCheckMode('gps'); setGpsStatus('idle'); setGpsCoords(null); }}
+              >
+                <div className="method-icon gps-icon">📍</div>
+                <div className="method-info">
+                  <h4>GPS Verification</h4>
+                  <p>Capture live coordinates &amp; verify office proximity</p>
+                  <span className="method-tag">High Accuracy</span>
+                </div>
+                <div className={`method-radio ${adminCheckMode === 'gps' ? 'active' : ''}`}></div>
+              </div>
+
+              {/* Standard Time Method */}
+              <div
+                className={`checkin-method-card ${adminCheckMode === 'standard' ? 'selected' : ''}`}
+                onClick={() => setAdminCheckMode('standard')}
+              >
+                <div className="method-icon time-icon">🕒</div>
+                <div className="method-info">
+                  <h4>Standard Time Check-in</h4>
+                  <p>Time-stamp based — auto marks late arrival after 09:45 AM</p>
+                  <span className="method-tag">Shift-Based</span>
+                </div>
+                <div className={`method-radio ${adminCheckMode === 'standard' ? 'active' : ''}`}></div>
+              </div>
+
+              {/* QR / Barcode Scan Method */}
+              <div
+                className={`checkin-method-card ${adminCheckMode === 'qr' ? 'selected' : ''}`}
+                onClick={() => { setAdminCheckMode('qr'); setShowQRModal(true); }}
+              >
+                <div className="method-icon qr-icon">📷</div>
+                <div className="method-info">
+                  <h4>QR / Barcode Scan</h4>
+                  <p>Scan live rotating office QR code or enter token manually</p>
+                  <span className="method-tag qr-tag">Live QR</span>
+                </div>
+                <div className={`method-radio ${adminCheckMode === 'qr' ? 'active' : ''}`}></div>
+              </div>
+            </div>
+
+            {/* GPS Panel Detail */}
+            {adminCheckMode === 'gps' && (
+              <div className="method-detail-panel">
+                <div className="method-detail-header">
+                  <span>📍 GPS Location Capture</span>
+                  {gpsStatus === 'success' && gpsCoords && (
+                    <span className="gps-success-badge">✅ Location Acquired</span>
+                  )}
+                </div>
+                {gpsStatus === 'idle' && (
+                  <p className="method-hint">Click the button below to capture your current GPS coordinates. Ensure location permissions are enabled in your browser.</p>
+                )}
+                {gpsStatus === 'fetching' && (
+                  <div className="gps-fetching">
+                    <div className="gps-pulse"></div>
+                    <p>Acquiring GPS signal...</p>
+                  </div>
+                )}
+                {gpsStatus === 'success' && gpsCoords && (
+                  <div className="gps-coords-display">
+                    <div className="coord-item">
+                      <span className="coord-label">Latitude</span>
+                      <span className="coord-value">{gpsCoords.latitude.toFixed(6)}°</span>
+                    </div>
+                    <div className="coord-item">
+                      <span className="coord-label">Longitude</span>
+                      <span className="coord-value">{gpsCoords.longitude.toFixed(6)}°</span>
+                    </div>
+                    <div className="coord-item">
+                      <span className="coord-label">Accuracy</span>
+                      <span className="coord-value">{Math.round(gpsCoords.accuracy)}m</span>
+                    </div>
+                  </div>
+                )}
+                {gpsStatus === 'error' && (
+                  <p className="gps-error">⚠️ Could not access location. Check browser permissions.</p>
+                )}
+                <button
+                  className="btn-admin-checkin gps-btn"
+                  onClick={handleGpsCheckIn}
+                  disabled={adminCheckLoading || gpsStatus === 'fetching'}
+                >
+                  {adminCheckLoading ? (
+                    <><div className="loading-spinner sm"></div> Marking Attendance...</>
+                  ) : gpsStatus === 'fetching' ? (
+                    '📡 Acquiring Signal...'
+                  ) : gpsStatus === 'success' ? (
+                    '✅ Confirm GPS Check-in'
+                  ) : (
+                    '📍 Capture Location & Check In'
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Standard Time Panel Detail */}
+            {adminCheckMode === 'standard' && (
+              <div className="method-detail-panel">
+                <div className="method-detail-header">
+                  <span>🕒 Standard Time Check-in</span>
+                  <span className="time-now-badge">{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                </div>
+                <div className="shift-details-grid">
+                  <div className="shift-detail-item">
+                    <span className="shift-detail-icon">⏰</span>
+                    <div>
+                      <strong>Shift Start</strong>
+                      <p>09:30 AM</p>
+                    </div>
+                  </div>
+                  <div className="shift-detail-item">
+                    <span className="shift-detail-icon">⚡</span>
+                    <div>
+                      <strong>Grace Period</strong>
+                      <p>Until 09:45 AM</p>
+                    </div>
+                  </div>
+                  <div className="shift-detail-item">
+                    <span className="shift-detail-icon">🏁</span>
+                    <div>
+                      <strong>Shift End</strong>
+                      <p>06:30 PM</p>
+                    </div>
+                  </div>
+                  <div className="shift-detail-item">
+                    <span className="shift-detail-icon">📊</span>
+                    <div>
+                      <strong>Total Hours</strong>
+                      <p>9 Hours / Day</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginTop: '16px' }}>
+                  <label>Note (optional)</label>
+                  <input
+                    type="text"
+                    value={standardTimeNote}
+                    onChange={(e) => setStandardTimeNote(e.target.value)}
+                    placeholder="e.g. Working from HQ / Client visit..."
+                    className="notes-input"
+                  />
+                </div>
+                <button
+                  className="btn-admin-checkin standard-btn"
+                  onClick={handleStandardCheckIn}
+                  disabled={adminCheckLoading}
+                >
+                  {adminCheckLoading ? (
+                    <><div className="loading-spinner sm"></div> Marking Attendance...</>
+                  ) : '🕒 Confirm Standard Check-in'}
+                </button>
+              </div>
+            )}
+
+            {/* QR Scan - info hint when selected but modal closed */}
+            {adminCheckMode === 'qr' && !showQRModal && (
+              <div className="method-detail-panel">
+                <div className="method-detail-header">
+                  <span>📷 QR / Barcode Verification</span>
+                  <span className="gps-success-badge" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>Live QR System</span>
+                </div>
+                <p className="method-hint">The QR verification hub includes GPS geo-fence check-in, live rotating office QR code display, and manual token entry — all in one modal.</p>
+                <button
+                  className="btn-admin-checkin"
+                  style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white', boxShadow: '0 4px 15px rgba(99,102,241,0.35)', marginTop: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 24px', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
+                  onClick={() => setShowQRModal(true)}
+                >
+                  📷 Open QR / Barcode Verification Hub
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
+          /* ── EMPLOYEE ROLE: Simple Check-in ── */
           <div className="checkin-container-grid">
             {/* Left Column: Check In Form */}
             <div className="checkin-form-card">
@@ -509,7 +916,7 @@ const Attendance = () => {
                     <div className="loading-container">
                       <div className="loading-spinner"></div>
                     </div>
-                  ) : '✓ Check In Now'}
+                  ) : '✓ Check In'}
                 </button>
               </div>
             </div>
@@ -542,6 +949,218 @@ const Attendance = () => {
           </div>
         )}
       </div>
+
+      {/* ── ADMIN ONLY: Today's Staff Attendance Records & Time Edit Section ── */}
+      {isAdmin && (
+        <div className="admin-staff-attendance-section">
+          <div className="staff-attendance-header">
+            <div>
+              <div className="admin-section-tag">ADMIN TIMESHEET CONTROL</div>
+              <h2>Today's Staff Attendance Records</h2>
+              <p>View all employee check-ins for today. Click <strong>Edit Time</strong> to adjust arrival/departure time.</p>
+            </div>
+            <div className="staff-header-actions">
+              <span className="staff-count-badge">
+                {allStaffAttendance.length} Checked In Today
+              </span>
+              <button
+                onClick={fetchStaffAttendance}
+                disabled={staffAttendanceLoading}
+                className="btn-refresh-staff"
+                title="Refresh staff records"
+              >
+                {staffAttendanceLoading ? '⏳ Refreshing...' : '🔄 Refresh List'}
+              </button>
+            </div>
+          </div>
+
+          {staffAttendanceLoading && allStaffAttendance.length === 0 ? (
+            <div className="staff-loading-card">
+              <div className="loading-spinner"></div>
+              <p>Loading today's attendance records...</p>
+            </div>
+          ) : allStaffAttendance.length === 0 ? (
+            <div className="staff-empty-card">
+              <div className="empty-icon">👥</div>
+              <h4>No Employee Attendance Records Yet Today</h4>
+              <p>When employees check in via Standard, GPS, or QR Code, their time records will appear here for admin adjustments.</p>
+            </div>
+          ) : (
+            <div className="staff-attendance-grid">
+              {allStaffAttendance.map((emp) => {
+                const att = emp.attendanceToday || {};
+                const checkInStr = att.checkInTime ? formatTime(att.checkInTime) : '--:--';
+                const checkOutStr = att.checkOutTime ? formatTime(att.checkOutTime) : (att.isActive ? '🟢 In Progress' : '--:--');
+                
+                // Calculate duration
+                let durationStr = '--';
+                if (att.checkInTime) {
+                  const checkIn = new Date(att.checkInTime);
+                  const checkOut = att.checkOutTime ? new Date(att.checkOutTime) : new Date();
+                  const diffMin = Math.max(0, Math.floor((checkOut - checkIn) / (1000 * 60)));
+                  const h = Math.floor(diffMin / 60);
+                  const m = diffMin % 60;
+                  durationStr = `${h}h ${m}m`;
+                }
+
+                return (
+                  <div key={emp._id || att._id} className="staff-record-card">
+                    <div className="staff-record-top">
+                      <div className="staff-info-col">
+                        <div className="staff-avatar-initial">
+                          {(emp.name || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <strong className="staff-name">{emp.name}</strong>
+                          <span className="staff-email">{emp.email}</span>
+                        </div>
+                      </div>
+                      <div className="staff-status-col">
+                        <span className={`status-pill ${att.status?.toLowerCase() || 'present'}`}>
+                          ● {att.status || 'Present'}
+                        </span>
+                        {att.verificationMethod && (
+                          <span className="method-pill">
+                            {att.verificationMethod === 'gps' || att.verificationMethod === 'geolocation' ? '📍 GPS' :
+                             att.verificationMethod === 'qr_code' ? '📷 QR' : '🕒 Standard'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="staff-times-row">
+                      <div className="staff-time-box">
+                        <span className="time-sub-label">Check In</span>
+                        <strong className="time-val-strong">{checkInStr}</strong>
+                      </div>
+                      <div className="staff-time-box">
+                        <span className="time-sub-label">Check Out</span>
+                        <strong className="time-val-strong">{checkOutStr}</strong>
+                      </div>
+                      <div className="staff-time-box highlight-box">
+                        <span className="time-sub-label">Duration</span>
+                        <strong className="time-val-strong">{durationStr}</strong>
+                      </div>
+                    </div>
+
+                    {att.notes && (
+                      <div className="staff-note-preview">
+                        <strong>Note:</strong> {att.notes}
+                      </div>
+                    )}
+
+                    <div className="staff-action-bar">
+                      <button
+                        className="btn-edit-staff-time"
+                        onClick={() => handleOpenEditAttendance(emp)}
+                      >
+                        ✏️ Edit Time &amp; Status
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ADMIN: Edit Attendance Time Modal ── */}
+      {isAdmin && editingRecord && (
+        <div className="admin-time-modal-overlay" onClick={() => setEditingRecord(null)}>
+          <div className="admin-time-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-time-modal-header">
+              <div>
+                <span className="modal-tag">ADMIN TIME EDITOR</span>
+                <h3>Edit Attendance Record</h3>
+                <p>Modify logged hours and status for <strong>{editingRecord.employeeName}</strong></p>
+              </div>
+              <button className="btn-close-modal" onClick={() => setEditingRecord(null)}>×</button>
+            </div>
+
+            <form onSubmit={handleSaveAttendanceEdit} className="admin-time-form">
+              <div className="time-inputs-grid">
+                <div className="form-group">
+                  <label>🕒 Check-In Time</label>
+                  <input
+                    type="time"
+                    value={editForm.checkInTime}
+                    onChange={(e) => setEditForm({ ...editForm, checkInTime: e.target.value })}
+                    required
+                    className="time-input-field"
+                  />
+                  <span className="field-hint">Original: {editingRecord.checkInTime ? formatTime(editingRecord.checkInTime) : 'N/A'}</span>
+                </div>
+
+                <div className="form-group">
+                  <label>🚪 Check-Out Time</label>
+                  <input
+                    type="time"
+                    value={editForm.checkOutTime}
+                    onChange={(e) => setEditForm({ ...editForm, checkOutTime: e.target.value, clearCheckOut: false })}
+                    className="time-input-field"
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <span className="field-hint">Original: {editingRecord.checkOutTime ? formatTime(editingRecord.checkOutTime) : 'Not checked out'}</span>
+                    {editForm.checkOutTime && (
+                      <button
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, checkOutTime: '', clearCheckOut: true })}
+                        className="btn-clear-checkout"
+                      >
+                        Reset Check-out
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '12px' }}>
+                <label>📌 Attendance Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="status-select-field"
+                >
+                  <option value="Present">Present</option>
+                  <option value="Half Day">Half Day</option>
+                  <option value="Absent">Absent</option>
+                  <option value="Leave">Leave</option>
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '12px' }}>
+                <label>📝 Admin Note / Adjustment Reason</label>
+                <input
+                  type="text"
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  placeholder="e.g. Adjusted check-in time per manager approval"
+                  className="note-input-field"
+                />
+              </div>
+
+              <div className="modal-actions-row">
+                <button
+                  type="button"
+                  className="btn-cancel-modal"
+                  onClick={() => setEditingRecord(null)}
+                  disabled={savingEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-save-time"
+                  disabled={savingEdit}
+                >
+                  {savingEdit ? '💾 Saving Updates...' : '💾 Save Time Updates'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Leave Form Modal */}
       {showLeaveForm && (
@@ -735,100 +1354,46 @@ const Attendance = () => {
 
       {/* My Leaves Section */}
       {myLeaves.length > 0 && (
-        <div className="my-leaves-section" style={{
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{ 
-            marginBottom: '20px', 
-            fontSize: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-          My Leave Requests
-          </h2>
+        <div className="my-leaves-section">
+          <div className="my-leaves-header">
+            <h2>
+              <span>📋 My Leave Requests</span>
+              <span className="leaves-count-badge">{myLeaves.length} Total</span>
+            </h2>
+          </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="leaves-list-grid">
             {myLeaves.map((leave) => (
-              <div 
-                key={leave._id}
-                style={{
-                  background: '#F9FAFB',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  border: '1px solid #E5E7EB',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '10px'
-                }}>
-                  <div>
-                    <span style={{
-                      fontSize: '14px',
-                      color: '#6B7280',
-                      fontWeight: '500'
-                    }}>
-                      {leave.leaveType}
-                    </span>
+              <div key={leave._id} className="leave-request-card">
+                <div className="leave-card-top">
+                  <div className="leave-type-info">
+                    <span className="leave-type-name">{leave.leaveType}</span>
                   </div>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    backgroundColor: leave.status === 'Approved' ? '#D1FAE5' : 
-                                     leave.status === 'Pending' ? '#FEF3C7' : '#FEE2E2',
-                    color: leave.status === 'Approved' ? '#065F46' : 
-                           leave.status === 'Pending' ? '#92400E' : '#991B1B'
-                  }}>
-                    {leave.status === 'Approved' ? '✅ Approved' : 
-                     leave.status === 'Pending' ? ' Pending' : '❌ Rejected'}
+                  <span className={`leave-status-pill ${leave.status?.toLowerCase()}`}>
+                    {leave.status === 'Approved' ? '✓ Approved' : 
+                     leave.status === 'Pending' ? '⏳ Pending' : '✕ Rejected'}
                   </span>
                 </div>
                 
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                  gap: '12px',
-                  fontSize: '14px'
-                }}>
-                  <div>
-                    <span style={{ color: '#6B7280' }}>From: </span>
-                    <strong style={{ color: '#374151' }}>
-                      {new Date(leave.startDate).toLocaleDateString()}
-                    </strong>
+                <div className="leave-dates-row">
+                  <div className="leave-date-col">
+                    <span className="date-label">From</span>
+                    <strong className="date-val">{new Date(leave.startDate).toLocaleDateString()}</strong>
                   </div>
-                  <div>
-                    <span style={{ color: '#6B7280' }}>To: </span>
-                    <strong style={{ color: '#374151' }}>
-                      {new Date(leave.endDate).toLocaleDateString()}
-                    </strong>
+                  <div className="leave-date-col">
+                    <span className="date-label">To</span>
+                    <strong className="date-val">{new Date(leave.endDate).toLocaleDateString()}</strong>
                   </div>
-                  <div>
-                    <span style={{ color: '#6B7280' }}>Days: </span>
-                    <strong style={{ color: '#374151' }}>{leave.totalDays}</strong>
+                  <div className="leave-date-col">
+                    <span className="date-label">Total Duration</span>
+                    <strong className="date-val">{leave.totalDays} {leave.totalDays === 1 ? 'Day' : 'Days'}</strong>
                   </div>
                 </div>
                 
                 {leave.reason && (
-                  <div style={{
-                    fontSize: '13px',
-                    color: '#6B7280',
-                    background: 'white',
-                    padding: '8px 12px',
-                    borderRadius: '6px'
-                  }}>
-                    <strong>Reason:</strong> {leave.reason}
+                  <div className="leave-reason-box">
+                    <span className="reason-label">Reason:</span>
+                    <span className="reason-text">{leave.reason}</span>
                   </div>
                 )}
               </div>
@@ -837,16 +1402,22 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* Instructions */}
-      <div className="attendance-instructions">
-        <h3>How it works:</h3>
-        <ul>
-          <li>Click <strong>"Check In"</strong> when you start your work day</li>
-          <li>Click <strong>"Check Out"</strong> when you finish your work day</li>
-          <li>Your work hours will be calculated automatically</li>
-          <li>You can only mark attendance once per day</li>
-        </ul>
-      </div>
+      {/* QR / Barcode Verification Modal — Admin Only */}
+      {isAdmin && (
+        <LiveQRGeoVerificationModal
+          isOpen={showQRModal}
+          onClose={() => { setShowQRModal(false); setAdminCheckMode(null); }}
+          onSuccess={(attendanceData) => {
+            setTodayAttendance(attendanceData);
+            setMessage('✅ QR Verification successful! Attendance marked.');
+            setMessageType('success');
+            setShowQRModal(false);
+            setAdminCheckMode(null);
+            setTimeout(() => setMessage(''), 5000);
+          }}
+          user={storedUser}
+        />
+      )}
     </div>
   );
 };

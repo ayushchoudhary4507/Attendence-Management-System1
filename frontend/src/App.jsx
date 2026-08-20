@@ -106,10 +106,14 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
 
   // Helper: convert relative image path to full URL, or return as-is if already full
   const getImageUrl = (imgPath) => {
-    if (!imgPath) return null;
-    if (imgPath.startsWith('http') || imgPath.startsWith('data:image')) return imgPath;
-    const base = API_BASE_URL.replace('/api', '');
-    return `${base}${imgPath}`;
+    if (!imgPath || typeof imgPath !== 'string') return null;
+    const cleanPath = imgPath.trim().replace(/\\/g, '/');
+    if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://') || cleanPath.startsWith('data:image')) {
+      return cleanPath;
+    }
+    const base = (API_BASE_URL || 'http://127.0.0.1:5005/api').replace(/\/api\/?$/, '');
+    const normalized = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    return `${base}${normalized}`;
   };
 
   // Fallback avatar URL
@@ -123,7 +127,7 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
     { label: 'Projects', path: '/projects', icon: '📁', category: 'Page' },
     { label: 'Messages', path: '/chat', icon: '💬', category: 'Page' },
     { label: 'Work Hours', path: '/work-hours', icon: '⏰', category: 'Page' },
-    { label: 'Attendance', path: '/attendance', icon: '✅', category: 'Page' },
+    { label: 'Attendance & Leaves', path: '/attendance', icon: '📅', category: 'Page' },
     { label: 'Settings', path: '/settings', icon: '⚙️', category: 'Page' },
     ...(userRole === 'admin' ? [
       { label: 'Shift Management', path: '/shifts', icon: '🗓️', category: 'Page' },
@@ -378,7 +382,17 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
             <nav className="breadcrumb">
               <Link to="/" className="breadcrumb-home">Home</Link>
               <span className="separator">›</span>
-              <span className="current">{currentPath === '/' ? 'Dashboard' : currentPath.replace('/', '').charAt(0).toUpperCase() + currentPath.slice(2)}</span>
+              <span className="current">
+                {currentPath === '/' 
+                  ? 'Dashboard' 
+                  : currentPath === '/attendance' 
+                    ? 'Attendance & Leaves'
+                    : currentPath === '/ai-chat'
+                      ? 'AI Assistant'
+                      : currentPath === '/workhours' || currentPath === '/work-hours'
+                        ? 'Work Hours'
+                        : currentPath.replace('/', '').charAt(0).toUpperCase() + currentPath.slice(2)}
+              </span>
             </nav>
           </div>
           <div className="header-right">

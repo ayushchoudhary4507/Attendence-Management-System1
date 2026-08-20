@@ -71,7 +71,6 @@ exports.updateProfile = async (req, res) => {
   
   try {
     const { name, email, phone, department, role } = req.body;
-    let profileImagePath = req.file ? `/uploads/profiles/${req.file.filename}` : null;
 
     console.log('Updating profile for userId:', req.user?.userId);
 
@@ -117,35 +116,54 @@ exports.updateProfile = async (req, res) => {
       user.role = role;
     }
     
-    // Update profile image if newly uploaded
-    if (profileImagePath) {
-      console.log('Updating profile image:', profileImagePath);
-      user.profileImage = profileImagePath;
+    // Check for uploaded file across any field
+    let uploadedFile = req.file || (req.files && req.files.length > 0 ? req.files[0] : null);
+
+    const incomingImage = req.body.profileImage || req.body.photo || req.body.avatar || req.body.image || req.body.profile_pic || req.body.profile_image || req.body.newProfileImageBase64;
+
+    // Update profile image if newly uploaded via multer
+    if (uploadedFile) {
+      try {
+        const fileBuffer = fs.readFileSync(uploadedFile.path);
+        const mimeType = uploadedFile.mimetype || 'image/jpeg';
+        const base64Data = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+        user.profileImage = base64Data;
+        console.log('✅ Converted uploaded file to Base64 data URL for permanent MongoDB persistence');
+      } catch (fErr) {
+        console.warn('⚠️ Could not convert to Base64, storing relative path:', fErr.message);
+        user.profileImage = `/uploads/profiles/${uploadedFile.filename}`;
+      }
     } else if (req.body.removeProfileImage === true || req.body.removeProfileImage === 'true' || req.body.removeImage === 'true') {
       // User explicitly requested to remove profile image
       console.log('Explicitly removing profile image');
       user.profileImage = null;
-    } else if (req.body.profileImage && typeof req.body.profileImage === 'string' && req.body.profileImage.trim() !== '') {
-      // Keep or update existing path/url
-      let cleaned = req.body.profileImage.trim();
+    } else if (incomingImage && typeof incomingImage === 'string' && incomingImage.trim() !== '') {
+      let cleaned = incomingImage.trim().replace(/\\/g, '/');
       if (cleaned.includes('/uploads/')) {
         cleaned = cleaned.substring(cleaned.indexOf('/uploads/'));
+      } else if (cleaned.startsWith('uploads/')) {
+        cleaned = '/' + cleaned;
       }
       user.profileImage = cleaned;
+      console.log('Updating profile image from body:', user.profileImage.substring(0, 50));
     }
     // Note: If no new image and not explicitly removed, user.profileImage remains unchanged (old photo is preserved)!
 
     await user.save();
-    console.log('✅ User saved successfully with profileImage:', user.profileImage);
+    console.log('✅ User saved successfully with profileImage:', user.profileImage ? user.profileImage.substring(0, 50) : 'none');
 
-    // Sync profileImage with Employee collection if employee exists with this email
-    if (user.email) {
+    // Sync profileImage with Employee collection if employee exists with this email or name
+    if (user.email || user.name) {
       try {
+        const queryConditions = [];
+        if (user.email) queryConditions.push({ email: { $regex: `^${user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, $options: 'i' } });
+        if (user.name) queryConditions.push({ name: { $regex: `^${user.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, $options: 'i' } });
+
         await Employee.updateMany(
-          { email: { $regex: `^${user.email.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, $options: 'i' } },
+          { $or: queryConditions },
           { profileImage: user.profileImage || '' }
         );
-        console.log('✅ Synchronized profile image with Employee collection');
+        console.log('✅ Synchronized profile image with Employee collection for', user.name, user.email);
       } catch (empSyncErr) {
         console.warn('⚠️ Could not sync employee profile image:', empSyncErr.message);
       }

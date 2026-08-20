@@ -40,10 +40,14 @@ const getAvatarColor = (name) => {
 };
 
 const getImageUrl = (imgPath) => {
-  if (!imgPath) return null;
-  if (imgPath.startsWith('http') || imgPath.startsWith('data:image')) return imgPath;
-  const base = API_URL.replace('/api', '');
-  return `${base}${imgPath}`;
+  if (!imgPath || typeof imgPath !== 'string') return null;
+  const cleanPath = imgPath.trim().replace(/\\/g, '/');
+  if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://') || cleanPath.startsWith('data:image')) {
+    return cleanPath;
+  }
+  const base = (API_URL || 'http://127.0.0.1:5005/api').replace(/\/api\/?$/, '');
+  const normalized = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+  return `${base}${normalized}`;
 };
 
 const Employees = ({ onLogout, userRole }) => {

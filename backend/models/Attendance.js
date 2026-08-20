@@ -40,6 +40,23 @@ const attendanceSchema = new mongoose.Schema({
   notes: {
     type: String,
     default: ''
+  },
+  verificationMethod: {
+    type: String,
+    enum: ['manual', 'qr_code', 'geolocation', 'qr_and_geo'],
+    default: 'manual'
+  },
+  location: {
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+    accuracy: { type: Number, default: null },
+    address: { type: String, default: '' },
+    distanceInMeters: { type: Number, default: null },
+    isWithinOfficeRadius: { type: Boolean, default: false }
+  },
+  qrToken: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

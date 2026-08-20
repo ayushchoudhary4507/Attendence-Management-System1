@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const {
   markAttendance,
+  markAttendanceVerified,
+  getLiveQRToken,
+  getOfficeLocation,
   checkOut,
   getMyTodayAttendance,
   getTodayAllAttendance,
@@ -17,7 +20,8 @@ const {
   approveRejectLeave,
   cancelLeave,
   getPendingLeavesCount,
-  getAttendanceByDate
+  getAttendanceByDate,
+  updateAttendance
 } = require('../controllers/attendanceController');
 const { authMiddleware, adminMiddleware } = require('../middleware/adminMiddleware');
 
@@ -474,6 +478,15 @@ const { authMiddleware, adminMiddleware } = require('../middleware/adminMiddlewa
 // Mark attendance for today - Employee only
 router.post('/mark', authMiddleware, markAttendance);
 
+// Mark attendance with live QR / Geolocation verification - Employee only
+router.post('/mark-verified', authMiddleware, markAttendanceVerified);
+
+// Get rolling live QR token for Office Display / Kiosk
+router.get('/qr-token', authMiddleware, getLiveQRToken);
+
+// Get Office location coordinates and geo-fence settings
+router.get('/office-location', authMiddleware, getOfficeLocation);
+
 // Check out - Employee only
 router.put('/checkout', authMiddleware, checkOut);
 
@@ -522,5 +535,8 @@ router.put('/leave/cancel/:leaveId', authMiddleware, cancelLeave);
 
 // Get attendance by specific date
 router.get('/by-date', authMiddleware, getAttendanceByDate);
+
+// Update attendance record (Admin can edit check-in/check-out time, status, notes)
+router.put('/:id', authMiddleware, adminMiddleware, updateAttendance);
 
 module.exports = router;

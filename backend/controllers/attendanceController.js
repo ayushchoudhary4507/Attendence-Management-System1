@@ -1156,8 +1156,230 @@ const applyLeaveAuto = async (req, res) => {
   }
 };
 
+// Haversine formula for Geo-distance in meters
+const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Earth radius in meters
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return Math.round(R * c);
+};
+
+// Default Office Coordinates & Radius (Configurable)
+const OFFICE_LOCATION = {
+  name: 'AttendancePro HQ Campus',
+  latitude: parseFloat(process.env.OFFICE_LAT || '28.6139'),
+  longitude: parseFloat(process.env.OFFICE_LNG || '77.2090'),
+  radiusMeters: parseInt(process.env.OFFICE_RADIUS || '1000', 10)
+};
+
+// @desc    Get Office Geolocation & Verification Settings
+// @route   GET /api/attendance/office-location
+// @access  Private
+const getOfficeLocation = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: OFFICE_LOCATION
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch office location' });
+  }
+};
+
+// @desc    Generate a dynamic live QR token for Office Display / Kiosk
+// @route   GET /api/attendance/qr-token
+// @access  Private
+const getLiveQRToken = async (req, res) => {
+  try {
+    const timestamp = Date.now();
+    // Rolling token valid for window
+    const token = `ATT_QR_${Buffer.from(`${timestamp}_${Math.random().toString(36).substring(2, 9)}`).toString('base64')}`;
+    
+    res.json({
+      success: true,
+      data: {
+        token,
+        timestamp,
+        expiresInSeconds: 45,
+        office: OFFICE_LOCATION.name
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to generate QR token' });
+  }
+};
+
+// @desc    Mark attendance using Verified QR code and/or GPS Geolocation
+// @route   POST /api/attendance/mark-verified
+// @access  Private (Employee)
+const markAttendanceVerified = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { status = 'Present', notes = '', verificationMethod = 'geolocation', qrToken, location } = req.body;
+
+    const user = await User.findById(userId);
+    const employee = await Employee.findOne({ email: user.email });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee profile not found'
+      });
+    }
+
+    // Check if attendance already marked today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existingAttendance = await Attendance.findOne({
+      employeeId: employee._id,
+      date: { $gte: today, $lt: tomorrow }
+    });
+
+    if (existingAttendance) {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance already marked for today',
+        data: existingAttendance
+      });
+    }
+
+    // Process Geolocation distance if coordinates provided
+    let distanceInMeters = null;
+    let isWithinOfficeRadius = false;
+
+    if (location && location.latitude && location.longitude) {
+      distanceInMeters = calculateDistanceInMeters(
+        location.latitude,
+        location.longitude,
+        OFFICE_LOCATION.latitude,
+        OFFICE_LOCATION.longitude
+      );
+      isWithinOfficeRadius = distanceInMeters <= OFFICE_LOCATION.radiusMeters;
+    }
+
+    // Create verified attendance record
+    const attendance = await Attendance.create({
+      employeeId: employee._id,
+      userId: userId,
+      date: new Date(),
+      status,
+      checkInTime: new Date(),
+      isActive: true,
+      notes,
+      verificationMethod,
+      qrToken: qrToken || null,
+      location: {
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
+        accuracy: location?.accuracy || null,
+        address: location?.address || (isWithinOfficeRadius ? 'Verified at Office Campus' : 'Remote / GPS Recorded'),
+        distanceInMeters,
+        isWithinOfficeRadius
+      }
+    });
+
+    // Create rich notification for admins
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    const methodLabel = verificationMethod === 'qr_code' ? '📱 QR Code' : verificationMethod === 'geolocation' ? '📍 GPS Location' : '✓ Verified';
+    
+    for (const admin of admins) {
+      await Notification.create({
+        type: 'attendance',
+        title: `Attendance Marked via ${methodLabel}`,
+        message: `${employee.name} checked in via ${methodLabel} (${isWithinOfficeRadius ? 'Inside Office Zone' : (distanceInMeters ? `${distanceInMeters}m away` : 'Remote')}) at ${new Date().toLocaleTimeString()}`,
+        employeeId: employee._id,
+        employeeName: employee.name,
+        employeeEmail: employee.email,
+        senderId: userId,
+        receiverId: admin._id
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Attendance marked successfully via ${methodLabel}!`,
+      data: attendance
+    });
+  } catch (error) {
+    console.error('Mark verified attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error while marking verified attendance'
+    });
+  }
+};
+
+// @desc    Admin update attendance record (edit time, status, notes)
+// @route   PUT /api/attendance/:id
+// @access  Admin only
+const updateAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { checkInTime, checkOutTime, status, notes, isActive } = req.body;
+
+    const attendance = await Attendance.findById(id).populate('employeeId', 'name email employeeId');
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found'
+      });
+    }
+
+    if (status) attendance.status = status;
+    if (notes !== undefined) attendance.notes = notes;
+    if (isActive !== undefined) attendance.isActive = isActive;
+
+    if (checkInTime) {
+      attendance.checkInTime = new Date(checkInTime);
+    }
+
+    if (checkOutTime) {
+      attendance.checkOutTime = new Date(checkOutTime);
+      attendance.isActive = false;
+    } else if (checkOutTime === null) {
+      attendance.checkOutTime = null;
+      attendance.isActive = true;
+    }
+
+    // Recalculate work hours if both times exist
+    if (attendance.checkInTime && attendance.checkOutTime) {
+      const diffMs = Math.max(0, new Date(attendance.checkOutTime) - new Date(attendance.checkInTime));
+      const hours = diffMs / (1000 * 60 * 60);
+      attendance.workHours = parseFloat(hours.toFixed(2));
+    }
+
+    await attendance.save();
+
+    res.json({
+      success: true,
+      message: 'Attendance record and time updated successfully',
+      data: attendance
+    });
+  } catch (error) {
+    console.error('Update attendance error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error updating attendance'
+    });
+  }
+};
+
 module.exports = {
   markAttendance,
+  markAttendanceVerified,
+  getLiveQRToken,
+  getOfficeLocation,
   checkOut,
   getMyTodayAttendance,
   getTodayAllAttendance,
@@ -1173,5 +1395,6 @@ module.exports = {
   approveRejectLeave,
   cancelLeave,
   getPendingLeavesCount,
-  getAttendanceByDate
+  getAttendanceByDate,
+  updateAttendance
 };

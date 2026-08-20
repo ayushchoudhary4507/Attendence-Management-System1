@@ -184,9 +184,24 @@ const loginController = async (req, res) => {
       }
     }
 
-    // Find corresponding employee record by email for messaging
-    const employee = await Employee.findOne({ email: user.email });
+    // Find corresponding employee record by email or name
+    const employee = await Employee.findOne({
+      $or: [
+        { email: { $regex: `^${user.email.trim()}$`, $options: 'i' } },
+        { name: { $regex: `^${user.name.trim()}$`, $options: 'i' } }
+      ]
+    });
     const employeeId = employee ? employee._id.toString() : null;
+
+    // Synchronize profileImage between User and Employee if either is missing
+    let finalProfileImage = user.profileImage || employee?.profileImage || null;
+    if (!user.profileImage && employee?.profileImage) {
+      user.profileImage = employee.profileImage;
+      await user.save();
+    } else if (user.profileImage && employee && !employee.profileImage) {
+      employee.profileImage = user.profileImage;
+      await employee.save();
+    }
 
     // Role-based response
     let responseMessage = 'Login successful';
@@ -219,7 +234,7 @@ const loginController = async (req, res) => {
         role: user.role,
         phone: user.phone,
         department: user.department,
-        profileImage: user.profileImage || null,
+        profileImage: finalProfileImage,
         permissions: permissions
       },
       popup: {
