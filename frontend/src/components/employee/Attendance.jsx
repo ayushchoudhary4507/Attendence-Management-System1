@@ -349,17 +349,10 @@ const Attendance = () => {
                 setTimeout(() => setIsRefreshing(false), 1000);
               }}
               disabled={isRefreshing}
-              style={{
-                marginLeft: '10px',
-                padding: '2px 8px',
-                background: '#F3F4F6',
-                border: '1px solid #D1D5DB',
-                borderRadius: '4px',
-                fontSize: '11px',
-                cursor: isRefreshing ? 'not-allowed' : 'pointer'
-              }}
+              className="btn-refresh-attendance"
+              title="Refresh attendance status"
             >
-              {isRefreshing ? '🔄' : '🔄'} Refresh
+              🔄 Refresh
             </button>
           </div>
         </div>
@@ -367,61 +360,22 @@ const Attendance = () => {
           <button 
             onClick={() => setShowLeaveDropdown(!showLeaveDropdown)}
             disabled={applyLeaveLoading}
-            style={{
-              padding: '10px 20px',
-              background: '#F59E0B',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: applyLeaveLoading ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '8px',
-              opacity: applyLeaveLoading ? 0.7 : 1,
-              minWidth: '180px'
-            }}
+            className="btn-apply-leave"
           >
             {applyLeaveLoading ? (
               <div className="loading-container">
                 <div className="loading-spinner" style={{ width: '18px', height: '18px' }}></div>
               </div>
-            ) : ' Apply for Leave ▼'}
+            ) : 'Apply for Leave ▼'}
           </button>
           {showLeaveDropdown && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              background: 'white',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              borderRadius: '8px',
-              padding: '8px 0',
-              minWidth: '200px',
-              zIndex: 100,
-              marginTop: '8px'
-            }}>
+            <div className="leave-dropdown-menu">
               {leaveTypes.map(type => (
                 <button
                   key={type.id}
                   onClick={() => openLeaveForm(type.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    width: '100%',
-                    padding: '10px 16px',
-                    border: 'none',
-                    background: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: type.color,
-                    borderBottom: '1px solid #F3F4F6'
-                  }}
+                  className="leave-dropdown-item"
+                  style={{ color: type.color }}
                 >
                   {type.label}
                 </button>
@@ -440,22 +394,31 @@ const Attendance = () => {
       {/* Today's Status Card */}
       <div className="today-status-card">
         <div className="status-header">
-          <h2>Today's Status</h2>
-          <span className="current-date">{new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}</span>
+          <div className="status-title-group">
+            <h2>Today's Status</h2>
+            <span className="status-subtitle">Mark your daily entry and track working progress</span>
+          </div>
+          <div className="status-header-meta">
+            <span className="current-date">
+              📅 {new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              })}
+            </span>
+          </div>
         </div>
 
         {todayAttendance ? (
           <div className="attendance-details">
-            <div className="status-badge" style={{ 
-              backgroundColor: getStatusColor(todayAttendance.status),
-              color: 'white'
-            }}>
-              {todayAttendance.status}
+            <div className="status-badge-wrapper">
+              <span className="status-badge" style={{ 
+                backgroundColor: getStatusColor(todayAttendance.status),
+                color: 'white'
+              }}>
+                ● {todayAttendance.status}
+              </span>
             </div>
             
             <div className="time-stats">
@@ -493,7 +456,7 @@ const Attendance = () => {
                     <div className="loading-container">
                       <div className="loading-spinner"></div>
                     </div>
-                  ) : 'Check Out'}
+                  ) : '🚪 Check Out Now'}
                 </button>
               ) : (
                 <div className="completed-message">
@@ -503,48 +466,78 @@ const Attendance = () => {
             </div>
           </div>
         ) : (
-          <div className="no-attendance">
-            <div className="no-attendance-icon">📋</div>
-            <p>You haven't marked attendance for today yet.</p>
-            
-            {/* Mark Attendance Form */}
-            <div className="mark-attendance-form">
-              <div className="form-group">
-                <label>Status:</label>
-                <select 
-                  value={status} 
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="status-select"
-                >
-                  <option value="Present">Present</option>
-                  <option value="Absent">Absent</option>
-                  <option value="Half Day">Half Day</option>
-                  <option value="Leave">Leave</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label>Notes (optional):</label>
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any notes..."
-                  className="notes-input"
-                />
+          <div className="checkin-container-grid">
+            {/* Left Column: Check In Form */}
+            <div className="checkin-form-card">
+              <div className="form-header-badge">
+                <span className="badge-dot"></span>
+                <span>Not Marked For Today</span>
               </div>
 
-              <button 
-                className="btn-checkin"
-                onClick={markAttendance}
-                disabled={loading}
-              >
-                {loading ? (
-                  <div className="loading-container">
-                    <div className="loading-spinner"></div>
-                  </div>
-                ) : 'Check In'}
-              </button>
+              <div className="mark-attendance-form">
+                <div className="form-group">
+                  <label>Status</label>
+                  <select 
+                    value={status} 
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="status-select"
+                  >
+                    <option value="Present">Present</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Half Day">Half Day</option>
+                    <option value="Leave">Leave</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label>Notes (optional)</label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="e.g. Working from office / Remote..."
+                    className="notes-input"
+                  />
+                </div>
+
+                <button 
+                  className="btn-checkin"
+                  onClick={markAttendance}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="loading-container">
+                      <div className="loading-spinner"></div>
+                    </div>
+                  ) : '✓ Check In Now'}
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Shift / Guidelines Widget */}
+            <div className="shift-info-widget">
+              <h3>Shift Guidelines</h3>
+              <div className="shift-info-item">
+                <span className="info-icon">⏰</span>
+                <div className="info-text">
+                  <strong>Standard Shift</strong>
+                  <p>09:30 AM - 06:30 PM (9 Hours)</p>
+                </div>
+              </div>
+              <div className="shift-info-item">
+                <span className="info-icon">⚡</span>
+                <div className="info-text">
+                  <strong>Grace Period</strong>
+                  <p>Check in before 09:45 AM to avoid late mark</p>
+                </div>
+              </div>
+              <div className="shift-info-item">
+                <span className="info-icon">📊</span>
+                <div className="info-text">
+                  <strong>Automatic Tracking</strong>
+                  <p>Work hours and duration calculate automatically on checkout</p>
+                </div>
+              </div>
             </div>
           </div>
         )}

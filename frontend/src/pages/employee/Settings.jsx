@@ -48,7 +48,9 @@ const Settings = () => {
         if (data.settings?.notifications) {
           setNotifications(data.settings.notifications);
         }
-        if (data.settings?.appearance?.theme) {
+        // Only set theme from DB if no theme preference exists in localStorage
+        const savedTheme = localStorage.getItem('theme');
+        if (!savedTheme && data.settings?.appearance?.theme) {
           setGlobalTheme(data.settings.appearance.theme);
         }
       }
@@ -72,9 +74,10 @@ const Settings = () => {
       console.log('Profile update response:', profileRes);
       
       // Update settings with correct structure
+      const activeTheme = localStorage.getItem('theme') || theme;
       const settingsData = {
         settings: {
-          appearance: { theme },
+          appearance: { theme: activeTheme },
           notifications
         }
       };
@@ -84,7 +87,7 @@ const Settings = () => {
       console.log('Settings update response:', settingsRes);
       
       // Update appearance separately
-      const themeRes = await settingsAPI.updateAppearance(theme);
+      const themeRes = await settingsAPI.updateAppearance(activeTheme);
       console.log('Theme update response:', themeRes);
       
       setSaved(true);

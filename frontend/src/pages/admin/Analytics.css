@@ -1,7 +1,9 @@
 .analytics-page {
-  padding: 24px;
-  background: #f8fafc;
-  min-height: 100vh;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  min-height: auto;
 }
 
 .analytics-header {
@@ -1500,3 +1502,111 @@
     font-size: 13px;
   }
 }
+
+/* Eliminate Recharts Default Gray Cursor / Box Overlay */
+.recharts-tooltip-cursor,
+.recharts-bar-cursor,
+.recharts-rectangle.recharts-tooltip-cursor,
+svg .recharts-tooltip-cursor,
+path.recharts-tooltip-cursor,
+rect.recharts-tooltip-cursor {
+  fill: transparent !important;
+  stroke: transparent !important;
+  opacity: 0 !important;
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.recharts-default-tooltip {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ============================================
+   DARK MODE - Matching Employee Table Theme
+   ============================================ */
+body.dark-theme .analytics-page {
+  background: transparent;
+}
+
+body.dark-theme .analytics-header h1 {
+  color: #f8fafc !important;
+}
+
+body.dark-theme .analytics-subtitle {
+  color: #94a3b8 !important;
+}
+
+body.dark-theme .last-updated {
+  color: #94a3b8 !important;
+}
+
+body.dark-theme .live-indicator {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+body.dark-theme .stat-card,
+body.dark-theme .chart-card,
+body.dark-theme .analytics-section,
+body.dark-theme .progress-card,
+body.dark-theme .employee-profile-card,
+body.dark-theme .summary-card {
+  background: rgba(30, 30, 46, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  color: #f8fafc !important;
+}
+
+body.dark-theme .chart-card h3,
+body.dark-theme .analytics-section h3,
+body.dark-theme .stat-value {
+  color: #f8fafc !important;
+}
+
+body.dark-theme .stat-title,
+body.dark-theme .progress-label,
+body.dark-theme .activity-text {
+  color: #94a3b8 !important;
+}
+
+body.dark-theme .status-item,
+body.dark-theme .activity-item {
+  background: rgba(30, 30, 46, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #f8fafc !important;
+}
+
+body.dark-theme .status-item:hover,
+body.dark-theme .activity-item:hover {
+  background: rgba(79, 70, 229, 0.15) !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+body.dark-theme .status-count {
+  color: #f8fafc !important;
+}
+
+body.dark-theme .status-label {
+  color: #94a3b8 !important;
+}
+
+body.dark-theme .activity-avatar {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-theme .chart-empty-state {
+  background: transparent !important;
+}
+
+body.dark-theme .empty-state-text {
+  color: #f8fafc !important;
+}
+
+body.dark-theme .empty-state-subtext {
+  color: #94a3b8 !important;
+}
+

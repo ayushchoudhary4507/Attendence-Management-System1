@@ -329,6 +329,34 @@ const Analytics = ({ userRole }) => {
     );
   }
 
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{
+          backgroundColor: '#1e293b',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          color: '#f8fafc',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
+          fontSize: '13px',
+          lineHeight: 1.4,
+          minWidth: '110px'
+        }}>
+          {label && <p style={{ margin: '0 0 6px 0', fontWeight: 600, color: '#e2e8f0' }}>{label}</p>}
+          {payload.map((entry, index) => (
+            <div key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '3px 0' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.color || entry.fill || '#6366f1' }}></span>
+              <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{entry.name}:</span>
+              <span style={{ fontWeight: 600, color: '#f8fafc', marginLeft: 'auto' }}>{entry.value}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="analytics-page">
       <div className="analytics-header">
@@ -394,17 +422,10 @@ const Analytics = ({ userRole }) => {
             {monthlyData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
                   <XAxis dataKey="name" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1f2937', 
-                      border: 'none', 
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                  />
+                  <Tooltip cursor={false} content={<CustomTooltip />} />
                   <Legend />
                   <Bar dataKey="present" name="Present" fill="#10b981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="absent" name="Absent" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -436,14 +457,7 @@ const Analytics = ({ userRole }) => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1f2937', 
-                      border: 'none', 
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                  />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -475,15 +489,8 @@ const Analytics = ({ userRole }) => {
                   </defs>
                   <XAxis dataKey="day" stroke="#6b7280" />
                   <YAxis stroke="#6b7280" />
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1f2937', 
-                      border: 'none', 
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
+                  <Tooltip cursor={false} content={<CustomTooltip />} />
                   <Legend />
                   <Area type="monotone" dataKey="present" name="Present" stroke="#10b981" fillOpacity={1} fill="url(#colorPresent)" strokeWidth={2} />
                   <Area type="monotone" dataKey="absent" name="Absent" stroke="#ef4444" fillOpacity={1} fill="url(#colorAbsent)" strokeWidth={2} />
@@ -516,14 +523,7 @@ const Analytics = ({ userRole }) => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1f2937', 
-                      border: 'none', 
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                  />
+                  <Tooltip content={<CustomTooltip />} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

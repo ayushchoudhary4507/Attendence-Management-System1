@@ -38,21 +38,38 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px !important;
+  background: #ffffff;
   color: #4b5563;
   cursor: pointer;
   transition: all 0.2s ease;
   padding: 0;
   position: relative;
+  box-sizing: border-box;
+  outline: none !important;
+}
+
+.icon-btn:focus,
+.icon-btn:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4) !important;
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .icon-btn:hover {
   background: rgba(79, 70, 229, 0.1);
+  border-color: #6366f1;
   color: #4f46e5;
+  transform: translateY(-1px);
 }
 
 /* Header Icons Layout */
@@ -584,21 +601,13 @@ body:not(.dark-theme) .sidebar .support-btn:hover {
   border-color: #c7d2fe !important;
 }
 
-body.dark-theme .dashboard-container {
-  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
-  min-height: 100vh;
-  width: 100%;
-}
-
 body.dark-theme .sidebar {
   background: linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 body.dark-theme .main-content {
-  background: transparent;
-  min-height: 100vh;
-  width: 100%;
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
 }
 
 body.dark-theme .top-header {
@@ -609,22 +618,134 @@ body.dark-theme .top-header {
 }
 
 body.dark-theme .page-content {
-  background: transparent;
-  min-height: 100%;
-  width: 100%;
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%) !important;
 }
 
+/* ==========================================================================
+   GLOBAL DARK THEME - Consistent Employee Table Look & Feel
+   ========================================================================== */
+body.dark-theme .table-container,
+body.dark-theme .work-hours-table-container,
+body.dark-theme .projects-table-container,
+body.dark-theme .attendance-table-container,
+body.dark-theme .salary-table-container,
+body.dark-theme .shifts-table-container,
+body.dark-theme .reports-table-container,
+body.dark-theme .holidays-table-container,
+body.dark-theme .assignments-table-container,
+body.dark-theme .users-table-container,
+body.dark-theme .leaves-table-container,
+body.dark-theme .history-table-container,
+body.dark-theme .leave-history-container,
+body.dark-theme .card,
 body.dark-theme .stat-card,
 body.dark-theme .project-card,
-body.dark-theme .chat-item,
+body.dark-theme .emp-stat-card,
+body.dark-theme .section-box,
+body.dark-theme .quick-actions,
+body.dark-theme .todays-overview-card,
+body.dark-theme .clock-card,
+body.dark-theme .notifications-card,
+body.dark-theme .analytics-card,
+body.dark-theme .summary-card,
 body.dark-theme .settings-container,
+body.dark-theme .ai-chat-card,
+body.dark-theme .shift-card,
+body.dark-theme .salary-card,
 body.dark-theme .messages-container,
 body.dark-theme .search-dropdown,
-body.dark-theme .notification-dropdown {
-  
+body.dark-theme .notification-dropdown,
+body.dark-theme .modal-container,
+body.dark-theme .admin-modal,
+body.dark-theme .attendance-modal {
+  background: rgba(30, 30, 46, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
-  border-color: rgba(255, 255, 255, 0.1);
+  color: #F8FAFC !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Global Tables in Dark Mode */
+body.dark-theme table thead,
+body.dark-theme .data-table thead,
+body.dark-theme .work-hours-table thead,
+body.dark-theme .attendance-table thead,
+body.dark-theme .projects-table thead,
+body.dark-theme .salary-table thead,
+body.dark-theme .shifts-table thead,
+body.dark-theme .reports-table thead,
+body.dark-theme .holidays-table thead,
+body.dark-theme .employees-table thead {
+  background: rgba(30, 30, 46, 0.8) !important;
+}
+
+body.dark-theme table th,
+body.dark-theme .data-table th,
+body.dark-theme .work-hours-table th,
+body.dark-theme .attendance-table th,
+body.dark-theme .projects-table th,
+body.dark-theme .salary-table th,
+body.dark-theme .shifts-table th,
+body.dark-theme .reports-table th,
+body.dark-theme .holidays-table th,
+body.dark-theme .employees-table th {
+  background: rgba(30, 30, 46, 0.8) !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-theme table td,
+body.dark-theme .data-table td,
+body.dark-theme .work-hours-table td,
+body.dark-theme .attendance-table td,
+body.dark-theme .projects-table td,
+body.dark-theme .salary-table td,
+body.dark-theme .shifts-table td,
+body.dark-theme .reports-table td,
+body.dark-theme .holidays-table td,
+body.dark-theme .employees-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme table tbody tr:hover,
+body.dark-theme .data-table tbody tr:hover,
+body.dark-theme .work-hours-table tbody tr:hover,
+body.dark-theme .attendance-table tbody tr:hover,
+body.dark-theme .projects-table tbody tr:hover,
+body.dark-theme .salary-table tbody tr:hover,
+body.dark-theme .shifts-table tbody tr:hover,
+body.dark-theme .reports-table tbody tr:hover,
+body.dark-theme .holidays-table tbody tr:hover,
+body.dark-theme .employees-table tbody tr:hover {
+  background: rgba(79, 70, 229, 0.1) !important;
+}
+
+/* Global Filter & Search Bars in Dark Mode */
+body.dark-theme .filter-section,
+body.dark-theme .search-bar,
+body.dark-theme .search-box,
+body.dark-theme .report-search-box,
+body.dark-theme .controls-bar,
+body.dark-theme .table-filters {
+  background: rgba(30, 30, 46, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme .filter-section input,
+body.dark-theme .filter-section select,
+body.dark-theme .search-bar input,
+body.dark-theme .search-box input,
+body.dark-theme .report-search-box input,
+body.dark-theme .controls-bar input,
+body.dark-theme .controls-bar select,
+body.dark-theme .table-filters input,
+body.dark-theme .table-filters select {
+  background: rgba(30, 30, 46, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
 }
 
 body.dark-theme h1,
@@ -665,12 +786,17 @@ body.dark-theme .nav-item:hover {
 }
 
 body.dark-theme .icon-btn {
-  color: #94a3b8;
+  background: rgba(30, 30, 46, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 body.dark-theme .icon-btn:hover {
-  background: rgba(79, 70, 229, 0.2);
-  color: #ffffff;
+  background: rgba(79, 70, 229, 0.25) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
 }
 
 /* Settings Page Dark Mode */
@@ -1152,25 +1278,27 @@ body.dark-theme .notification-time {
 
 /* Theme Toggle Button */
 .icon-btn.theme-btn {
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px;
-  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px !important;
+  transition: all 0.2s ease;
+  outline: none !important;
 }
 
 .icon-btn.theme-btn:hover {
   border-color: #4F46E5;
-  transform: scale(1.1);
+  transform: translateY(-1px);
 }
 
 body.dark-theme .icon-btn.theme-btn {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #fbbf24;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #fbbf24 !important;
 }
 
 body.dark-theme .icon-btn.theme-btn:hover {
-  border-color: #fbbf24;
-  background: rgba(251, 191, 36, 0.1);
+  border-color: #fbbf24 !important;
+  background: rgba(251, 191, 36, 0.15) !important;
+  color: #fbbf24 !important;
+  transform: translateY(-1px);
 }
 .user-info-text {
   text-align: right;
@@ -2266,4 +2394,24 @@ html, body {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Eliminate Recharts Default Gray Cursor / Box Overlay */
+.recharts-tooltip-cursor,
+.recharts-bar-cursor,
+.recharts-rectangle.recharts-tooltip-cursor,
+svg .recharts-tooltip-cursor,
+path.recharts-tooltip-cursor,
+rect.recharts-tooltip-cursor {
+  fill: transparent !important;
+  stroke: transparent !important;
+  opacity: 0 !important;
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.recharts-default-tooltip {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }

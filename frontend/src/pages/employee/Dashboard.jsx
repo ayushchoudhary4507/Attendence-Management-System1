@@ -543,9 +543,9 @@ const Dashboard = ({ onLogout, userRole }) => {
           <div 
             className="stat-icon" 
             style={{ 
-              background: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : (iconBg || '#E0E7FF'), 
+              background: 'transparent', 
               color: isDarkMode ? (iconColor || '#818CF8') : (iconColor || '#4F46E5'),
-              border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'
+              border: 'none'
             }}
           >
             {icon}
@@ -1142,7 +1142,7 @@ const Dashboard = ({ onLogout, userRole }) => {
                   const themeBg = proj.status === 'Completed' ? '#ECFEFF' : proj.status === 'On Hold' ? '#F3E8FF' : proj.status === 'Planning' ? '#FEF3C7' : '#EFF6FF';
                   return (
                     <div key={proj._id || proj.name} className="project-item-row">
-                      <div className="project-icon-badge" style={{ background: themeBg, color: themeColor }}>
+                      <div className="project-icon-badge" style={{ color: themeColor }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                         </svg>
@@ -1201,7 +1201,7 @@ const Dashboard = ({ onLogout, userRole }) => {
 
                   return (
                     <div key={leave._id || leave.id || idx} className="employee-item leave-item-row">
-                      <div className="leave-icon-badge" style={{ background: theme.bg, color: theme.color }}>
+                      <div className="leave-icon-badge" style={{ color: theme.color }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                           <line x1="16" y1="2" x2="16" y2="6"></line>

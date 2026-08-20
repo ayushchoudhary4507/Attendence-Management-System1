@@ -75,19 +75,19 @@ const AIChat = () => {
     { text: "Top performers this month", icon: <Brain size={14} color="#6366f1" /> }
   ];
 
-  // Premium Theme Config
+  // Premium Theme Config - Matching Employee Table Theme
   const theme = {
-    bg: isDarkMode ? '#030712' : '#f8fafc',
-    surface: isDarkMode ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.9)',
-    border: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+    bg: isDarkMode ? 'rgba(30, 30, 46, 0.5)' : '#ffffff',
+    surface: isDarkMode ? 'rgba(30, 30, 46, 0.6)' : 'rgba(255, 255, 255, 0.9)',
+    border: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
     text: isDarkMode ? '#f8fafc' : '#0f172a',
     textMuted: isDarkMode ? '#94a3b8' : '#64748b',
     accent: '#6366f1',
-    gradient: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+    gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
     userBubble: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
-    aiBubble: isDarkMode ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.8)',
-    inputArea: isDarkMode ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.95)',
-    shadow: isDarkMode ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+    aiBubble: isDarkMode ? 'rgba(30, 30, 46, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+    inputArea: isDarkMode ? 'rgba(30, 30, 46, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+    shadow: isDarkMode ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
   };
 
   return (
@@ -95,15 +95,17 @@ const AIChat = () => {
       position: isFullScreen ? 'fixed' : 'relative',
       inset: isFullScreen ? 0 : 'auto',
       zIndex: isFullScreen ? 9999 : 1,
-      height: isFullScreen ? '100vh' : 'calc(100vh - 140px)',
-      width: isFullScreen ? '100vw' : 'auto',
+      height: isFullScreen ? '100vh' : 'calc(100vh - 100px)',
+      width: isFullScreen ? '100vw' : '100%',
       display: 'flex',
       flexDirection: 'column',
       background: theme.bg,
-      borderRadius: isFullScreen ? 0 : '32px',
+      backdropFilter: isDarkMode ? 'blur(20px)' : 'none',
+      WebkitBackdropFilter: isDarkMode ? 'blur(20px)' : 'none',
+      borderRadius: isFullScreen ? 0 : '16px',
       border: isFullScreen ? 'none' : `1px solid ${theme.border}`,
       boxShadow: theme.shadow,
-      margin: isFullScreen ? 0 : '0 24px',
+      margin: 0,
       overflow: 'hidden',
       transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
       fontFamily: "'Inter', sans-serif"
@@ -155,8 +157,8 @@ const AIChat = () => {
         display: 'flex',
         flexDirection: 'column',
         gap: '24px',
-        background: isDarkMode ? '#020617' : '#f8fafc',
-        backgroundImage: isDarkMode ? 'radial-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px)' : 'radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px)',
+        background: isDarkMode ? 'transparent' : '#f8fafc',
+        backgroundImage: isDarkMode ? 'radial-gradient(rgba(99, 102, 241, 0.08) 1px, transparent 1px)' : 'radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px)',
         backgroundSize: '40px 40px'
       }} className="custom-scrollbar">
         <AnimatePresence initial={false}>
@@ -278,8 +280,8 @@ const AIChat = () => {
                  width: '100%',
                  padding: '20px 80px 20px 28px',
                  borderRadius: '24px',
-                 background: isDarkMode ? '#0f172a' : 'white',
-                 border: `2px solid ${isDarkMode ? '#1e293b' : '#f1f5f9'}`,
+                 background: isDarkMode ? 'rgba(20, 20, 35, 0.8)' : 'white',
+                 border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0'}`,
                  color: theme.text,
                  fontSize: '16px',
                  fontWeight: 500,
@@ -288,7 +290,7 @@ const AIChat = () => {
                  transition: 'all 0.3s'
                }}
                onFocus={(e) => e.target.style.borderColor = theme.accent}
-               onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#1e293b' : '#f1f5f9'}
+               onBlur={(e) => e.target.style.borderColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0'}
              />
              <button
                type="submit"

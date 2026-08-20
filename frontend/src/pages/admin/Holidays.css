@@ -1,5 +1,5 @@
 .holidays-page {
-  padding: 24px 32px;
+  padding: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -328,83 +328,118 @@
   margin-top: 8px;
 }
 
-/* Dark Mode */
+/* Dark Mode - Matching Employee Table Theme */
+body.dark-theme .holidays-page,
+.dark-theme .holidays-page {
+  background: transparent;
+}
+
+body.dark-theme .holidays-header h1,
 .dark-theme .holidays-header h1 {
-  color: #f9fafb;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .year-select,
 .dark-theme .year-select {
-  background: #1f2937;
-  border-color: #374151;
-  color: #f9fafb;
+  background: rgba(30, 30, 46, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .year-select:hover,
 .dark-theme .year-select:hover {
-  border-color: #6366f1;
+  border-color: #6366f1 !important;
 }
 
+body.dark-theme .calendar-month,
 .dark-theme .calendar-month {
-  background: #1f2937;
+  background: rgba(30, 30, 46, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
 }
 
+body.dark-theme .month-name,
 .dark-theme .month-name {
-  color: #f9fafb;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .day-header,
 .dark-theme .day-header {
-  color: #9ca3af;
+  color: #94a3b8 !important;
 }
 
+body.dark-theme .calendar-day,
 .dark-theme .calendar-day {
-  color: #f9fafb;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .calendar-day.clickable:hover,
 .dark-theme .calendar-day.clickable:hover {
-  background: #374151;
+  background: rgba(79, 70, 229, 0.2) !important;
 }
 
+body.dark-theme .modal-content,
 .dark-theme .modal-content {
-  background: #1f2937;
+  background: rgba(30, 30, 46, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  -webkit-backdrop-filter: blur(25px);
+  backdrop-filter: blur(25px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
 }
 
+body.dark-theme .modal-header h2,
 .dark-theme .modal-header h2 {
-  color: #f9fafb;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .modal-close,
 .dark-theme .modal-close {
-  color: #9ca3af;
+  color: #94a3b8 !important;
 }
 
+body.dark-theme .modal-close:hover,
 .dark-theme .modal-close:hover {
-  background: #374151;
-  color: #f9fafb;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .form-group label,
 .dark-theme .form-group label {
-  color: #f9fafb;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .form-group input,
+body.dark-theme .form-group select,
+body.dark-theme .form-group textarea,
 .dark-theme .form-group input,
 .dark-theme .form-group select,
 .dark-theme .form-group textarea {
-  background: #374151;
-  border-color: #4b5563;
-  color: #f9fafb;
+  background: rgba(20, 20, 35, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
 }
 
+body.dark-theme .form-group input:disabled,
 .dark-theme .form-group input:disabled {
-  background: #1f2937;
+  background: rgba(15, 15, 25, 0.6) !important;
+  color: #94a3b8 !important;
 }
 
+body.dark-theme .form-group input:focus,
+body.dark-theme .form-group select:focus,
+body.dark-theme .form-group textarea:focus,
 .dark-theme .form-group input:focus,
 .dark-theme .form-group select:focus,
 .dark-theme .form-group textarea:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
 }
 
+body.dark-theme .checkbox-group span,
 .dark-theme .checkbox-group span {
-  color: #f9fafb;
+  color: #f8fafc !important;
 }
 
 /* Responsive */

@@ -1,8 +1,9 @@
-/* Employee Work Hours Styles */
 .work-hours-container {
-  padding: 24px;
-  background: #f8fafc;
-  min-height: 100vh;
+  padding: 0;
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: auto;
 }
 
 .work-hours-header {
@@ -891,4 +892,19 @@ body.dark-theme .work-hours-table tbody tr td {
   .employee-id {
     font-size: 9px;
   }
+}
+
+/* Dark Mode Overrides */
+body.dark-theme .work-hours-header h2 {
+  color: #f8fafc;
+}
+
+body.dark-theme .date-selector label {
+  color: #94a3b8;
+}
+
+body.dark-theme .date-selector input {
+  background: rgba(30, 30, 46, 0.8);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
 }
