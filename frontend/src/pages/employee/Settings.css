@@ -170,84 +170,178 @@
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
-/* Toggle List (Notifications) */
-.toggle-list {
+/* Password & Security Layout */
+.security-alert-box {
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.security-alert-box.success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+}
+
+.security-alert-box.error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.security-layout-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .security-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.password-change-form {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 16px;
+}
+
+.password-input-wrapper {
+  position: relative;
   width: 100%;
 }
 
-.toggle-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 18px 0;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.toggle-item:last-child {
-  border-bottom: none;
-}
-
-.toggle-item h4 {
-  font-size: 15px;
-  font-weight: 600;
+.password-input-wrapper input {
+  width: 100%;
+  padding: 12px 42px 12px 16px !important;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  background: #ffffff;
   color: #111827;
-  margin: 0 0 4px 0;
+  box-sizing: border-box;
+  transition: all 0.2s;
 }
 
-.toggle-item p {
-  font-size: 13px;
-  color: #6B7280;
-  margin: 0;
+.password-input-wrapper input:focus {
+  border-color: #4F46E5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
-.toggle {
-  position: relative;
-  width: 48px;
-  height: 26px;
-  flex-shrink: 0;
-}
-
-.toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
+.btn-toggle-eye {
   position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #D1D5DB;
-  transition: .3s;
-  border-radius: 26px;
+  font-size: 16px;
+  padding: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
 }
 
-.toggle-slider:before {
-  position: absolute;
-  content: "";
-  height: 20px;
+.btn-toggle-eye:hover {
+  opacity: 1;
+}
+
+.security-tips-card {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 16px;
+  padding: 22px;
+}
+
+.security-tips-card h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.security-tips-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.security-tips-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.tip-icon {
   width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: .3s;
+  height: 20px;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.toggle input:checked + .toggle-slider {
-  background-color: #4F46E5;
+.security-tips-list strong {
+  display: block;
+  font-size: 13px;
+  color: #1e293b;
+  margin-bottom: 2px;
 }
 
-.toggle input:checked + .toggle-slider:before {
-  transform: translateX(22px);
+.security-tips-list p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
 }
+
+/* Dark theme overrides for security card */
+body.dark-theme .password-input-wrapper input {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+}
+
+body.dark-theme .password-input-wrapper input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+}
+
+body.dark-theme .security-tips-card {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+body.dark-theme .security-tips-card h3 {
+  color: #a5b4fc !important;
+}
+
+body.dark-theme .security-tips-list strong {
+  color: #f1f5f9 !important;
+}
+
+body.dark-theme .security-tips-list p {
+  color: #94a3b8 !important;
+}
+
 
 /* Appearance Theme Options */
 .theme-options {

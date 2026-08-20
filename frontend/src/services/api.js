@@ -160,6 +160,12 @@ export const settingsAPI = {
     const response = await api.delete(`/settings/notifications/${notificationId}`);
     return response.data;
   },
+
+  // Password & Security
+  changePassword: async (passwordData) => {
+    const response = await api.put('/settings/change-password', passwordData);
+    return response.data;
+  },
 };
 
 export const projectsAPI = {

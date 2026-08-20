@@ -310,4 +310,8 @@ router.put('/notifications/read-all', authMiddleware, settingsController.markAll
 // Delete notification
 router.delete('/notifications/:notificationId', authMiddleware, settingsController.deleteNotification);
 
+// Change / Update Password
+router.put('/change-password', authMiddleware, settingsController.changePassword);
+
 module.exports = router;
+

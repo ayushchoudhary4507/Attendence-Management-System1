@@ -19,13 +19,19 @@ const Settings = () => {
     role: ''
   });
 
-  const [notifications, setNotifications] = useState({
-    emailAlerts: true,
-    pushNotifications: true,
-    weeklyReports: true,
-    employeeUpdates: false,
-    systemAlerts: true
+  // Password & Security state
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   });
+  const [showPass, setShowPass] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState({ text: '', type: '' });
 
   // Fetch profile data on mount
   useEffect(() => {
@@ -45,9 +51,6 @@ const Settings = () => {
           department: data.department || '',
           role: data.role || ''
         });
-        if (data.settings?.notifications) {
-          setNotifications(data.settings.notifications);
-        }
         // Only set theme from DB if no theme preference exists in localStorage
         const savedTheme = localStorage.getItem('theme');
         if (!savedTheme && data.settings?.appearance?.theme) {
@@ -77,18 +80,12 @@ const Settings = () => {
       const activeTheme = localStorage.getItem('theme') || theme;
       const settingsData = {
         settings: {
-          appearance: { theme: activeTheme },
-          notifications
+          appearance: { theme: activeTheme }
         }
       };
-      console.log('Saving settings...', settingsData);
       
-      const settingsRes = await settingsAPI.updateSettings(settingsData);
-      console.log('Settings update response:', settingsRes);
-      
-      // Update appearance separately
-      const themeRes = await settingsAPI.updateAppearance(activeTheme);
-      console.log('Theme update response:', themeRes);
+      await settingsAPI.updateSettings(settingsData);
+      await settingsAPI.updateAppearance(activeTheme);
       
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -97,6 +94,46 @@ const Settings = () => {
       setError(err.message || 'Failed to save changes');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordMsg({ text: '', type: '' });
+
+    if (!passwords.currentPassword.trim() || !passwords.newPassword.trim()) {
+      setPasswordMsg({ text: 'Please enter your current and new password.', type: 'error' });
+      return;
+    }
+
+    if (passwords.newPassword.length < 6) {
+      setPasswordMsg({ text: 'New password must be at least 6 characters long.', type: 'error' });
+      return;
+    }
+
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      setPasswordMsg({ text: 'New password and confirm password do not match.', type: 'error' });
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      const res = await settingsAPI.changePassword({
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+        confirmPassword: passwords.confirmPassword
+      });
+
+      if (res.success) {
+        setPasswordMsg({ text: '✓ Password updated successfully! Your account is secure.', type: 'success' });
+        setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        setPasswordMsg({ text: res.message || 'Failed to update password', type: 'error' });
+      }
+    } catch (err) {
+      setPasswordMsg({ text: err.response?.data?.message || err.message || 'Failed to update password', type: 'error' });
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -112,7 +149,7 @@ const Settings = () => {
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'notifications', label: 'Notifications', icon: '🔔' },
+    { id: 'security', label: 'Password & Security', icon: '🔒' },
     { id: 'appearance', label: 'Appearance', icon: '🎨' },
   ];
 
@@ -121,7 +158,7 @@ const Settings = () => {
       <div className="settings-header">
         <div className="settings-header-left">
           <h1>Settings</h1>
-          <p className="settings-subtitle">Manage your account preferences, notifications, and system appearance</p>
+          <p className="settings-subtitle">Manage your account preferences, password &amp; security, and system appearance</p>
         </div>
         <div className="header-actions">
           {saved && <span className="save-message">✓ Changes saved!</span>}
@@ -143,7 +180,7 @@ const Settings = () => {
         ))}
       </div>
 
-      {/* Direct Full-Width Settings Views */}
+      {/* Tab 1: Profile Information */}
       {activeTab === 'profile' && (
         <div className="settings-view">
           <div className="section-header">
@@ -207,80 +244,132 @@ const Settings = () => {
         </div>
       )}
 
-      {activeTab === 'notifications' && (
+      {/* Tab 2: Password & Security */}
+      {activeTab === 'security' && (
         <div className="settings-view">
           <div className="section-header">
-            <h2>Notification Preferences</h2>
-            <p className="section-desc">Control which alerts and notifications you receive. Preferences saved to MongoDB Atlas.</p>
+            <h2>Password &amp; Security</h2>
+            <p className="section-desc">Keep your account safe by updating your password regularly with secure credentials.</p>
           </div>
 
-          <div className="toggle-list">
-            <div className="toggle-item">
-              <div>
-                <h4>Email Alerts</h4>
-                <p>Receive important updates via email</p>
-              </div>
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={notifications.emailAlerts}
-                  onChange={(e) => setNotifications({ ...notifications, emailAlerts: e.target.checked })}
-                />
-                <span className="toggle-slider"></span>
-              </label>
+          {passwordMsg.text && (
+            <div className={`security-alert-box ${passwordMsg.type}`}>
+              {passwordMsg.text}
             </div>
-            <div className="toggle-item">
-              <div>
-                <h4>Push Notifications</h4>
-                <p>Get real-time notifications in browser</p>
-              </div>
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={notifications.pushNotifications}
-                  onChange={(e) => setNotifications({ ...notifications, pushNotifications: e.target.checked })}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-            <div className="toggle-item">
-              <div>
-                <h4>Weekly Reports</h4>
-                <p>Receive weekly summary reports</p>
-              </div>
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={notifications.weeklyReports}
-                  onChange={(e) => setNotifications({ ...notifications, weeklyReports: e.target.checked })}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-            <div className="toggle-item">
-              <div>
-                <h4>Employee Updates</h4>
-                <p>Notifications about employee changes</p>
-              </div>
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={notifications.employeeUpdates}
-                  onChange={(e) => setNotifications({ ...notifications, employeeUpdates: e.target.checked })}
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
+          )}
 
-          <div className="section-actions">
-            <button className="btn-save" onClick={handleSave} disabled={loading}>
-              {loading ? 'Saving...' : 'Save Changes to Atlas'}
-            </button>
+          <div className="security-layout-grid">
+            <form onSubmit={handlePasswordChange} className="password-change-form">
+              <div className="form-group">
+                <label>Current Password *</label>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showPass.current ? 'text' : 'password'}
+                    value={passwords.currentPassword}
+                    onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                    placeholder="Enter your current password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn-toggle-eye"
+                    onClick={() => setShowPass({ ...showPass, current: !showPass.current })}
+                  >
+                    {showPass.current ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>New Password *</label>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showPass.new ? 'text' : 'password'}
+                    value={passwords.newPassword}
+                    onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                    placeholder="Enter new password (min. 6 characters)"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn-toggle-eye"
+                    onClick={() => setShowPass({ ...showPass, new: !showPass.new })}
+                  >
+                    {showPass.new ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Confirm New Password *</label>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showPass.confirm ? 'text' : 'password'}
+                    value={passwords.confirmPassword}
+                    onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                    placeholder="Re-enter new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="btn-toggle-eye"
+                    onClick={() => setShowPass({ ...showPass, confirm: !showPass.confirm })}
+                  >
+                    {showPass.confirm ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="section-actions" style={{ borderTop: 'none', paddingTop: '10px' }}>
+                <button
+                  type="submit"
+                  className="btn-save"
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? 'Updating Password...' : '🔐 Update Password'}
+                </button>
+              </div>
+            </form>
+
+            {/* Security Guidelines & Tips Box */}
+            <div className="security-tips-card">
+              <h3>🛡️ Security Guidelines</h3>
+              <ul className="security-tips-list">
+                <li>
+                  <span className="tip-icon">✓</span>
+                  <div>
+                    <strong>Minimum 6 Characters</strong>
+                    <p>Use at least 6 characters for a strong password.</p>
+                  </div>
+                </li>
+                <li>
+                  <span className="tip-icon">✓</span>
+                  <div>
+                    <strong>Combine Letters &amp; Numbers</strong>
+                    <p>Include uppercase, lowercase, numbers &amp; symbols.</p>
+                  </div>
+                </li>
+                <li>
+                  <span className="tip-icon">✓</span>
+                  <div>
+                    <strong>256-Bit Protection</strong>
+                    <p>Your password is securely encrypted in MongoDB Atlas.</p>
+                  </div>
+                </li>
+                <li>
+                  <span className="tip-icon">✓</span>
+                  <div>
+                    <strong>Confidential Credentials</strong>
+                    <p>Never share your login password with anyone.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Tab 3: Appearance */}
       {activeTab === 'appearance' && (
         <div className="settings-view">
           <div className="section-header">
@@ -331,3 +420,4 @@ const Settings = () => {
 };
 
 export default Settings;
+
