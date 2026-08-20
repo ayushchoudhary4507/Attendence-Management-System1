@@ -15,7 +15,7 @@ const API_URL = import.meta.env.PROD
 
 const getEmployeeAvatar = (emp) => {
   if (emp?.profileImage) {
-    if (emp.profileImage.startsWith('http')) return emp.profileImage;
+    if (emp.profileImage.startsWith('http') || emp.profileImage.startsWith('data:image')) return emp.profileImage;
     const base = API_URL.replace('/api', '');
     return `${base}${emp.profileImage}`;
   }

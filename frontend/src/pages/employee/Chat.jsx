@@ -1055,11 +1055,10 @@ const Chat = ({ user }) => {
   // Get user avatar URL
   const getAvatarUrl = (name, profileImage) => {
     if (profileImage) {
-      if (profileImage.startsWith('http')) return profileImage;
-      const base = API_BASE_URL.replace('/api', '');
-      return `${base}${profileImage}`;
+      if (profileImage.startsWith('http') || profileImage.startsWith('data:image')) return profileImage;
+      return `${SOCKET_URL}${profileImage}`;
     }
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=4F46E5&color=fff&size=40`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=4F46E5&color=fff&size=45`;
   };
 
   // Get last seen text

@@ -107,7 +107,7 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
   // Helper: convert relative image path to full URL, or return as-is if already full
   const getImageUrl = (imgPath) => {
     if (!imgPath) return null;
-    if (imgPath.startsWith('http')) return imgPath;
+    if (imgPath.startsWith('http') || imgPath.startsWith('data:image')) return imgPath;
     const base = API_BASE_URL.replace('/api', '');
     return `${base}${imgPath}`;
   };
@@ -189,7 +189,7 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
     setProfileImageFile(null);
   };
 
-  // Handle image file selection
+  // Handle image file selection with compression
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -198,17 +198,47 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
         alert('Please select an image file');
         return;
       }
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB');
-        return;
-      }
-      setProfileImageFile(file);
-      setProfileData((prev) => ({ ...prev, removeProfileImage: false }));
-      // Create preview
+      
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImagePreview(reader.result);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Compress and resize image
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Get compressed Base64 string
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          
+          setProfileImageFile(null); // No longer sending File object
+          setProfileData((prev) => ({ 
+            ...prev, 
+            removeProfileImage: false,
+            newProfileImageBase64: compressedBase64 // Store the base64 string
+          }));
+          setProfileImagePreview(compressedBase64);
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -241,79 +271,50 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
     try {
       setSaving(true);
 
-      // If there's an image file, use FormData for multipart upload
-      if (profileImageFile) {
-        const formData = new FormData();
-        formData.append('name', profileData.name);
-        formData.append('email', profileData.email);
-        formData.append('phone', profileData.phone);
-        formData.append('department', profileData.department);
-        formData.append('role', profileData.role);
-        formData.append('profileImage', profileImageFile);
+      // Send regular JSON update with the Base64 image
+      const payload = {
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone,
+        department: profileData.department,
+        role: profileData.role,
+        profileImage: profileData.removeProfileImage 
+          ? null 
+          : (profileData.newProfileImageBase64 || user?.profileImage || null),
+        removeProfileImage: !!profileData.removeProfileImage
+      };
 
-        const response = await fetch(`${API_BASE_URL}/settings/profile`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
-          },
-          body: formData
-        });
-        const data = await response.json();
-        if (data.success) {
-          const rawImagePath = data.data.profileImage || null;
-          const updatedUser = { 
-            ...user, 
-            ...profileData, 
-            profileImage: rawImagePath
-          };
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          sessionStorage.setItem('user', JSON.stringify(updatedUser));
-          if (onUserUpdate) onUserUpdate(updatedUser);
-          setProfileImageFile(null);
-          setProfileImagePreview(getImageUrl(rawImagePath) || null);
-          setIsEditing(false);
-          alert('Profile updated successfully!');
-        } else {
-          alert('Failed to update profile');
-        }
-      } else {
-        // No new image file, regular JSON update
-        const payload = {
-          name: profileData.name,
-          email: profileData.email,
-          phone: profileData.phone,
-          department: profileData.department,
-          role: profileData.role,
-          profileImage: profileData.removeProfileImage ? null : (user?.profileImage || null),
-          removeProfileImage: !!profileData.removeProfileImage
+      const response = await fetch(`${API_BASE_URL}/settings/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        const finalProfileImage = profileData.removeProfileImage ? null : (data.data.profileImage || user?.profileImage || null);
+        const updatedUser = {
+          ...user,
+          ...profileData,
+          profileImage: finalProfileImage
         };
-
-        const response = await fetch(`${API_BASE_URL}/settings/profile`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionStorage.getItem('token') || localStorage.getItem('token')}`
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        if (data.success) {
-          const finalProfileImage = profileData.removeProfileImage ? null : (data.data.profileImage || user?.profileImage || null);
-          const updatedUser = {
-            ...user,
-            ...profileData,
-            profileImage: finalProfileImage
-          };
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          sessionStorage.setItem('user', JSON.stringify(updatedUser));
-          if (onUserUpdate) onUserUpdate(updatedUser);
-          setProfileImagePreview(getImageUrl(finalProfileImage) || null);
-          setIsEditing(false);
-          alert('Profile updated successfully!');
-        } else {
-          alert('Failed to update profile');
-        }
+        
+        // Update local state and storage
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        if (onUserUpdate) onUserUpdate(updatedUser);
+        
+        setProfileImagePreview(getImageUrl(finalProfileImage) || null);
+        setProfileData(prev => ({ ...prev, newProfileImageBase64: null }));
+        setIsEditing(false);
+        alert('Profile updated successfully!');
+      } else {
+        alert(data.message || 'Failed to update profile');
       }
+
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Error updating profile');

@@ -41,7 +41,7 @@ const getAvatarColor = (name) => {
 
 const getImageUrl = (imgPath) => {
   if (!imgPath) return null;
-  if (imgPath.startsWith('http')) return imgPath;
+  if (imgPath.startsWith('http') || imgPath.startsWith('data:image')) return imgPath;
   const base = API_URL.replace('/api', '');
   return `${base}${imgPath}`;
 };
