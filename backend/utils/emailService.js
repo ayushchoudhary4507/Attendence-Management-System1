@@ -141,8 +141,8 @@ const sendOTP = async (email, otp) => {
   // 3. Fallback to Gmail SMTP / Custom SMTP
   const rawUser = process.env.EMAIL_USER || '';
   const rawPass = process.env.EMAIL_PASS || '';
-  const user = rawUser.replace(/['"]+/g, '').trim();
-  const pass = rawPass.replace(/['"\\s]+/g, '').trim();
+  const user = rawUser.replace(/['"]/g, '').trim();
+  const pass = rawPass.replace(/['"\s]/g, '').trim();
 
   if (!user || !pass) {
     const errMsg = 'Email configuration missing in environment. Please set EMAIL_USER and EMAIL_PASS (or RESEND_API_KEY / BREVO_API_KEY) in Render dashboard.';

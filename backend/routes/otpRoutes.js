@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { authMiddleware } = require('../middleware/adminMiddleware');
 const { sendOTP } = require('../utils/emailService');
+const { sendSMS } = require('../utils/smsService');
 
 console.log('otpRoutes loaded - registering routes: /send, /verify, /resend');
 
@@ -142,23 +143,36 @@ router.post('/send', async (req, res) => {
       ? targetEmail.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.max(1, b.length)) + c)
       : '';
 
-    // Trigger email in background without blocking HTTP response
+    // Send email and SMS (awaited for Vercel/Serverless container lifecycle)
+    let emailResult = null;
+    let smsResult = null;
+
     if (targetEmail) {
-      sendOTP(targetEmail, otp)
-        .then(result => {
-          console.log('[ASYNC OTP RESULT]:', result);
-        })
-        .catch(err => {
-          console.error('[ASYNC OTP ERROR]:', err.message);
-        });
+      try {
+        emailResult = await sendOTP(targetEmail, otp);
+        console.log('[OTP EMAIL RESULT]:', emailResult);
+      } catch (err) {
+        console.error('[OTP EMAIL ERROR]:', err.message);
+      }
     }
 
-    // Respond immediately in <50ms so client never gets connection timeout
+    if (inputMobile) {
+      try {
+        const cleanDigits = String(inputMobile).replace(/\D/g, '');
+        const clean10 = cleanDigits.length > 10 ? cleanDigits.slice(-10) : cleanDigits;
+        smsResult = await sendSMS(clean10, `Your Attendance System OTP is ${otp}. Valid for 5 minutes.`);
+        console.log('[OTP SMS RESULT]:', smsResult);
+      } catch (err) {
+        console.error('[OTP SMS ERROR]:', err.message);
+      }
+    }
+
     res.json({
       success: true,
       message: `OTP generated successfully for ${maskedEmail || 'account'}`,
       targetEmail: maskedEmail,
-      otp: otp
+      otp: otp,
+      emailSent: emailResult ? emailResult.success : false
     });
 
   } catch (error) {
