@@ -601,28 +601,97 @@ body:not(.dark-theme) .sidebar .support-btn:hover {
   border-color: #c7d2fe !important;
 }
 
+/* Dark Mode Sidebar - Modern SaaS Glass UI */
 body.dark-theme .sidebar {
-  background: linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(8, 12, 28, 0.98) 100%) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  backdrop-filter: blur(24px) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 4px 0 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-theme .sidebar-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-theme .sidebar .logo-text {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+body.dark-theme .sidebar .nav-item {
+  color: #94a3b8 !important;
+  border-radius: 10px !important;
+  margin: 3px 10px !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.dark-theme .sidebar .nav-item svg {
+  fill: #94a3b8 !important;
+  transition: fill 0.2s ease !important;
+}
+
+body.dark-theme .sidebar .nav-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+  transform: translateX(3px) !important;
+}
+
+body.dark-theme .sidebar .nav-item:hover svg {
+  fill: #818cf8 !important;
+}
+
+body.dark-theme .sidebar .nav-item.active {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  transform: translateX(3px) !important;
+}
+
+body.dark-theme .sidebar .nav-item.active svg {
+  fill: #ffffff !important;
+}
+
+body.dark-theme .sidebar-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-theme .sidebar .support-btn {
+  background: rgba(99, 102, 241, 0.12) !important;
+  color: #818cf8 !important;
+  border: 1px solid rgba(99, 102, 241, 0.25) !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease !important;
+}
+
+body.dark-theme .sidebar .support-btn:hover {
+  background: rgba(99, 102, 241, 0.22) !important;
+  color: #ffffff !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  transform: translateY(-1px) !important;
 }
 
 body.dark-theme .main-content {
-  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+  background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 40%, #090d16 100%) !important;
+  background-attachment: fixed !important;
 }
 
 body.dark-theme .top-header {
-  background: rgba(30, 30, 46, 0.8);
+  background: rgba(10, 15, 30, 0.75) !important;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
 body.dark-theme .page-content {
-  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%) !important;
+  background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 40%, #090d16 100%) !important;
+  background-attachment: fixed !important;
 }
 
 /* ==========================================================================
-   GLOBAL DARK THEME - Consistent Employee Table Look & Feel
+   GLOBAL DARK THEME - Consistent SaaS Glass UI Across All Pages
    ========================================================================== */
 body.dark-theme .table-container,
 body.dark-theme .work-hours-table-container,
@@ -648,7 +717,6 @@ body.dark-theme .clock-card,
 body.dark-theme .notifications-card,
 body.dark-theme .analytics-card,
 body.dark-theme .summary-card,
-body.dark-theme .settings-container,
 body.dark-theme .ai-chat-card,
 body.dark-theme .shift-card,
 body.dark-theme .salary-card,
@@ -657,13 +725,18 @@ body.dark-theme .search-dropdown,
 body.dark-theme .notification-dropdown,
 body.dark-theme .modal-container,
 body.dark-theme .admin-modal,
-body.dark-theme .attendance-modal {
-  background: rgba(30, 30, 46, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+body.dark-theme .attendance-modal,
+body.dark-theme .month-card,
+body.dark-theme .chat-sidebar,
+body.dark-theme .chat-main,
+body.dark-theme .today-status-card {
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.85) 0%, rgba(8, 12, 28, 0.9) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  backdrop-filter: blur(24px) !important;
   color: #F8FAFC !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+  border-radius: 16px !important;
 }
 
 /* Global Tables in Dark Mode */
@@ -677,7 +750,7 @@ body.dark-theme .shifts-table thead,
 body.dark-theme .reports-table thead,
 body.dark-theme .holidays-table thead,
 body.dark-theme .employees-table thead {
-  background: rgba(30, 30, 46, 0.8) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
 }
 
 body.dark-theme table th,
@@ -690,9 +763,10 @@ body.dark-theme .shifts-table th,
 body.dark-theme .reports-table th,
 body.dark-theme .holidays-table th,
 body.dark-theme .employees-table th {
-  background: rgba(30, 30, 46, 0.8) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
   color: #94a3b8 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-weight: 700 !important;
 }
 
 body.dark-theme table td,
@@ -719,7 +793,7 @@ body.dark-theme .shifts-table tbody tr:hover,
 body.dark-theme .reports-table tbody tr:hover,
 body.dark-theme .holidays-table tbody tr:hover,
 body.dark-theme .employees-table tbody tr:hover {
-  background: rgba(79, 70, 229, 0.1) !important;
+  background: rgba(99, 102, 241, 0.12) !important;
 }
 
 /* Global Filter & Search Bars in Dark Mode */
@@ -729,9 +803,10 @@ body.dark-theme .search-box,
 body.dark-theme .report-search-box,
 body.dark-theme .controls-bar,
 body.dark-theme .table-filters {
-  background: rgba(30, 30, 46, 0.5) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(15, 23, 42, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #e2e8f0 !important;
+  border-radius: 12px !important;
 }
 
 body.dark-theme .filter-section input,
@@ -742,10 +817,18 @@ body.dark-theme .report-search-box input,
 body.dark-theme .controls-bar input,
 body.dark-theme .controls-bar select,
 body.dark-theme .table-filters input,
-body.dark-theme .table-filters select {
-  background: rgba(30, 30, 46, 0.8) !important;
+body.dark-theme .table-filters select,
+body.dark-theme .form-control,
+body.dark-theme .input-field,
+body.dark-theme input[type="text"],
+body.dark-theme input[type="email"],
+body.dark-theme input[type="date"],
+body.dark-theme input[type="number"],
+body.dark-theme select,
+body.dark-theme textarea {
+  background: rgba(15, 23, 42, 0.85) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
-  color: #e2e8f0 !important;
+  color: #f8fafc !important;
 }
 
 body.dark-theme h1,
@@ -801,7 +884,9 @@ body.dark-theme .icon-btn:hover {
 
 /* Settings Page Dark Mode */
 body.dark-theme .settings-page {
-  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 body.dark-theme .settings-sidebar {

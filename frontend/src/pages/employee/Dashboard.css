@@ -1717,11 +1717,22 @@ body.dark-theme .stat-card,
 .dashboard-home.dark .stat-card,
 .dark .stat-card,
 [data-theme="dark"] .stat-card {
-  background: rgba(30, 30, 46, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.85) 0%, rgba(8, 12, 28, 0.9) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+  border-radius: 16px !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.dark-theme .stat-card:hover,
+.dashboard-home.dark .stat-card:hover,
+.dark .stat-card:hover,
+[data-theme="dark"] .stat-card:hover {
+  transform: translateY(-3px) scale(1.01) !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 18px 40px -4px rgba(79, 70, 229, 0.25), 0 0 0 1px rgba(99, 102, 241, 0.3) inset !important;
 }
 
 body.dark-theme .stat-title,
@@ -1729,6 +1740,8 @@ body.dark-theme .stat-title,
 .dark .stat-title,
 [data-theme="dark"] .stat-title {
   color: #94A3B8 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
 }
 
 body.dark-theme .stat-value,
@@ -1736,18 +1749,22 @@ body.dark-theme .stat-value,
 .dark .stat-value,
 [data-theme="dark"] .stat-value {
   color: #F8FAFC !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
 }
 
 body.dark-theme .clock-card,
 .dashboard-home.dark .clock-card,
 .dark .clock-card,
 [data-theme="dark"] .clock-card {
-  background: rgba(30, 30, 46, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.85) 0%, rgba(8, 12, 28, 0.9) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   color: #F8FAFC !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+  border-radius: 18px !important;
 }
 
 body.dark-theme .section-box,
@@ -1756,20 +1773,21 @@ body.dark-theme .todays-overview-card,
 .dashboard-home.dark .section-box,
 .dashboard-home.dark .quick-actions,
 .dashboard-home.dark .todays-overview-card {
-  background: rgba(30, 30, 46, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.75) 0%, rgba(8, 12, 28, 0.8) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   color: #F8FAFC !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+  border-radius: 18px !important;
 }
 
 body.dark-theme .section-box-header,
 body.dark-theme .section-box-footer,
 .dashboard-home.dark .section-box-header,
 .dashboard-home.dark .section-box-footer {
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  background: rgba(30, 30, 46, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
 }
 
 body.dark-theme .section-box-title,
@@ -1779,6 +1797,7 @@ body.dark-theme .clock-card-title,
 .dashboard-home.dark .quick-actions-title,
 .dashboard-home.dark .clock-card-title {
   color: #F8FAFC !important;
+  font-weight: 700 !important;
 }
 
 body.dark-theme .employee-item,
