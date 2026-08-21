@@ -43,7 +43,7 @@ const attendanceSchema = new mongoose.Schema({
   },
   verificationMethod: {
     type: String,
-    enum: ['manual', 'qr_code', 'geolocation', 'qr_and_geo'],
+    enum: ['manual', 'qr_code', 'geolocation', 'qr_and_geo', 'face_recognition', 'face_lock'],
     default: 'manual'
   },
   location: {

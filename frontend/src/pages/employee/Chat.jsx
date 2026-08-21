@@ -31,6 +31,7 @@ const Chat = ({ user }) => {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
   const [showMobileSidebar, setShowMobileSidebar] = useState(true); // For mobile responsive
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -182,6 +183,10 @@ const Chat = ({ user }) => {
             senderName: data.senderName,
             receiverId: data.receiverId,
             message: data.message,
+            messageType: data.messageType || (data.fileUrl ? (data.fileType?.startsWith('image/') ? 'image' : 'file') : 'text'),
+            fileUrl: data.fileUrl || null,
+            fileName: data.fileName || null,
+            fileType: data.fileType || null,
             timestamp: new Date(data.timestamp),
             read: true // Mark as read since chat is open
           }];
@@ -299,6 +304,10 @@ const Chat = ({ user }) => {
             senderId: data.senderId,
             senderName: data.senderName,
             message: data.message,
+            messageType: data.messageType || (data.fileUrl ? (data.fileType?.startsWith('image/') ? 'image' : 'file') : 'text'),
+            fileUrl: data.fileUrl || null,
+            fileName: data.fileName || null,
+            fileType: data.fileType || null,
             timestamp: new Date(data.timestamp),
             read: true, // Mark as read since group chat is open
             isGroupMessage: true
@@ -739,36 +748,80 @@ const Chat = ({ user }) => {
       const response = await chatAPI.uploadFile(formData);
       
       if (response.success) {
-        // Add file message to UI
-        const fileMessage = {
-          id: response.data.id || Date.now(),
-          senderId: currentUserId,
-          senderName: currentUserName,
-          message: `📎 ${file.name}`,
-          fileUrl: response.data.fileUrl,
-          fileName: file.name,
-          fileType: file.type,
-          timestamp: new Date(),
-          messageType: 'file'
-        };
+        const fileUrl = response.data?.fileUrl || response.data?.data?.fileUrl || response.fileUrl;
+        const isImg = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name);
+        const messageType = isImg ? 'image' : 'file';
+        const displayMsg = `📎 ${file.name}`;
+        
+        let savedMessage = null;
 
         if (selectedGroup) {
+          // Save to DB via API
+          const dbRes = await groupAPI.sendGroupMessage(
+            selectedGroup._id, 
+            displayMsg, 
+            messageType, 
+            { fileUrl, fileName: file.name, fileType: file.type }
+          );
+
+          savedMessage = dbRes.data;
+
+          const fileMessage = {
+            id: savedMessage?._id || savedMessage?.id || Date.now(),
+            senderId: currentUserId,
+            senderName: currentUserName,
+            message: displayMsg,
+            messageType,
+            fileUrl,
+            fileName: file.name,
+            fileType: file.type,
+            timestamp: new Date(),
+            isGroupMessage: true,
+            status: 'sent'
+          };
+
           // Send via socket for group
           socket.emit('send_group_message', {
             ...fileMessage,
             groupId: selectedGroup._id,
             tempId: Date.now()
           });
+
+          setMessages(prev => [...prev, fileMessage]);
         } else if (selectedUser) {
+          // Save to DB via API
+          const dbRes = await chatAPI.sendMessage(
+            selectedUser.id,
+            displayMsg,
+            { fileUrl, fileName: file.name, fileType: file.type, messageType }
+          );
+
+          savedMessage = dbRes.data;
+
+          const fileMessage = {
+            id: savedMessage?.id || savedMessage?._id || Date.now(),
+            senderId: currentUserId,
+            senderName: currentUserName,
+            receiverId: selectedUser.id,
+            message: displayMsg,
+            messageType,
+            fileUrl,
+            fileName: file.name,
+            fileType: file.type,
+            timestamp: new Date(),
+            status: 'sent'
+          };
+
           // Send via socket for direct message
           socket.emit('send_message', {
             ...fileMessage,
-            receiverId: selectedUser.id,
             tempId: Date.now()
           });
-        }
 
-        setMessages(prev => [...prev, { ...fileMessage, status: 'sent' }]);
+          setMessages(prev => [...prev, fileMessage]);
+        }
+        
+        fetchConversations();
       }
     } catch (err) {
       console.error('Failed to upload file:', err);
@@ -1056,12 +1109,99 @@ const Chat = ({ user }) => {
   const getAvatarUrl = (name, profileImage) => {
     if (profileImage && typeof profileImage === 'string' && profileImage.trim() !== '') {
       const clean = profileImage.trim().replace(/\\/g, '/');
-      if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:image')) return clean;
+      if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) return clean;
       const base = (SOCKET_URL || 'http://127.0.0.1:5005').replace(/\/api\/?$/, '').replace(/\/$/, '');
       const normalized = clean.startsWith('/') ? clean : `/${clean}`;
       return `${base}${normalized}`;
     }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=4F46E5&color=fff&size=45`;
+  };
+
+  // Resolve file URL
+  const getFileUrl = (fileUrl) => {
+    if (!fileUrl || typeof fileUrl !== 'string') return '';
+    const clean = fileUrl.trim().replace(/\\/g, '/');
+    if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) return clean;
+    const base = (SOCKET_URL || 'http://127.0.0.1:5005').replace(/\/api\/?$/, '').replace(/\/$/, '');
+    const normalized = clean.startsWith('/') ? clean : `/${clean}`;
+    return `${base}${normalized}`;
+  };
+
+  // Check if message is an image file
+  const isImageFile = (msg) => {
+    if (!msg) return false;
+    if (msg.messageType === 'image') return true;
+    const url = msg.fileUrl || msg.file || msg.image || msg.url || '';
+    const type = msg.fileType || '';
+    const name = msg.fileName || msg.message || '';
+    const textMsg = msg.message || '';
+    
+    if (type.startsWith('image/')) return true;
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff)($|\?)/i.test(url)) return true;
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff)($|\?)/i.test(name)) return true;
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff)($|\?)/i.test(textMsg.trim())) return true;
+    if (typeof url === 'string' && url.startsWith('data:image/')) return true;
+    if (typeof textMsg === 'string' && textMsg.startsWith('data:image/')) return true;
+    
+    return false;
+  };
+
+  // Render message body content with support for images, files, and text
+  const renderMessageContent = (msg) => {
+    const isImg = isImageFile(msg);
+    let rawUrl = msg.fileUrl || msg.file || msg.image || msg.url;
+
+    // Check if message text itself is an image URL or path or base64 image
+    if (!rawUrl && msg.message) {
+      const trimmed = msg.message.trim();
+      if ((trimmed.startsWith('/uploads/') || trimmed.startsWith('uploads/') || trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:image/')) &&
+          (/\.(jpg|jpeg|png|gif|webp|svg|bmp|tiff)($|\?)/i.test(trimmed) || trimmed.startsWith('data:image/'))) {
+        rawUrl = trimmed;
+      }
+    }
+
+    const resolvedUrl = rawUrl ? getFileUrl(rawUrl) : null;
+    const fileName = msg.fileName || (resolvedUrl ? resolvedUrl.split('/').pop() : 'Attachment');
+    const isOnlyAttachmentText = msg.message && (msg.message.startsWith('📎 ') || msg.message === fileName || msg.message === 'Attachment' || msg.message === rawUrl);
+
+    return (
+      <div className="message-body-content">
+        {resolvedUrl && isImg && (
+          <div className="message-image-container">
+            <img 
+              src={resolvedUrl} 
+              alt={fileName} 
+              className="message-image"
+              onClick={() => setPreviewImage(resolvedUrl)}
+              onError={(e) => {
+                console.error('Image load error:', resolvedUrl);
+              }}
+            />
+          </div>
+        )}
+        {resolvedUrl && !isImg && (
+          <div className="message-file-attachment">
+            <div className="file-icon">📁</div>
+            <div className="file-details">
+              <span className="file-name">{fileName}</span>
+              {msg.fileType && <span className="file-type">{msg.fileType}</span>}
+            </div>
+            <a 
+              href={resolvedUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="file-download-btn"
+              download={fileName}
+            >
+              📥 Open / Download
+            </a>
+          </div>
+        )}
+        {msg.message && (!isOnlyAttachmentText || !resolvedUrl) && (
+          <p className="message-text">{msg.message}</p>
+        )}
+      </div>
+    );
   };
 
   // Get last seen text
@@ -1099,28 +1239,35 @@ const Chat = ({ user }) => {
 
   // Build sidebar users sorted by latest message (from conversations)
   const getSidebarUsers = () => {
-    // Create a map of all users
-    const userMap = new Map(users.map(u => [u.id, u]));
+    // Create a map of all users (keyed by id) for profileImage lookup
+    const userMap = new Map(users.map(u => [String(u.id), u]));
     
     // Start with users who have conversations (already sorted by last message)
-    const sidebarItems = conversations.map(conv => ({
-      userId: conv.userId,
-      userName: conv.userName,
-      userEmail: conv.userEmail,
-      unreadCount: conv.unreadCount || 0,
-      lastMessageTime: conv.lastMessage?.timestamp,
-      lastMessage: conv.lastMessage?.message || '',
-      hasConversation: true
-    }));
+    const sidebarItems = conversations.map(conv => {
+      // Try to get profileImage from conversation data first, then fall back to users list
+      const userFromList = userMap.get(String(conv.userId));
+      const profileImage = conv.profileImage || userFromList?.profileImage || '';
+      return {
+        userId: conv.userId,
+        userName: conv.userName,
+        userEmail: conv.userEmail,
+        profileImage,
+        unreadCount: conv.unreadCount || 0,
+        lastMessageTime: conv.lastMessage?.timestamp,
+        lastMessage: conv.lastMessage?.message || '',
+        hasConversation: true
+      };
+    });
     
     // Add users without conversations at the end
-    const conversationUserIds = new Set(conversations.map(c => c.userId));
+    const conversationUserIds = new Set(conversations.map(c => String(c.userId)));
     users.forEach(user => {
-      if (!conversationUserIds.has(user.id)) {
+      if (!conversationUserIds.has(String(user.id))) {
         sidebarItems.push({
           userId: user.id,
           userName: user.name,
           userEmail: user.email,
+          profileImage: user.profileImage || '',
           unreadCount: unreadCounts[user.id] || 0,
           lastMessageTime: null,
           lastMessage: '',
@@ -1421,7 +1568,7 @@ const Chat = ({ user }) => {
                               {!isSentByMe && isFirstInGroup && (
                                 <span className="message-sender">{msg.senderName}</span>
                               )}
-                              <p className="message-text">{msg.message}</p>
+                              {renderMessageContent(msg)}
                               <div className="message-meta">
                                 <span className="message-time">
                                   {formatTime(msg.timestamp)}
@@ -1588,7 +1735,7 @@ const Chat = ({ user }) => {
                               {!isSentByMe && (
                                 <span className="message-sender">{msg.senderName}</span>
                               )}
-                              <p className="message-text">{msg.message}</p>
+                              {renderMessageContent(msg)}
                               <div className="message-meta">
                                 <span className="message-time">
                                   {formatTime(msg.timestamp)}
@@ -1769,6 +1916,19 @@ const Chat = ({ user }) => {
           }
         }}
       />
+      {previewImage && (
+        <div className="image-modal-overlay" onClick={() => setPreviewImage(null)}>
+          <div className="image-modal-content" onClick={e => e.stopPropagation()}>
+            <button className="image-modal-close" onClick={() => setPreviewImage(null)}>✕</button>
+            <img src={previewImage} alt="Preview" className="image-modal-img" />
+            <div className="image-modal-actions">
+              <a href={previewImage} target="_blank" rel="noopener noreferrer" className="image-modal-download" download>
+                📥 Download Full Size
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

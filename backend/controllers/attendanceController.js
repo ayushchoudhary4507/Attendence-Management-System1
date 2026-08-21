@@ -1291,7 +1291,7 @@ const markAttendanceVerified = async (req, res) => {
 
     // Create rich notification for admins
     const admins = await User.find({ role: 'admin' }).select('_id');
-    const methodLabel = verificationMethod === 'qr_code' ? '📱 QR Code' : verificationMethod === 'geolocation' ? '📍 GPS Location' : '✓ Verified';
+    const methodLabel = verificationMethod === 'qr_code' ? '📱 QR Code' : verificationMethod === 'geolocation' ? '📍 GPS Location' : (verificationMethod === 'face_recognition' || verificationMethod === 'face_lock') ? '👤 AI Face Lock' : '✓ Verified';
     
     for (const admin of admins) {
       await Notification.create({

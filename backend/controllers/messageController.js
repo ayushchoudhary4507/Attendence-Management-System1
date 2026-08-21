@@ -3,6 +3,8 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const mongoose = require('mongoose');
 
+const Employee = require('../models/Employee');
+
 // Get all users (except the current user)
 const getUsers = async (req, res) => {
   try {
@@ -22,17 +24,30 @@ const getUsers = async (req, res) => {
       { password: 0 }
     ).select('name email role department phone profileImage');
 
+    // Fetch employee photos map as fallback
+    const employees = await Employee.find({}, 'email name profileImage');
+    const empImageMap = new Map();
+    employees.forEach(emp => {
+      if (emp.profileImage && emp.profileImage.trim() !== '') {
+        if (emp.email) empImageMap.set(emp.email.toLowerCase(), emp.profileImage);
+        if (emp.name) empImageMap.set(emp.name.toLowerCase(), emp.profileImage);
+      }
+    });
+
     res.status(200).json({
       success: true,
-      users: users.map(user => ({
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        phone: user.phone,
-        profileImage: user.profileImage || ''
-      }))
+      users: users.map(user => {
+        const empPhoto = empImageMap.get(user.email?.toLowerCase()) || empImageMap.get(user.name?.toLowerCase());
+        return {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          phone: user.phone,
+          profileImage: user.profileImage || empPhoto || ''
+        };
+      })
     });
   } catch (error) {
     console.error('Get users error:', error);
@@ -103,6 +118,10 @@ const getMessages = async (req, res) => {
         receiverId: msg.receiverId?._id || msg.receiverId,
         receiverName: msg.receiverId?.name || 'Unknown User',
         message: msg.message,
+        messageType: msg.messageType || (msg.fileUrl ? (msg.fileType?.startsWith('image/') ? 'image' : 'file') : 'text'),
+        fileUrl: msg.fileUrl || null,
+        fileName: msg.fileName || null,
+        fileType: msg.fileType || null,
         timestamp: (msg.timestamp || msg.createdAt || new Date()).toISOString(),
         createdAt: (msg.createdAt || msg.timestamp || new Date()).toISOString(),
         read: msg.read,
@@ -123,7 +142,7 @@ const getMessages = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     console.log('📩 sendMessage called:', req.body);
-    const { receiverId, message } = req.body;
+    const { receiverId, message, fileUrl, fileName, fileType, messageType } = req.body;
     // Get sender ID from middleware (req.userId is set by authMiddleware)
     const senderIdRaw = req.userId || req.user?._id || req.user?.id;
     const senderIdStr = senderIdRaw?.toString();
@@ -136,10 +155,10 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    if (!receiverId || !message) {
+    if (!receiverId || (!message && !fileUrl)) {
       return res.status(400).json({
         success: false,
-        message: 'Receiver ID and message are required'
+        message: 'Receiver ID and message content or file attachment are required'
       });
     }
 
@@ -170,12 +189,29 @@ const sendMessage = async (req, res) => {
       });
     }
 
+    // Determine default message text if empty but fileUrl present
+    const messageText = message ? message.trim() : (fileName ? `📎 ${fileName}` : 'Attachment');
+    
+    // Determine messageType if not explicitly passed
+    let computedMessageType = messageType || 'text';
+    if (fileUrl) {
+      if (fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl || fileName)) {
+        computedMessageType = 'image';
+      } else {
+        computedMessageType = 'file';
+      }
+    }
+
     // Create new message with backend server UTC timestamp
     const serverDate = new Date();
     const newMessage = new Message({
       senderId,
       receiverId: receiverObjectId,
-      message: message.trim(),
+      message: messageText,
+      messageType: computedMessageType,
+      fileUrl: fileUrl || null,
+      fileName: fileName || null,
+      fileType: fileType || null,
       timestamp: serverDate,
       read: false
     });
@@ -193,7 +229,7 @@ const sendMessage = async (req, res) => {
     const messageNotification = await Notification.create({
       type: 'message',
       title: `New Message from ${newMessage.senderId.name}`,
-      message: message.trim().substring(0, 50) + (message.length > 50 ? '...' : ''),
+      message: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
       senderId: senderId,
       senderName: newMessage.senderId.name,
       receiverId: receiverObjectId,
@@ -216,6 +252,10 @@ const sendMessage = async (req, res) => {
         receiverId: receiverId,
         receiverName: newMessage.receiverId?.name || 'User',
         message: newMessage.message,
+        messageType: newMessage.messageType,
+        fileUrl: newMessage.fileUrl,
+        fileName: newMessage.fileName,
+        fileType: newMessage.fileType,
         timestamp: isoTimestamp,
         createdAt: isoTimestamp,
         read: newMessage.read
@@ -229,7 +269,7 @@ const sendMessage = async (req, res) => {
           id: messageNotification._id,
           type: 'message',
           title: `New Message from ${newMessage.senderId.name}`,
-          message: message.trim().substring(0, 50) + (message.length > 50 ? '...' : ''),
+          message: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
           senderId: senderIdStr,
           senderName: newMessage.senderId.name,
           receiverId: receiverId,
@@ -254,6 +294,10 @@ const sendMessage = async (req, res) => {
         receiverId: newMessage.receiverId._id,
         receiverName: newMessage.receiverId.name,
         message: newMessage.message,
+        messageType: newMessage.messageType,
+        fileUrl: newMessage.fileUrl,
+        fileName: newMessage.fileName,
+        fileType: newMessage.fileType,
         timestamp: isoTimestamp,
         createdAt: isoTimestamp,
         read: newMessage.read
@@ -410,6 +454,9 @@ const getConversations = async (req, res) => {
           profileImage: '$user.profileImage',
           lastMessage: {
             message: '$lastMessage.message',
+            messageType: '$lastMessage.messageType',
+            fileUrl: '$lastMessage.fileUrl',
+            fileName: '$lastMessage.fileName',
             timestamp: '$lastMessage.timestamp',
             senderId: '$lastMessage.senderId'
           },
@@ -421,9 +468,27 @@ const getConversations = async (req, res) => {
       }
     ]);
 
+    // Fetch employee photos map as fallback for conversations profileImages
+    const employees = await Employee.find({}, 'email name profileImage');
+    const empImageMap = new Map();
+    employees.forEach(emp => {
+      if (emp.profileImage && emp.profileImage.trim() !== '') {
+        if (emp.email) empImageMap.set(emp.email.toLowerCase(), emp.profileImage);
+        if (emp.name) empImageMap.set(emp.name.toLowerCase(), emp.profileImage);
+      }
+    });
+
+    const enrichedConversations = conversations.map(c => {
+      const empPhoto = empImageMap.get(c.userEmail?.toLowerCase()) || empImageMap.get(c.userName?.toLowerCase());
+      return {
+        ...c,
+        profileImage: c.profileImage || empPhoto || ''
+      };
+    });
+
     res.status(200).json({
       success: true,
-      conversations
+      conversations: enrichedConversations
     });
   } catch (error) {
     console.error('Get conversations error:', error);

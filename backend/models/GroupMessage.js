@@ -29,6 +29,14 @@ const groupMessageSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  fileName: {
+    type: String,
+    default: null
+  },
+  fileType: {
+    type: String,
+    default: null
+  },
   readBy: [{
     userId: {
       type: mongoose.Schema.Types.ObjectId,

@@ -228,6 +228,10 @@ io.on('connection', (socket) => {
         senderName,
         receiverId,
         message,
+        messageType: data.messageType || (data.fileUrl ? (data.fileType?.startsWith('image/') ? 'image' : 'file') : 'text'),
+        fileUrl: data.fileUrl || null,
+        fileName: data.fileName || null,
+        fileType: data.fileType || null,
         timestamp: serverIsoTime,
         createdAt: serverIsoTime,
         read: false
@@ -368,7 +372,10 @@ io.on('connection', (socket) => {
         senderId,
         senderName,
         message,
-        messageType: messageType || 'text',
+        messageType: messageType || (data.fileUrl ? (data.fileType?.startsWith('image/') ? 'image' : 'file') : 'text'),
+        fileUrl: data.fileUrl || null,
+        fileName: data.fileName || null,
+        fileType: data.fileType || null,
         timestamp: timestamp || new Date(),
         read: false
       };

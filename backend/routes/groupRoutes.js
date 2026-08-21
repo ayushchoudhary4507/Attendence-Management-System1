@@ -530,7 +530,7 @@ router.get('/:groupId/messages', auth, async (req, res) => {
 router.post('/:groupId/messages', auth, async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { message, messageType = 'text' } = req.body;
+    const { message, messageType, fileUrl, fileName, fileType } = req.body;
     const senderId = req.user.userId;
     const senderName = req.user.name || req.user.email;
 
@@ -538,8 +538,8 @@ router.post('/:groupId/messages', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid group ID' });
     }
 
-    if (!message || !message.trim()) {
-      return res.status(400).json({ success: false, message: 'Message is required' });
+    if ((!message || !message.trim()) && !fileUrl) {
+      return res.status(400).json({ success: false, message: 'Message text or file attachment is required' });
     }
 
     // Check if group exists and user is member
@@ -552,13 +552,26 @@ router.post('/:groupId/messages', auth, async (req, res) => {
       return res.status(403).json({ success: false, message: 'You are not a member of this group' });
     }
 
+    const messageText = message ? message.trim() : (fileName ? `📎 ${fileName}` : 'Attachment');
+    let computedMessageType = messageType || 'text';
+    if (fileUrl) {
+      if (fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl || fileName)) {
+        computedMessageType = 'image';
+      } else {
+        computedMessageType = 'file';
+      }
+    }
+
     // Create message
     const groupMessage = new GroupMessage({
       groupId,
       senderId,
       senderName,
-      message: message.trim(),
-      messageType,
+      message: messageText,
+      messageType: computedMessageType,
+      fileUrl: fileUrl || null,
+      fileName: fileName || null,
+      fileType: fileType || null,
       timestamp: new Date(),
       readBy: [{ userId: senderId, readAt: new Date() }]
     });
@@ -568,7 +581,7 @@ router.post('/:groupId/messages', auth, async (req, res) => {
     // Update group's last message using findByIdAndUpdate to avoid full document validation
     await Group.findByIdAndUpdate(groupId, {
       lastMessage: {
-        message: message.trim(),
+        message: messageText,
         senderId,
         timestamp: new Date()
       }

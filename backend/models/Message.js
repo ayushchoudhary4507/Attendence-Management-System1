@@ -16,6 +16,23 @@ const messageSchema = new mongoose.Schema({
     required: [true, 'Message content is required'],
     trim: true
   },
+  messageType: {
+    type: String,
+    enum: ['text', 'image', 'file'],
+    default: 'text'
+  },
+  fileUrl: {
+    type: String,
+    default: null
+  },
+  fileName: {
+    type: String,
+    default: null
+  },
+  fileType: {
+    type: String,
+    default: null
+  },
   timestamp: {
     type: Date,
     default: Date.now

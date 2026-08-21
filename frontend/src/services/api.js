@@ -432,8 +432,11 @@ export const chatAPI = {
   },
   
   // Send a message
-  sendMessage: async (receiverId, message) => {
-    const response = await api.post('/messages', { receiverId, message });
+  sendMessage: async (receiverId, message, extraData = {}) => {
+    const payload = typeof extraData === 'object' 
+      ? { receiverId, message, ...extraData } 
+      : { receiverId, message };
+    const response = await api.post('/messages', payload);
     return response.data;
   },
   
@@ -493,8 +496,11 @@ export const groupAPI = {
   },
   
   // Send message to group
-  sendGroupMessage: async (groupId, message, messageType = 'text') => {
-    const response = await api.post(`/groups/${groupId}/messages`, { message, messageType });
+  sendGroupMessage: async (groupId, message, messageType = 'text', extraData = {}) => {
+    const payload = typeof extraData === 'object'
+      ? { message, messageType, ...extraData }
+      : { message, messageType };
+    const response = await api.post(`/groups/${groupId}/messages`, payload);
     return response.data;
   },
   

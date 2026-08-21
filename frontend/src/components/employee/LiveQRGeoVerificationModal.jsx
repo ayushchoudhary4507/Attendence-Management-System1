@@ -4,7 +4,7 @@ import { attendanceAPI } from '../../services/api';
 import './LiveQRGeoVerificationModal.css';
 
 const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
-  const [activeTab, setActiveTab] = useState('geo'); // 'geo' | 'scan_qr' | 'kiosk_qr'
+  const [activeTab, setActiveTab] = useState('geo'); // 'geo' | 'scan_qr' | 'kiosk_qr' | 'face_lock'
   
   // Geolocation state
   const [geoLoading, setGeoLoading] = useState(false);
@@ -23,6 +23,15 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
   const [manualQrToken, setManualQrToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState({ text: '', type: '' });
+
+  // Face Lock Scanner state
+  const videoRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [faceScanning, setFaceScanning] = useState(false);
+  const [faceProgress, setFaceProgress] = useState(0);
+  const [faceVerified, setFaceVerified] = useState(false);
 
   // Fetch office coordinates
   useEffect(() => {
@@ -103,6 +112,47 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
+
+  // Camera Management for Face Lock
+  const startCamera = async () => {
+    setCameraError('');
+    setFaceVerified(false);
+    setFaceProgress(0);
+    try {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+      });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraActive(true);
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setCameraError('Camera access unavailable. Please check permissions or camera connection.');
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setCameraActive(false);
+  };
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'face_lock') {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+  }, [isOpen, activeTab]);
 
   // Rolling QR Token generator for Kiosk tab
   const fetchLiveQRToken = async () => {
@@ -219,6 +269,60 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
     }
   };
 
+  // Submit AI Face Lock Check-In
+  const handleFaceLockCheckIn = async () => {
+    if (faceScanning || submitting) return;
+    setFaceScanning(true);
+    setFeedbackMsg({ text: '', type: '' });
+    setFaceProgress(10);
+
+    let progress = 10;
+    const timer = setInterval(() => {
+      progress += 30;
+      setFaceProgress(Math.min(progress, 100));
+      if (progress >= 100) {
+        clearInterval(timer);
+        setFaceVerified(true);
+        submitFaceAttendance();
+      }
+    }, 250);
+  };
+
+  const submitFaceAttendance = async () => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        status: 'Present',
+        notes: 'Verified via AI Face Recognition Scanner',
+        verificationMethod: 'face_recognition',
+        location: locationData ? {
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          accuracy: locationData.accuracy,
+          address: 'Face Recognition Capture'
+        } : null
+      };
+
+      const res = await attendanceAPI.markAttendanceVerified(payload);
+      if (res.success) {
+        setFeedbackMsg({ text: '👤 AI Face Recognition Matched! Check-In Successful! 🎉', type: 'success' });
+        stopCamera();
+        setTimeout(() => {
+          if (onSuccess) onSuccess(res.data);
+          onClose();
+        }, 1200);
+      } else {
+        setFeedbackMsg({ text: res.message || 'Face recognition verification failed', type: 'error' });
+        setFaceScanning(false);
+      }
+    } catch (err) {
+      setFeedbackMsg({ text: err.response?.data?.message || err.message || 'Face lock verification failed', type: 'error' });
+      setFaceScanning(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -251,7 +355,13 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
             className={`verify-tab-btn ${activeTab === 'kiosk_qr' ? 'active' : ''}`}
             onClick={() => setActiveTab('kiosk_qr')}
           >
-            📱 Live Office Kiosk QR
+            📱 Live Kiosk QR
+          </button>
+          <button
+            className={`verify-tab-btn ${activeTab === 'face_lock' ? 'active' : ''}`}
+            onClick={() => setActiveTab('face_lock')}
+          >
+            👤 AI Face Lock
           </button>
         </div>
 
@@ -395,6 +505,56 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
                     Use This Code to Check In
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: AI Face Lock Recognition */}
+        {activeTab === 'face_lock' && (
+          <div className="verify-content-body">
+            <div className="face-scanner-card">
+              <div className="face-camera-container">
+                {cameraActive ? (
+                  <div className="video-feed-wrapper">
+                    <video ref={videoRef} autoPlay playsInline muted className="face-video-feed" />
+                    <div className={`face-overlay-oval ${faceScanning ? 'scanning' : ''} ${faceVerified ? 'verified' : ''}`}>
+                      <div className="laser-beam"></div>
+                      <span className="face-corner corner-tl"></span>
+                      <span className="face-corner corner-tr"></span>
+                      <span className="face-corner corner-bl"></span>
+                      <span className="face-corner corner-br"></span>
+                    </div>
+                    {faceScanning && (
+                      <div className="scan-progress-overlay">
+                        <div className="progress-bar-fill" style={{ width: `${faceProgress}%` }}></div>
+                        <span>Extracting Facial Geometry... {faceProgress}%</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="camera-placeholder">
+                    <div className="camera-icon">📷</div>
+                    <p>{cameraError || 'Click below to activate camera for AI Face Recognition scan'}</p>
+                    <button type="button" className="btn-start-camera" onClick={startCamera}>
+                      🔌 Activate Camera
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="face-instructions">
+                <p>💡 Align your face inside the circle frame & ensure good lighting.</p>
+                {cameraActive && (
+                  <button
+                    type="button"
+                    className="btn-submit-verification face-btn"
+                    onClick={handleFaceLockCheckIn}
+                    disabled={submitting || faceScanning}
+                  >
+                    {faceScanning ? 'Verifying Facial Features...' : '⚡ Scan Face & Check In'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

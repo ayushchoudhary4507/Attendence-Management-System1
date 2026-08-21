@@ -916,8 +916,26 @@ const Attendance = () => {
                     <div className="loading-container">
                       <div className="loading-spinner"></div>
                     </div>
-                  ) : '✓ Check In'}
+                  ) : '✓ Standard Check In'}
                 </button>
+
+                <div style={{ marginTop: '12px' }}>
+                  <button 
+                    type="button"
+                    className="btn-checkin"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
+                    }}
+                    onClick={() => setShowQRModal(true)}
+                  >
+                    <span>⚡ AI Face Lock / QR / GPS Verification Hub</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1402,22 +1420,20 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* QR / Barcode Verification Modal — Admin Only */}
-      {isAdmin && (
-        <LiveQRGeoVerificationModal
-          isOpen={showQRModal}
-          onClose={() => { setShowQRModal(false); setAdminCheckMode(null); }}
-          onSuccess={(attendanceData) => {
-            setTodayAttendance(attendanceData);
-            setMessage('✅ QR Verification successful! Attendance marked.');
-            setMessageType('success');
-            setShowQRModal(false);
-            setAdminCheckMode(null);
-            setTimeout(() => setMessage(''), 5000);
-          }}
-          user={storedUser}
-        />
-      )}
+      {/* Live Verification Modal (GPS / QR / Face Lock) */}
+      <LiveQRGeoVerificationModal
+        isOpen={showQRModal}
+        onClose={() => { setShowQRModal(false); setAdminCheckMode(null); }}
+        onSuccess={(attendanceData) => {
+          setTodayAttendance(attendanceData);
+          setMessage('✅ Verification successful! Attendance marked.');
+          setMessageType('success');
+          setShowQRModal(false);
+          setAdminCheckMode(null);
+          setTimeout(() => setMessage(''), 5000);
+        }}
+        user={storedUser}
+      />
     </div>
   );
 };
