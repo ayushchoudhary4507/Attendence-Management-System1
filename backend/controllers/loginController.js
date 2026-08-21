@@ -129,29 +129,59 @@ const loginController = async (req, res) => {
       }
     }
 
-    // Send user_activity notification to admin (only for employee logins)
+    // Send employee_login notification to admin (only for employee logins)
     if (user.role !== 'admin') {
       try {
         const Notification = require('../models/Notification');
         const User = require('../models/User');
-        console.log('📩 Creating user activity notification for admin...');
+        const loginDateObj = user.lastLogin || new Date();
+
+        // Convert server UTC time to IST (Asia/Kolkata)
+        const formattedLoginTime = loginDateObj.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+
+        const formattedLoginDate = loginDateObj.toLocaleDateString('en-GB', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+
+        const notifTitle = 'Employee Login';
+        const notifMessage = `${user.name} logged in at ${formattedLoginTime}.`;
+
+        console.log('--- EMPLOYEE LOGIN NOTIFICATION DEBUG LOG ---');
+        console.log('Employee ID:', user._id.toString());
+        console.log('Employee Name:', user.name);
+        console.log('Server UTC Login Time:', loginDateObj.toISOString());
+        console.log('Converted IST Login Time:', formattedLoginTime);
+        console.log('Notification Message:', notifMessage);
+        console.log('---------------------------------------------');
+
         const admins = await User.find({ role: 'admin' }).select('_id');
         
         // Create notification for each admin
         const activityNotifications = [];
         for (const admin of admins) {
           const adminNotification = await Notification.create({
-            type: 'user_activity',
-            title: 'User Active',
-            message: `${user.name} just logged in`,
+            type: 'employee_login',
+            title: notifTitle,
+            message: notifMessage,
             senderId: user._id,
             senderName: user.name,
+            employeeId: user._id,
+            employeeName: user.name,
+            employeeEmail: user.email,
             receiverId: admin._id,
             link: '/employees',
           });
           activityNotifications.push(adminNotification);
         }
-        console.log('✅ User activity notifications created for admins');
+        console.log('✅ Employee login notifications created for admins');
 
         // Emit to admins via socket
         const io = global._io;
@@ -165,16 +195,22 @@ const loginController = async (req, res) => {
               if (notification) {
                 io.to(adminOnline.socketId).emit('newNotification', {
                   id: notification._id,
-                  type: 'user_activity',
-                  title: 'User Active',
-                  message: `${user.name} just logged in`,
-                  senderId: user._id,
+                  type: 'employee_login',
+                  notificationType: 'employee_login',
+                  title: notifTitle,
+                  message: notifMessage,
+                  employeeId: user._id.toString(),
+                  employeeName: user.name,
+                  loginTime: formattedLoginTime,
+                  loginDate: formattedLoginDate,
+                  senderId: user._id.toString(),
                   senderName: user.name,
+                  receiverId: adminId,
                   link: '/employees',
-                  createdAt: new Date(),
+                  createdAt: loginDateObj,
                   read: false
                 });
-                console.log(`📢 User activity notification emitted to admin ${adminId}`);
+                console.log(`📢 Employee login notification emitted to admin ${adminId}`);
               }
             }
           }

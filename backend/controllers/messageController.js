@@ -103,7 +103,8 @@ const getMessages = async (req, res) => {
         receiverId: msg.receiverId?._id || msg.receiverId,
         receiverName: msg.receiverId?.name || 'Unknown User',
         message: msg.message,
-        timestamp: msg.timestamp,
+        timestamp: (msg.timestamp || msg.createdAt || new Date()).toISOString(),
+        createdAt: (msg.createdAt || msg.timestamp || new Date()).toISOString(),
         read: msg.read,
         readAt: msg.readAt
       }))
@@ -169,12 +170,13 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    // Create new message
+    // Create new message with backend server UTC timestamp
+    const serverDate = new Date();
     const newMessage = new Message({
       senderId,
       receiverId: receiverObjectId,
       message: message.trim(),
-      timestamp: new Date(),
+      timestamp: serverDate,
       read: false
     });
 
@@ -183,7 +185,10 @@ const sendMessage = async (req, res) => {
     // Populate sender and receiver info for response
     await newMessage.populate('senderId', 'name email');
     await newMessage.populate('receiverId', 'name email');
-// Create notification in database for the receiver
+
+    const isoTimestamp = serverDate.toISOString();
+
+    // Create notification in database for the receiver
     console.log('📩 Creating message notification in database for receiver:', receiverId);
     const messageNotification = await Notification.create({
       type: 'message',
@@ -191,18 +196,35 @@ const sendMessage = async (req, res) => {
       message: message.trim().substring(0, 50) + (message.length > 50 ? '...' : ''),
       senderId: senderId,
       senderName: newMessage.senderId.name,
-      receiverId: receiverObjectId, // Assign to receiver
+      receiverId: receiverObjectId,
       link: '/chat'
     });
     console.log('✅ Message notification saved to database:', messageNotification._id);
 
-    // Emit real-time notification to the receiver via socket
+    // Emit real-time message & notification to the receiver via socket
     const io = req.app.get('io');
     if (io) {
       const onlineUsersMap = io.onlineUsers;
       const receiverOnline = onlineUsersMap ? onlineUsersMap.get(receiverId) : null;
       
+      const socketPayload = {
+        id: newMessage._id,
+        _id: newMessage._id,
+        senderId: senderIdStr,
+        senderName: newMessage.senderId?.name || 'User',
+        senderEmail: newMessage.senderId?.email || '',
+        receiverId: receiverId,
+        receiverName: newMessage.receiverId?.name || 'User',
+        message: newMessage.message,
+        timestamp: isoTimestamp,
+        createdAt: isoTimestamp,
+        read: newMessage.read
+      };
+
       if (receiverOnline && receiverOnline.isOnline) {
+        io.to(receiverOnline.socketId).emit('receive_message', socketPayload);
+        console.log(`📢 Real-time receive_message event emitted to receiver ${receiverId}`);
+
         io.to(receiverOnline.socketId).emit('newNotification', {
           id: messageNotification._id,
           type: 'message',
@@ -212,7 +234,7 @@ const sendMessage = async (req, res) => {
           senderName: newMessage.senderId.name,
           receiverId: receiverId,
           messageId: newMessage._id,
-          createdAt: new Date(),
+          createdAt: isoTimestamp,
           read: false
         });
         console.log(`📢 Message notification emitted to receiver ${receiverId}`);
@@ -232,7 +254,8 @@ const sendMessage = async (req, res) => {
         receiverId: newMessage.receiverId._id,
         receiverName: newMessage.receiverId.name,
         message: newMessage.message,
-        timestamp: newMessage.timestamp,
+        timestamp: isoTimestamp,
+        createdAt: isoTimestamp,
         read: newMessage.read
       }
     });

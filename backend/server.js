@@ -220,6 +220,7 @@ io.on('connection', (socket) => {
 
       // The message should already be saved to DB via API
       // We just need to broadcast it to the receiver
+      const serverIsoTime = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
       const messageData = {
         id: id || tempId,
         tempId: tempId,
@@ -227,7 +228,8 @@ io.on('connection', (socket) => {
         senderName,
         receiverId,
         message,
-        timestamp: timestamp || new Date(),
+        timestamp: serverIsoTime,
+        createdAt: serverIsoTime,
         read: false
       };
       
