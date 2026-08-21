@@ -269,18 +269,6 @@ const Attendance = () => {
     if (isAdmin) {
       fetchStaffAttendance();
     }
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing attendance data...');
-      checkTodayAttendance();
-      fetchMyLeaves();
-      if (isAdmin) {
-        fetchStaffAttendance();
-      }
-    }, 30000);
-    
-    return () => clearInterval(interval);
   }, [isAdmin]);
 
   // Admin GPS Check-In

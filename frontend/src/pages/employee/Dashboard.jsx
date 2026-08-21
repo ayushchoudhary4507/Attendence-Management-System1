@@ -57,6 +57,7 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [recentEmployees, setRecentEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [taskStats, setTaskStats] = useState({
     total: 0,
@@ -188,59 +189,20 @@ const Dashboard = ({ onLogout, userRole }) => {
   const { isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
-    fetchDashboardData();
-    
-    // Auto-refresh attendance data every 30 seconds
-    const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing attendance data...');
-      fetchDashboardData();
-    }, 30000);
-    
-    return () => clearInterval(interval);
+    fetchDashboardData(true);
   }, []);
 
-  // Fetch attendance status for all employees
-  useEffect(() => {
-    const fetchAttendanceStatus = async () => {
-      if (allEmployees.length === 0) return;
-      
-      try {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const response = await fetch('/api/attendance/today-status', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
-        
-        if (data.success && data.data) {
-          const statusMap = {};
-          data.data.forEach(emp => {
-            const hasAttendance = emp.attendanceToday && emp.attendanceToday.status === 'Present';
-            statusMap[emp._id] = hasAttendance ? 'Present' : 'Absent';
-          });
-          setAttendanceStatus(statusMap);
-        }
-      } catch (err) {
-        console.error('Error fetching attendance status:', err);
-      }
-    };
-
-    fetchAttendanceStatus();
-    const interval = setInterval(fetchAttendanceStatus, 30000);
-    return () => clearInterval(interval);
-  }, [allEmployees]);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (isInitial = false) => {
     try {
-      setLoading(true);
-      console.log('🔍 Dashboard: Starting data fetch...');
+      // Only set loading placeholder (...) if initial load or stats don't exist yet
+      if (isInitial || !stats) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      console.log('🔑 Token:', token ? 'Found' : 'Not found');
-      
       if (!token) {
-        console.error('❌ No authentication token');
         setLoading(false);
         return;
       }
@@ -251,16 +213,28 @@ const Dashboard = ({ onLogout, userRole }) => {
       };
 
       const leavesEndpoint = isAdmin ? `${API_URL}/attendance/leave/all` : `${API_URL}/attendance/leave/my-leaves`;
-      const [empRes, projRes, leaveRes, myAttRes] = await Promise.all([
-        fetch(`${API_URL}/employees`, { headers }),
-        fetch(`${API_URL}/projects`, { headers }),
-        fetch(leavesEndpoint, { headers }).catch(err => ({ ok: false })),
-        !isAdmin ? fetch(`${API_URL}/attendance/my-today`, { headers }).catch(err => ({ ok: false })) : Promise.resolve(null)
+
+      // Fetch ALL endpoints in parallel concurrently!
+      const [
+        empRes,
+        projRes,
+        leaveRes,
+        myAttRes,
+        todayStatusRes,
+        statsRes,
+        taskRes
+      ] = await Promise.all([
+        fetch(`${API_URL}/employees`, { headers }).catch(() => null),
+        fetch(`${API_URL}/projects`, { headers }).catch(() => null),
+        fetch(leavesEndpoint, { headers }).catch(() => null),
+        !isAdmin ? fetch(`${API_URL}/attendance/my-today`, { headers }).catch(() => null) : Promise.resolve(null),
+        fetch(`${API_URL}/attendance/today-status`, { headers }).catch(() => null),
+        fetch(`${API_URL}/attendance/stats`, { headers }).catch(() => null),
+        isAdmin ? fetch(`${API_URL}/tasks/stats`, { headers }).catch(() => null) : Promise.resolve(null)
       ]);
 
       // Handle 401 - token invalid/expired
-      if (empRes.status === 401 || projRes.status === 401) {
-        console.warn('🔒 Token invalid or expired, clearing auth data');
+      if (empRes?.status === 401 || projRes?.status === 401) {
         sessionStorage.removeItem('token');
         localStorage.removeItem('token');
         sessionStorage.removeItem('user');
@@ -269,174 +243,119 @@ const Dashboard = ({ onLogout, userRole }) => {
         return;
       }
 
-      // Check if responses are ok
-      if (!empRes.ok) {
-        throw new Error(`Employees API error: ${empRes.status} ${empRes.statusText}`);
-      }
-      if (!projRes.ok) {
-        throw new Error(`Projects API error: ${projRes.status} ${projRes.statusText}`);
-      }
+      // Parse all JSON responses concurrently
+      const [
+        empData,
+        projData,
+        leaveData,
+        myAttData,
+        todayStatusData,
+        statsData,
+        taskData
+      ] = await Promise.all([
+        empRes?.ok ? empRes.json().catch(() => null) : null,
+        projRes?.ok ? projRes.json().catch(() => null) : null,
+        leaveRes?.ok ? leaveRes.json().catch(() => null) : null,
+        myAttRes?.ok ? myAttRes.json().catch(() => null) : null,
+        todayStatusRes?.ok ? todayStatusRes.json().catch(() => null) : null,
+        statsRes?.ok ? statsRes.json().catch(() => null) : null,
+        taskRes?.ok ? taskRes.json().catch(() => null) : null
+      ]);
 
-      const empData = await empRes.json();
-      const projData = await projRes.json();
-
-      if (myAttRes && myAttRes.ok) {
-        try {
-          const myAttData = await myAttRes.json();
-          if (myAttData.success && myAttData.data) {
-            setMyTodayAttendance(myAttData.data);
-          } else {
-            setMyTodayAttendance(null);
-          }
-        } catch (e) {
-          console.error('Error parsing my-today attendance:', e);
-        }
-      }
-
-      if (leaveRes && leaveRes.ok) {
-        try {
-          const leaveData = await leaveRes.json();
-          if (leaveData.success && Array.isArray(leaveData.data)) {
-            setRecentLeaves(leaveData.data);
-            const pendingCount = leaveData.data.filter(l => l.status === 'Pending').length;
-            setPendingLeavesCount(pendingCount);
-            setTotalLeavesCount(leaveData.data.length);
-          }
-        } catch (e) {
-          console.error('Error parsing leaves data:', e);
-        }
-      }
-
-      console.log('📊 Employees Response:', empData);
-      console.log('📊 Projects Response:', projData);
-
-      if (empData.success) {
+      // 1. Process Employees Data
+      if (empData?.success) {
         const allEmps = empData.data || [];
         setAllEmployees(allEmps);
-        
-        // Filter employees based on role
-        let filteredEmployees = allEmps;
-        if (isEmployee && currentUser?.email) {
-          // Employee sees all employees (not just their own record)
-          filteredEmployees = allEmps; // Show all employees to logged-in employees
-        }
-        // Admin sees all employees (no filter)
-        
-        setRecentEmployees(filteredEmployees);
+        setRecentEmployees(allEmps);
       }
-      
-      // Fetch attendance stats for all logged-in users
-      if (isAdmin || isEmployee) {
-        try {
-          // Fetch both today-status and stats in parallel
-          const [todayStatusRes, statsRes] = await Promise.all([
-            fetch(`${API_URL}/attendance/today-status`, { headers }),
-            fetch(`${API_URL}/attendance/stats`, { headers })
-          ]);
-          
-          const todayStatusData = await todayStatusRes.json();
-          const statsData = await statsRes.json();
-          
-          console.log('📊 Stats API:', statsData);
-          console.log('📊 Today Status API:', todayStatusData);
-          
-          let totalHours = 0;
-          let activeCount = 0;
-          let presentCount = 0;
-          let absentCount = 0;
-          
-          // Get present/absent from stats API
-          if (statsData.success) {
-            presentCount = statsData.present || 0;
-            absentCount = statsData.absent || 0;
-          }
-          
-          // Also calculate from today-status data for accuracy
-          if (todayStatusData.success && todayStatusData.data) {
-            const calculatedPresent = todayStatusData.data.filter(emp => emp.attendanceToday).length;
-            const calculatedAbsent = todayStatusData.data.filter(emp => !emp.attendanceToday).length;
-            
-            // Use calculated values if they differ (more accurate)
-            if (calculatedAbsent > 0 || calculatedPresent > 0) {
-              presentCount = calculatedPresent;
-              absentCount = calculatedAbsent;
+
+      // 2. Process My Today Attendance
+      if (myAttData?.success && myAttData.data) {
+        setMyTodayAttendance(myAttData.data);
+      } else if (myAttData) {
+        setMyTodayAttendance(null);
+      }
+
+      // 3. Process Leaves Data
+      if (leaveData?.success) {
+        if (Array.isArray(leaveData.data)) {
+          setRecentLeaves(leaveData.data);
+        }
+        if (isAdmin && leaveData.stats) {
+          setTotalLeavesCount(leaveData.stats.total || 0);
+          setPendingLeavesCount(leaveData.stats.pending || 0);
+        } else if (Array.isArray(leaveData.data)) {
+          setPendingLeavesCount(leaveData.data.filter(l => l.status === 'Pending').length);
+          setTotalLeavesCount(leaveData.data.length);
+        }
+      }
+
+      // 4. Process Attendance Stats & Today Status
+      let totalHours = 0;
+      let activeCount = 0;
+      let presentCount = statsData?.present || 0;
+      let absentCount = statsData?.absent || 0;
+
+      if (todayStatusData?.success && todayStatusData.data) {
+        const calculatedPresent = todayStatusData.data.filter(emp => emp.attendanceToday).length;
+        const calculatedAbsent = todayStatusData.data.filter(emp => !emp.attendanceToday).length;
+        
+        if (calculatedAbsent > 0 || calculatedPresent > 0) {
+          presentCount = calculatedPresent;
+          absentCount = calculatedAbsent;
+        }
+
+        const statusMap = {};
+        todayStatusData.data.forEach(emp => {
+          const hasAttendance = emp.attendanceToday && emp.attendanceToday.status === 'Present';
+          statusMap[emp._id] = hasAttendance ? 'Present' : 'Absent';
+
+          if (emp.attendanceToday && emp.attendanceStatus === 'active') {
+            if (emp.attendanceToday.workHours) {
+              totalHours += emp.attendanceToday.workHours;
             }
-            
-            console.log('Calculated from today-status:', { presentCount, absentCount, calculatedPresent, calculatedAbsent });
-            
-            // Count active employees and work hours
-            todayStatusData.data.forEach(emp => {
-              if (emp.attendanceToday && emp.attendanceStatus === 'active') {
-                if (emp.attendanceToday.workHours) {
-                  totalHours += emp.attendanceToday.workHours;
-                }
-                if (emp.checkInTime && !emp.checkOutTime) {
-                  const checkIn = new Date(emp.checkInTime);
-                  const now = new Date();
-                  const hours = (now - checkIn) / (1000 * 60 * 60);
-                  totalHours += hours;
-                }
-                activeCount++;
-              }
-            });
+            if (emp.checkInTime && !emp.checkOutTime) {
+              const checkIn = new Date(emp.checkInTime);
+              const now = new Date();
+              const hours = (now - checkIn) / (1000 * 60 * 60);
+              totalHours += hours;
+            }
+            activeCount++;
           }
-          
-          setAttendanceStats({
-            present: presentCount,
-            absent: absentCount,
-            activeNow: activeCount,
-            totalWorkHours: totalHours.toFixed(1)
-          });
-          
-          // Store attendance details for modal
-          const details = todayStatusData.data?.map(emp => ({
-            _id: emp._id,
-            name: emp.name,
-            email: emp.email,
-            designation: emp.designation,
-            status: emp.attendanceToday ? 'Present' : 'Absent',
-            isActive: emp.attendanceStatus === 'active',
-            checkInTime: emp.checkInTime,
-            checkOutTime: emp.checkOutTime,
-            workHours: emp.attendanceToday?.workHours || 0
-          })) || [];
-          setAttendanceDetails(details);
-        } catch (err) {
-          console.error('Error fetching attendance stats:', err);
-        }
+        });
+        setAttendanceStatus(statusMap);
+
+        const details = todayStatusData.data.map(emp => ({
+          _id: emp._id,
+          name: emp.name,
+          email: emp.email,
+          designation: emp.designation,
+          status: emp.attendanceToday ? 'Present' : 'Absent',
+          isActive: emp.attendanceStatus === 'active',
+          checkInTime: emp.checkInTime,
+          checkOutTime: emp.checkOutTime,
+          workHours: emp.attendanceToday?.workHours || 0
+        }));
+        setAttendanceDetails(details);
       }
-      
-      if (isAdmin) {
-        try {
-          const taskRes = await fetch(`${API_URL}/tasks/stats`, { headers });
-          const taskData = await taskRes.json();
-          if (taskData.success) {
-            setTaskStats(taskData.data);
-          }
-        } catch (e) {
-          console.error('Error fetching task stats:', e);
-        }
-        
-        // Fetch leaves data for admin
-        try {
-          const leavesRes = await fetch(`${API_URL}/attendance/leave/all`, { headers });
-          const leavesData = await leavesRes.json();
-          if (leavesData.success) {
-            setTotalLeavesCount(leavesData.stats?.total || 0);
-            setPendingLeavesCount(leavesData.stats?.pending || 0);
-          }
-        } catch (e) {
-          console.error('Error fetching leaves:', e);
-        }
+
+      setAttendanceStats({
+        present: presentCount,
+        absent: absentCount,
+        activeNow: activeCount,
+        totalWorkHours: totalHours.toFixed(1)
+      });
+
+      // 5. Process Task Stats
+      if (taskData?.success) {
+        setTaskStats(taskData.data);
       }
-      
-      if (projData.success) {
+
+      // 6. Process Projects Data & Compute Dashboard Stats
+      if (projData?.success) {
         const allProjects = projData.data || [];
-        
-        // Filter projects based on role
         let filteredProjects = allProjects;
         if (isEmployee && currentUser?.email) {
-          // Employee sees projects they are part of
           filteredProjects = allProjects.filter(proj => 
             proj.team?.some(member => 
               member?.toLowerCase().includes(currentUser.name?.toLowerCase()) ||
@@ -444,17 +363,15 @@ const Dashboard = ({ onLogout, userRole }) => {
             )
           );
         }
-        // Admin sees all projects
-        
         setProjects(filteredProjects);
-        
-        // Calculate stats based on filtered data
-        const activeEmps = (empData.data || []).filter(e => e.status === 'Active');
+
+        const allEmpsList = empData?.data || [];
+        const activeEmps = allEmpsList.filter(e => e.status === 'Active');
         setStats({
-          totalEmployees: (empData.data || []).length,  // Show all employees, not just 1
+          totalEmployees: allEmpsList.length,
           activeEmployees: activeEmps.length,
-          interns: (empData.data || []).filter(e => e.role === 'Interns').length,
-          managers: (empData.data || []).filter(e => e.role === 'Manager').length,
+          interns: allEmpsList.filter(e => e.role === 'Interns').length,
+          managers: allEmpsList.filter(e => e.role === 'Manager').length,
           totalProjects: filteredProjects.length,
           activeProjects: filteredProjects.filter(p => p.status === 'In Progress').length,
           completedProjects: filteredProjects.filter(p => p.status === 'Completed').length
@@ -465,6 +382,7 @@ const Dashboard = ({ onLogout, userRole }) => {
       setApiError(err.message || 'Failed to fetch dashboard data');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -652,14 +570,22 @@ const Dashboard = ({ onLogout, userRole }) => {
             Export Data
           </button>
           <button 
-            onClick={fetchDashboardData}
-            disabled={loading}
+            onClick={() => fetchDashboardData(false)}
+            disabled={loading || refreshing}
             className="btn-primary"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg 
+              width="18" 
+              height="18" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+              style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}
+            >
               <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
             </svg>
-            {loading ? 'Loading...' : 'Refresh Data'}
+            {refreshing ? 'Refreshing...' : loading ? 'Loading...' : 'Refresh Data'}
           </button>
         </div>
       </div>

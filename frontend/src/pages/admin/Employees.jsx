@@ -166,8 +166,6 @@ const Employees = ({ onLogout, userRole }) => {
     };
 
     fetchAttendanceStatus();
-    const interval = setInterval(fetchAttendanceStatus, 30000);
-    return () => clearInterval(interval);
   }, [employees]);
 
   const fetchEmployees = async (showLoader = false) => {
