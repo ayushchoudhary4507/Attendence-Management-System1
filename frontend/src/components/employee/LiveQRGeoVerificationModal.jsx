@@ -3,8 +3,14 @@ import { QRCodeSVG } from 'qrcode.react';
 import { attendanceAPI } from '../../services/api';
 import './LiveQRGeoVerificationModal.css';
 
-const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
-  const [activeTab, setActiveTab] = useState('geo'); // 'geo' | 'scan_qr' | 'kiosk_qr' | 'face_lock'
+const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user, initialTab = 'geo' }) => {
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   
   // Geolocation state
   const [geoLoading, setGeoLoading] = useState(false);

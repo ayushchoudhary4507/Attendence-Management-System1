@@ -33,12 +33,13 @@ const Attendance = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Admin-only: GPS & Standard Time verification state
-  const [adminCheckMode, setAdminCheckMode] = useState(null); // 'gps' | 'standard' | null
+  const [adminCheckMode, setAdminCheckMode] = useState(null); // 'gps' | 'standard' | 'qr' | null
   const [gpsStatus, setGpsStatus] = useState('idle'); // idle | fetching | success | error
   const [gpsCoords, setGpsCoords] = useState(null);
   const [standardTimeNote, setStandardTimeNote] = useState('');
   const [adminCheckLoading, setAdminCheckLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false); // QR/Barcode scan modal
+  const [qrModalTab, setQrModalTab] = useState('kiosk_qr');
 
   // Admin-only: Staff Attendance Records & Time Editing
   const [allStaffAttendance, setAllStaffAttendance] = useState([]);
@@ -739,16 +740,20 @@ const Attendance = () => {
                 <div className={`method-radio ${adminCheckMode === 'standard' ? 'active' : ''}`}></div>
               </div>
 
-              {/* QR / Barcode Scan Method */}
+              {/* Generate Office QR Code Method */}
               <div
                 className={`checkin-method-card ${adminCheckMode === 'qr' ? 'selected' : ''}`}
-                onClick={() => { setAdminCheckMode('qr'); setShowQRModal(true); }}
+                onClick={() => { 
+                  setAdminCheckMode('qr'); 
+                  setQrModalTab('kiosk_qr');
+                  setShowQRModal(true); 
+                }}
               >
-                <div className="method-icon qr-icon">📷</div>
+                <div className="method-icon qr-icon">🔲</div>
                 <div className="method-info">
-                  <h4>QR / Barcode Scan</h4>
-                  <p>Scan live rotating office QR code or enter token manually</p>
-                  <span className="method-tag qr-tag">Live QR</span>
+                  <h4>Generate Office QR Code</h4>
+                  <p>Display live rotating QR code for employee mobile check-ins</p>
+                  <span className="method-tag qr-tag">Office Kiosk QR</span>
                 </div>
                 <div className={`method-radio ${adminCheckMode === 'qr' ? 'active' : ''}`}></div>
               </div>
@@ -868,20 +873,41 @@ const Attendance = () => {
               </div>
             )}
 
-            {/* QR Scan - info hint when selected but modal closed */}
+            {/* Generate QR Code Panel Detail */}
             {adminCheckMode === 'qr' && !showQRModal && (
               <div className="method-detail-panel">
                 <div className="method-detail-header">
-                  <span>📷 QR / Barcode Verification</span>
-                  <span className="gps-success-badge" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>Live QR System</span>
+                  <span className="method-detail-title">🔲 Office QR Code Generator</span>
+                  <span className="gps-success-badge" style={{ background: '#ede9fe', border: '1px solid #c7d2fe', color: '#4f46e5' }}>Kiosk Mode</span>
                 </div>
-                <p className="method-hint">The QR verification hub includes GPS geo-fence check-in, live rotating office QR code display, and manual token entry — all in one modal.</p>
+                <p className="method-detail-desc">
+                  Generate a live rotating QR code for your reception, office entrance, or display screen. Employees can scan the code with their mobile app cameras to record their daily attendance instantly.
+                </p>
                 <button
                   className="btn-admin-checkin"
-                  style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white', boxShadow: '0 4px 15px rgba(99,102,241,0.35)', marginTop: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 24px', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-                  onClick={() => setShowQRModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                    color: 'white',
+                    boxShadow: '0 4px 15px rgba(99,102,241,0.35)',
+                    marginTop: '14px',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '14px 24px',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => {
+                    setQrModalTab('kiosk_qr');
+                    setShowQRModal(true);
+                  }}
                 >
-                  📷 Open QR / Barcode Verification Hub
+                  🔲 Launch Live Office QR Code Screen
                 </button>
               </div>
             )}
@@ -1346,6 +1372,7 @@ const Attendance = () => {
       {/* Live Verification Modal (GPS / QR / Face Lock) */}
       <LiveQRGeoVerificationModal
         isOpen={showQRModal}
+        initialTab={qrModalTab}
         onClose={() => { setShowQRModal(false); setAdminCheckMode(null); }}
         onSuccess={(attendanceData) => {
           setTodayAttendance(attendanceData);
