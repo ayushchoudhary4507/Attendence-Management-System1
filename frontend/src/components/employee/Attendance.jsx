@@ -708,7 +708,7 @@ const Attendance = () => {
             <div className="admin-checkin-header">
               <span className="admin-role-badge">🛡️ Admin Mode</span>
               <h3>Select Verification Method</h3>
-              <p>Choose how to record today's attendance — GPS capture, standard shift-time, or QR / Barcode scan</p>
+              <p>Choose how to record today's attendance — GPS capture, standard shift-time, or generate office QR code</p>
             </div>
 
             <div className="admin-checkin-methods">
