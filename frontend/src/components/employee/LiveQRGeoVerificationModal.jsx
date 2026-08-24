@@ -11,7 +11,7 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user, initialT
       setActiveTab(initialTab);
     }
   }, [isOpen, initialTab]);
-  
+
   // Geolocation state
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState('');
@@ -19,12 +19,12 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user, initialT
   const [officeSettings, setOfficeSettings] = useState(null);
   const [distanceFromOffice, setDistanceFromOffice] = useState(null);
   const [isWithinRange, setIsWithinRange] = useState(false);
-  
+
   // QR Kiosk Display state
   const [qrTokenData, setQrTokenData] = useState(null);
   const [qrCountdown, setQrCountdown] = useState(45);
   const [qrLoading, setQrLoading] = useState(false);
-  
+
   // QR Manual / Scanner state
   const [manualQrToken, setManualQrToken] = useState('');
   const [submitting, setSubmitting] = useState(false);

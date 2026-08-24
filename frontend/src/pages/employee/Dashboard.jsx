@@ -358,18 +358,35 @@ const Dashboard = ({ onLogout, userRole }) => {
         });
         setAttendanceStatus(statusMap);
 
-        const details = todayStatusData.data.map(emp => ({
-          _id: emp._id,
-          name: emp.name,
-          email: emp.email,
-          designation: emp.designation,
-          status: emp.attendanceToday ? emp.attendanceToday.status || 'Present' : 'Absent',
-          isActive: emp.attendanceStatus === 'active',
-          checkInTime: emp.checkInTime,
-          checkOutTime: emp.checkOutTime,
-          isLate: emp.isLate || (emp.checkInTime && (new Date(emp.checkInTime).getHours() > 9 || (new Date(emp.checkInTime).getHours() === 9 && new Date(emp.checkInTime).getMinutes() > 30))),
-          workHours: emp.attendanceToday?.workHours || 0
-        }));
+        const empImageMap = {};
+        if (empData?.data && Array.isArray(empData.data)) {
+          empData.data.forEach(e => {
+            if (e.profileImage) {
+              if (e.email) empImageMap[e.email.toLowerCase().trim()] = e.profileImage;
+              if (e._id) empImageMap[e._id.toString()] = e.profileImage;
+            }
+          });
+        }
+
+        const details = todayStatusData.data.map(emp => {
+          const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+          const empIdStr = emp._id ? emp._id.toString() : '';
+          const profileImage = emp.profileImage || (empEmail ? empImageMap[empEmail] : '') || (empIdStr ? empImageMap[empIdStr] : '') || '';
+
+          return {
+            _id: emp._id,
+            name: emp.name,
+            email: emp.email,
+            designation: emp.designation,
+            profileImage,
+            status: emp.attendanceToday ? emp.attendanceToday.status || 'Present' : 'Absent',
+            isActive: emp.attendanceStatus === 'active',
+            checkInTime: emp.checkInTime,
+            checkOutTime: emp.checkOutTime,
+            isLate: emp.isLate || (emp.checkInTime && (new Date(emp.checkInTime).getHours() > 9 || (new Date(emp.checkInTime).getHours() === 9 && new Date(emp.checkInTime).getMinutes() > 30))),
+            workHours: emp.attendanceToday?.workHours || 0
+          };
+        });
         setAttendanceDetails(details);
       }
 

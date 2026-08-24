@@ -2,6 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { attendanceAPI } from '../../services/api';
 import './EmployeeWorkHours.css';
 
+const API_URL = import.meta.env.PROD
+  ? 'https://attendence-management-system1.onrender.com/api'
+  : 'http://127.0.0.1:5005/api';
+
+const getImageUrl = (imgPath) => {
+  if (!imgPath || typeof imgPath !== 'string') return null;
+  const cleanPath = imgPath.trim().replace(/\\/g, '/');
+  if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://') || cleanPath.startsWith('data:image')) {
+    return cleanPath;
+  }
+  const base = (API_URL || 'http://127.0.0.1:5005/api').replace(/\/api\/?$/, '');
+  const normalized = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+  return `${base}${normalized}`;
+};
+
+const getEmployeeAvatar = (emp) => {
+  const imgPath = emp?.profileImage || emp?.photo || emp?.avatar || emp?.image;
+  const url = getImageUrl(imgPath);
+  if (url) return url;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(emp?.name || 'User')}&background=${emp?.isCurrentUser ? '10B981' : '4F46E5'}&color=fff`;
+};
+
 const EmployeeWorkHours = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,14 +56,42 @@ const EmployeeWorkHours = () => {
       const today = new Date().toISOString().split('T')[0];
       const isToday = selectedDate === today;
       
-      // Use date-based API for historical dates, today API for current date
-      const response = isToday 
-        ? await attendanceAPI.getTodayAttendanceStatus()
-        : await attendanceAPI.getAttendanceByDate(selectedDate);
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      // Fetch attendance and employees in parallel to guarantee profile images are available
+      const [response, empRes] = await Promise.all([
+        isToday 
+          ? attendanceAPI.getTodayAttendanceStatus()
+          : attendanceAPI.getAttendanceByDate(selectedDate),
+        fetch(`${API_URL}/employees`, { headers: authHeaders }).catch(() => null)
+      ]);
+
+      const empMap = {};
+      if (empRes?.ok) {
+        const empJson = await empRes.json().catch(() => null);
+        if (empJson?.data && Array.isArray(empJson.data)) {
+          empJson.data.forEach(e => {
+            if (e.profileImage) {
+              if (e.email) empMap[e.email.toLowerCase().trim()] = e.profileImage;
+              if (e._id) empMap[e._id.toString()] = e.profileImage;
+            }
+          });
+        }
+      }
       
       console.log('Work Hours API Response:', response);
       if (response.success) {
         const employeesData = response.data || [];
+        
+        // Attach profile image from map if missing
+        employeesData.forEach(emp => {
+          const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+          const empIdStr = emp._id ? emp._id.toString() : '';
+          if (!emp.profileImage) {
+            emp.profileImage = (empEmail && empMap[empEmail]) || (empIdStr && empMap[empIdStr]) || '';
+          }
+        });
         
         // For historical dates, map the data differently
         if (!isToday) {
@@ -225,9 +275,13 @@ const EmployeeWorkHours = () => {
                 <td>
                   <div className="employee-cell">
                     <img 
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=${emp.isCurrentUser ? '10B981' : '4F46E5'}&color=fff`} 
+                      src={getEmployeeAvatar(emp)} 
                       alt={emp.name} 
                       className="employee-avatar-small"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || 'User')}&background=${emp.isCurrentUser ? '10B981' : '4F46E5'}&color=fff`;
+                      }}
                     />
                     <div className="employee-info-small">
                       <span className="employee-name">

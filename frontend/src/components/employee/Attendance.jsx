@@ -14,7 +14,7 @@ const Attendance = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
-  
+
   // Refs for change detection
   const previousLeavesRef = useRef([]);
   const previousAttendanceRef = useRef(null);
@@ -80,10 +80,10 @@ const Attendance = () => {
     }
 
     setApplyLeaveLoading(true);
-    
+
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      
+
       const response = await fetch(`${API_BASE_URL}/attendance/leave/apply-auto`, {
         method: 'POST',
         headers: {
@@ -98,9 +98,9 @@ const Attendance = () => {
           autoApprove: true
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setShowLeaveForm(false);
         setShowLeaveSuccessPopup(true);
@@ -128,13 +128,13 @@ const Attendance = () => {
         window.location.href = '/login';
         return;
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/attendance/my-today`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.status === 401) {
         console.error('Token expired or invalid - please login again');
         setMessage('Session expired. Please login again.');
@@ -146,16 +146,16 @@ const Attendance = () => {
         window.location.href = '/login';
         return;
       }
-      
+
       const data = await response.json();
       if (data.success) {
         setTodayAttendance(data.data);
         setLastUpdated(new Date());
-        
+
         // Detect attendance changes
         const currentAttendance = data.data;
         const previousAttendance = previousAttendanceRef.current;
-        
+
         if (JSON.stringify(currentAttendance) !== JSON.stringify(previousAttendance)) {
           console.log('🔄 ATTENDANCE CHANGE DETECTED');
           console.log('📊 Previous:', previousAttendance?.status || 'No data');
@@ -163,7 +163,7 @@ const Attendance = () => {
           console.log('⏰ Changed at:', new Date().toLocaleTimeString());
           console.log('---');
         }
-        
+
         previousAttendanceRef.current = currentAttendance;
       }
     } catch (err) {
@@ -218,7 +218,7 @@ const Attendance = () => {
   const handleSaveAttendanceEdit = async (e) => {
     e.preventDefault();
     if (!editingRecord?._id) return;
-    
+
     try {
       setSavingEdit(true);
       const updatePayload = {
@@ -405,7 +405,7 @@ const Attendance = () => {
       window.location.href = '/login';
       return;
     }
-    
+
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/attendance/mark`, {
@@ -445,7 +445,7 @@ const Attendance = () => {
       window.location.href = '/login';
       return;
     }
-    
+
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/attendance/checkout`, {
@@ -485,27 +485,27 @@ const Attendance = () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) return;
-      
+
       const response = await fetch(`${API_BASE_URL}/attendance/leave/my-leaves`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.status === 401) {
         console.error('Token expired');
         return;
       }
-      
+
       const data = await response.json();
       if (data.success) {
         setMyLeaves(data.data || []);
         setLastUpdated(new Date());
-        
+
         // Detect changes and log automatically
         const currentLeaves = data.data || [];
         const previousLeaves = previousLeavesRef.current;
-        
+
         if (JSON.stringify(currentLeaves) !== JSON.stringify(previousLeaves)) {
           changeCountRef.current += 1;
           console.log(`🔄 CHANGE DETECTED #${changeCountRef.current}`);
@@ -516,7 +516,7 @@ const Attendance = () => {
           console.log('⏰ Updated at:', new Date().toLocaleTimeString());
           console.log('---');
         }
-        
+
         previousLeavesRef.current = currentLeaves;
       }
     } catch (err) {
@@ -527,18 +527,18 @@ const Attendance = () => {
   const formatTime = (dateString) => {
     if (!dateString) return '--:--';
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
   const calculateDuration = () => {
     if (!todayAttendance?.checkInTime) return '--';
     const checkIn = new Date(todayAttendance.checkInTime);
-    const checkOut = todayAttendance.checkOutTime 
-      ? new Date(todayAttendance.checkOutTime) 
+    const checkOut = todayAttendance.checkOutTime
+      ? new Date(todayAttendance.checkOutTime)
       : new Date();
     const diff = Math.floor((checkOut - checkIn) / (1000 * 60)); // minutes
     const hours = Math.floor(diff / 60);
@@ -562,18 +562,18 @@ const Attendance = () => {
         <div>
           <h1>Attendance & Leaves</h1>
           <p>Mark daily presence, track shift durations, and manage leave applications</p>
-          <div style={{ 
-            fontSize: '12px', 
-            color: '#6B7280', 
+          <div style={{
+            fontSize: '12px',
+            color: '#6B7280',
             marginTop: '5px',
             display: 'flex',
             alignItems: 'center',
             gap: '5px'
           }}>
-            <span style={{ 
-              width: '8px', 
-              height: '8px', 
-              background: '#10B981', 
+            <span style={{
+              width: '8px',
+              height: '8px',
+              background: '#10B981',
               borderRadius: '50%',
               animation: 'pulse 2s infinite'
             }}></span>
@@ -594,7 +594,7 @@ const Attendance = () => {
           </div>
         </div>
         <div style={{ position: 'relative' }}>
-          <button 
+          <button
             onClick={() => setShowLeaveDropdown(!showLeaveDropdown)}
             disabled={applyLeaveLoading}
             className="btn-apply-leave"
@@ -637,11 +637,11 @@ const Attendance = () => {
           </div>
           <div className="status-header-meta">
             <span className="current-date">
-              📅 {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
+              📅 {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
               })}
             </span>
           </div>
@@ -650,14 +650,14 @@ const Attendance = () => {
         {todayAttendance ? (
           <div className="attendance-details">
             <div className="status-badge-wrapper">
-              <span className="status-badge" style={{ 
+              <span className="status-badge" style={{
                 backgroundColor: getStatusColor(todayAttendance.status),
                 color: 'white'
               }}>
                 ● {todayAttendance.status}
               </span>
             </div>
-            
+
             <div className="time-stats">
               <div className="time-stat">
                 <span className="time-label">Check In</span>
@@ -684,7 +684,7 @@ const Attendance = () => {
             {/* Action Button */}
             <div className="action-section">
               {todayAttendance.isActive ? (
-                <button 
+                <button
                   className="btn-checkout"
                   onClick={checkOut}
                   disabled={loading}
@@ -743,10 +743,10 @@ const Attendance = () => {
               {/* Generate Office QR Code Method */}
               <div
                 className={`checkin-method-card ${adminCheckMode === 'qr' ? 'selected' : ''}`}
-                onClick={() => { 
-                  setAdminCheckMode('qr'); 
+                onClick={() => {
+                  setAdminCheckMode('qr');
                   setQrModalTab('kiosk_qr');
-                  setShowQRModal(true); 
+                  setShowQRModal(true);
                 }}
               >
                 <div className="method-icon qr-icon">🔲</div>
@@ -921,8 +921,8 @@ const Attendance = () => {
               <div className="mark-attendance-form">
                 <div className="form-group">
                   <label>Status</label>
-                  <select 
-                    value={status} 
+                  <select
+                    value={status}
                     onChange={(e) => setStatus(e.target.value)}
                     className="status-select"
                   >
@@ -932,7 +932,7 @@ const Attendance = () => {
                     <option value="Leave">Leave</option>
                   </select>
                 </div>
-                
+
                 <div className="form-group">
                   <label>Notes (optional)</label>
                   <input
@@ -944,7 +944,7 @@ const Attendance = () => {
                   />
                 </div>
 
-                <button 
+                <button
                   className="btn-checkin"
                   onClick={markAttendance}
                   disabled={loading}
@@ -957,10 +957,10 @@ const Attendance = () => {
                 </button>
 
                 <div style={{ marginTop: '12px' }}>
-                  <button 
+                  <button
                     type="button"
                     className="btn-checkin"
-                    style={{ 
+                    style={{
                       background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
                       display: 'flex',
                       alignItems: 'center',
@@ -1046,7 +1046,7 @@ const Attendance = () => {
                 const att = emp.attendanceToday || {};
                 const checkInStr = att.checkInTime ? formatTime(att.checkInTime) : '--:--';
                 const checkOutStr = att.checkOutTime ? formatTime(att.checkOutTime) : (att.isActive ? '🟢 In Progress' : '--:--');
-                
+
                 // Calculate duration
                 let durationStr = '--';
                 if (att.checkInTime) {
@@ -1077,7 +1077,7 @@ const Attendance = () => {
                         {att.verificationMethod && (
                           <span className="method-pill">
                             {att.verificationMethod === 'gps' || att.verificationMethod === 'geolocation' ? '📍 GPS' :
-                             att.verificationMethod === 'qr_code' ? '📷 QR' : '🕒 Standard'}
+                              att.verificationMethod === 'qr_code' ? '📷 QR' : '🕒 Standard'}
                           </span>
                         )}
                       </div>
@@ -1224,7 +1224,7 @@ const Attendance = () => {
             <h2 className="leave-modal-title">
               Apply for {appliedLeaveType?.toLowerCase().endsWith('leave') ? appliedLeaveType : `${appliedLeaveType} Leave`}
             </h2>
-            
+
             <div className="leave-form-group">
               <label className="leave-form-label">
                 Start Date:
@@ -1236,7 +1236,7 @@ const Attendance = () => {
                 className="leave-form-input"
               />
             </div>
-            
+
             <div className="leave-form-group">
               <label className="leave-form-label">
                 End Date:
@@ -1249,7 +1249,7 @@ const Attendance = () => {
                 className="leave-form-input"
               />
             </div>
-            
+
             <div className="leave-form-group" style={{ marginBottom: '25px' }}>
               <label className="leave-form-label">
                 Reason (optional):
@@ -1262,7 +1262,7 @@ const Attendance = () => {
                 className="leave-form-textarea"
               />
             </div>
-            
+
             <div className="leave-modal-actions">
               <button
                 type="button"
@@ -1324,7 +1324,7 @@ const Attendance = () => {
               <span className="leaves-count-badge">{myLeaves.length} Total</span>
             </h2>
           </div>
-          
+
           <div className="leaves-list-grid">
             {myLeaves.map((leave) => (
               <div key={leave._id} className="leave-request-card">
@@ -1333,11 +1333,11 @@ const Attendance = () => {
                     <span className="leave-type-name">{leave.leaveType}</span>
                   </div>
                   <span className={`leave-status-pill ${leave.status?.toLowerCase()}`}>
-                    {leave.status === 'Approved' ? '✓ Approved' : 
-                     leave.status === 'Pending' ? '⏳ Pending' : '✕ Rejected'}
+                    {leave.status === 'Approved' ? '✓ Approved' :
+                      leave.status === 'Pending' ? '⏳ Pending' : '✕ Rejected'}
                   </span>
                 </div>
-                
+
                 <div className="leave-dates-row">
                   <div className="leave-date-col">
                     <span className="date-label">From</span>
@@ -1352,7 +1352,7 @@ const Attendance = () => {
                     <strong className="date-val">{leave.totalDays} {leave.totalDays === 1 ? 'Day' : 'Days'}</strong>
                   </div>
                 </div>
-                
+
                 {leave.reason && (
                   <div className="leave-reason-box">
                     <span className="reason-label">Reason:</span>

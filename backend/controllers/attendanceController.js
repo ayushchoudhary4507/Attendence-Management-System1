@@ -405,13 +405,23 @@ const getTodayAllAttendance = async (req, res) => {
   try {
     const { start: today, end: tomorrow } = getTodayDateRange();
 
-    // Get all employees
-    const employees = await Employee.find().sort({ createdAt: -1 });
+    // Get all employees and users with profile images
+    const [employees, users] = await Promise.all([
+      Employee.find().sort({ createdAt: -1 }),
+      User.find({}, 'name email profileImage')
+    ]);
+
+    const userImageByEmail = {};
+    users.forEach(u => {
+      if (u.email && u.profileImage) {
+        userImageByEmail[u.email.toLowerCase().trim()] = u.profileImage;
+      }
+    });
 
     // Get today's attendance records
     const attendances = await Attendance.find({
       date: { $gte: today, $lt: tomorrow }
-    }).populate('employeeId', 'name email employeeId designation');
+    }).populate('employeeId', 'name email employeeId designation profileImage');
 
     // Map attendance to employees by employeeId, userId, and email
     const attendanceByEmpId = {};
@@ -438,9 +448,11 @@ const getTodayAllAttendance = async (req, res) => {
 
       const isPresent = attendance && (attendance.status === 'Present' || attendance.status === 'present' || attendance.isActive);
       const isLate = attendance?.checkInTime ? isLateArrival(attendance.checkInTime) : false;
+      const profileImage = empObj.profileImage || (empEmail ? userImageByEmail[empEmail] : '') || attendance?.employeeId?.profileImage || '';
       
       return {
         ...empObj,
+        profileImage,
         attendanceStatus: isPresent ? 'active' : 'inactive',
         attendanceToday: attendance ? {
           ...attendance.toObject(),
@@ -484,12 +496,22 @@ const getTodayAttendanceStatus = async (req, res) => {
     const { start: today, end: tomorrow } = getTodayDateRange();
 
     // All logged-in users see all employees
-    const employees = await Employee.find().sort({ createdAt: -1 });
+    const [employees, users] = await Promise.all([
+      Employee.find().sort({ createdAt: -1 }),
+      User.find({}, 'name email profileImage')
+    ]);
+
+    const userImageByEmail = {};
+    users.forEach(u => {
+      if (u.email && u.profileImage) {
+        userImageByEmail[u.email.toLowerCase().trim()] = u.profileImage;
+      }
+    });
 
     // Get today's attendance records
     const attendances = await Attendance.find({
       date: { $gte: today, $lt: tomorrow }
-    }).populate('employeeId', 'name email employeeId designation');
+    }).populate('employeeId', 'name email employeeId designation profileImage');
 
     // Map attendance to employees by employeeId, userId, and email
     const attendanceByEmpId = {};
@@ -516,6 +538,7 @@ const getTodayAttendanceStatus = async (req, res) => {
 
       const isPresent = attendance && (attendance.status === 'Present' || attendance.status === 'present' || attendance.isActive);
       const isLate = attendance?.checkInTime ? isLateArrival(attendance.checkInTime) : false;
+      const profileImage = empObj.profileImage || (empEmail ? userImageByEmail[empEmail] : '') || attendance?.employeeId?.profileImage || '';
       
       let status = 'inactive';
       if (attendance) {
@@ -524,6 +547,7 @@ const getTodayAttendanceStatus = async (req, res) => {
       
       return {
         ...empObj,
+        profileImage,
         attendanceStatus: status,
         attendanceToday: attendance ? {
           ...attendance.toObject(),
@@ -723,13 +747,23 @@ const getAttendanceByDate = async (req, res) => {
     console.log('=== Get Attendance By Date ===');
     console.log('Search date window:', { startSearch, endSearch });
     
-    // Get all employees
-    const employees = await Employee.find().sort({ createdAt: -1 });
+    // Get all employees and users with profile images
+    const [employees, users] = await Promise.all([
+      Employee.find().sort({ createdAt: -1 }),
+      User.find({}, 'name email profileImage')
+    ]);
+
+    const userImageByEmail = {};
+    users.forEach(u => {
+      if (u.email && u.profileImage) {
+        userImageByEmail[u.email.toLowerCase().trim()] = u.profileImage;
+      }
+    });
     
     // Get attendance records for selected date
     const attendances = await Attendance.find({
       date: { $gte: startSearch, $lt: endSearch }
-    }).populate('employeeId', 'name email employeeId designation');
+    }).populate('employeeId', 'name email employeeId designation profileImage');
     
     console.log('Found attendances:', attendances.length);
     
@@ -760,9 +794,12 @@ const getAttendanceByDate = async (req, res) => {
       if (attendance) {
         status = attendance.isActive ? 'active' : 'inactive';
       }
+
+      const profileImage = empObj.profileImage || (empEmail ? userImageByEmail[empEmail] : '') || attendance?.employeeId?.profileImage || '';
       
       return {
         ...empObj,
+        profileImage,
         attendanceStatus: status,
         attendanceData: attendance ? {
           ...attendance.toObject(),
