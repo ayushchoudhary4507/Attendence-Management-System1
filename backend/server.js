@@ -128,6 +128,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const payslipRoutes = require('./routes/payslipRoutes');
 const advancedReportRoutes = require('./routes/advancedReportRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const dashboardConfigRoutes = require('./routes/dashboardConfigRoutes');
 
 // Use routes
 app.use('/api/login', loginRoutes);
@@ -137,6 +138,7 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/dashboard-config', dashboardConfigRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/tasks', taskRoutes);

@@ -22,6 +22,7 @@ import MonthlyReports from './pages/admin/MonthlyReports';
 import AIInsights from './pages/admin/AIInsights';
 import AIChat from './pages/admin/AIChat';
 import AttendancePredictions from './pages/admin/AttendancePredictions';
+import MobileDashboardConfig from './pages/admin/MobileDashboardConfig';
 import MyShifts from './pages/employee/MyShifts';
 import EmployeeSalary from './pages/employee/EmployeeSalary';
 import EmployeeReports from './pages/employee/EmployeeReports';
@@ -133,6 +134,7 @@ const Layout = ({ children, onLogout, userRole, user, onUserUpdate }) => {
       { label: 'Shift Management', path: '/shifts', icon: '🗓️', category: 'Page' },
       { label: 'Salary Management', path: '/salary', icon: '💰', category: 'Page' },
       { label: 'Monthly Reports', path: '/reports', icon: '📊', category: 'Page' },
+      { label: 'App Dashboard Settings', path: '/admin/dashboard-settings', icon: '📱', category: 'Page' },
       { label: 'Admin Panel', path: '/admin', icon: '🔐', category: 'Page' },
     ] : [
       { label: 'My Shifts', path: '/my-shifts', icon: '🗓️', category: 'Page' },
@@ -1087,6 +1089,15 @@ function App() {
               <EmployeeSalary user={user} />
             </Layout>
           </ProtectedRoute>
+        } />
+
+        {/* Admin Dashboard Settings Route */}
+        <Route path="/admin/dashboard-settings" element={
+          <AdminRoute isAuthenticated={isAuthenticated} user={user}>
+            <Layout onLogout={handleLogout} userRole={user?.role} user={user} onUserUpdate={handleUserUpdate}>
+              <MobileDashboardConfig />
+            </Layout>
+          </AdminRoute>
         } />
 
         {/* Admin Only Route */}

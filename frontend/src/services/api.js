@@ -865,15 +865,23 @@ export const advancedReportAPI = {
   }
 };
 
-// AI API
-export const aiAPI = {
-  getInsights: async () => {
-    const response = await api.get('/ai/insights');
+// Mobile Dashboard Configuration API
+export const dashboardConfigAPI = {
+  // Get dashboard cards configuration
+  getConfig: async (params = {}) => {
+    const response = await api.get('/dashboard-config', { params });
     return response.data;
   },
-  
-  chat: async (query) => {
-    const response = await api.post('/ai/chat', { query });
+
+  // Update dashboard cards configuration (Admin only)
+  updateConfig: async (cardsData) => {
+    const response = await api.put('/dashboard-config', cardsData);
+    return response.data;
+  },
+
+  // Reset to defaults (Admin only)
+  resetConfig: async () => {
+    const response = await api.post('/dashboard-config/reset');
     return response.data;
   }
 };
