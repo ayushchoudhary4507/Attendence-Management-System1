@@ -18,7 +18,7 @@ const attendanceSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Present', 'Absent', 'Half Day', 'Leave'],
+    enum: ['Present', 'Absent', 'Half Day', 'Leave', 'present', 'absent', 'half day', 'leave', 'Half-Day', 'half-day'],
     default: 'Present'
   },
   checkInTime: {
@@ -43,7 +43,7 @@ const attendanceSchema = new mongoose.Schema({
   },
   verificationMethod: {
     type: String,
-    enum: ['manual', 'qr_code', 'geolocation', 'qr_and_geo', 'face_recognition', 'face_lock'],
+    enum: ['manual', 'qr_code', 'geolocation', 'qr_and_geo', 'face_recognition', 'face_lock', 'face', 'FACE', 'gps', 'GPS', 'qr', 'QR'],
     default: 'manual'
   },
   location: {
@@ -60,6 +60,32 @@ const attendanceSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Pre-validate hook to normalize status and verificationMethod
+attendanceSchema.pre('validate', function(next) {
+  if (this.status) {
+    const s = this.status.toString().toLowerCase().trim();
+    if (s === 'present') this.status = 'Present';
+    else if (s === 'absent') this.status = 'Absent';
+    else if (s === 'leave' || s === 'on leave') this.status = 'Leave';
+    else if (s === 'half day' || s === 'half-day') this.status = 'Half Day';
+  }
+  if (this.verificationMethod) {
+    const m = this.verificationMethod.toString().toLowerCase().trim();
+    if (m === 'face' || m === 'face_lock' || m === 'face_recognition' || m === 'face-recognition') {
+      this.verificationMethod = 'face_recognition';
+    } else if (m === 'gps' || m === 'geo' || m === 'geolocation') {
+      this.verificationMethod = 'geolocation';
+    } else if (m === 'qr' || m === 'qr_code' || m === 'qr-code') {
+      this.verificationMethod = 'qr_code';
+    } else if (m === 'qr_and_geo') {
+      this.verificationMethod = 'qr_and_geo';
+    } else {
+      this.verificationMethod = 'manual';
+    }
+  }
+  next();
 });
 
 // Index for faster queries by employee and date

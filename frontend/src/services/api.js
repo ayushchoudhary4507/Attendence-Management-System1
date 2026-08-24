@@ -14,7 +14,7 @@ const api = axios.create({
   timeoutErrorMessage: 'Request timed out. Server may be starting up, please try again.'
 });
 
-// Add token and cache busting headers to requests
+// Add token and cache busting headers to requests + detailed API logging
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) {
@@ -24,13 +24,27 @@ api.interceptors.request.use((config) => {
   config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
   config.headers['Pragma'] = 'no-cache';
   config.headers['Expires'] = '0';
+
+  console.log(`🌐 [API Request] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`, {
+    params: config.params,
+    data: config.data
+  });
   return config;
 });
 
-// Handle 401 responses - clear stale tokens and redirect to login
+// Handle API responses with logging and 401 error recovery
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const data = response.data;
+    const recordsCount = Array.isArray(data?.data) ? data.data.length : (Array.isArray(data) ? data.length : (data?.data ? 1 : 0));
+    console.log(`📥 [API Response] ${response.config.method?.toUpperCase()} ${response.config.url} (Status: ${response.status}) - ${recordsCount} record(s)`, {
+      count: recordsCount,
+      response: data
+    });
+    return response;
+  },
   (error) => {
+    console.error(`❌ [API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, error.response?.data || error.message);
     if (error.response && error.response.status === 401) {
       console.warn('🔒 Token invalid or expired, clearing auth data');
       sessionStorage.removeItem('token');

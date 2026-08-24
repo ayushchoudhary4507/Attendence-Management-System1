@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
 const User = require('../models/User');
@@ -5,12 +6,21 @@ const Notification = require('../models/Notification');
 const Leave = require('../models/Leave');
 const Holiday = require('../models/Holiday');
 
-// Helper function to get start and end of today in local date
+// Helper function to get start and end of today spanning local date and UTC date safely
 const getTodayDateRange = () => {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+
+  const startLocal = new Date(y, m, d, 0, 0, 0, 0);
+  const endLocal = new Date(y, m, d + 1, 0, 0, 0, 0);
+
+  const startUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  const endUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+
+  const start = new Date(Math.min(startLocal.getTime(), startUtc.getTime()));
+  const end = new Date(Math.max(endLocal.getTime(), endUtc.getTime()));
   return { start, end };
 };
 
@@ -83,26 +93,68 @@ const markAttendance = async (req, res) => {
   try {
     console.log('----------------------------------------------------');
     console.log('📥 [Attendance Flow] POST /api/attendance/mark');
-    const { status = 'Present', notes = '' } = req.body;
-    const userId = req.user.id || req.user.userId;
+    console.log('Request Body:', JSON.stringify(req.body));
+    
+    const { 
+      status: rawStatus, 
+      attendanceStatus, 
+      notes = '', 
+      attendanceMethod, 
+      verificationMethod: rawMethod,
+      latitude, 
+      longitude, 
+      accuracy,
+      address,
+      checkInTime: rawCheckIn,
+      checkIn: rawCheckInAlt,
+      date: rawDate
+    } = req.body;
 
-    // Find the employee associated with this user
-    const user = await User.findById(userId);
-    if (!user) {
+    const status = rawStatus || attendanceStatus || 'Present';
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
+
+    // Resolve user and employee
+    let user = null;
+    let employee = null;
+
+    if (userId) {
+      user = await User.findById(userId);
+      if (!user) {
+        employee = await Employee.findById(userId);
+      }
+    }
+
+    if (!user && (req.body.email || req.body.userEmail)) {
+      const email = (req.body.email || req.body.userEmail).trim();
+      user = await User.findOne({ email: new RegExp(`^${email}$`, 'i') });
+      employee = employee || await Employee.findOne({ email: new RegExp(`^${email}$`, 'i') });
+    }
+
+    if (!employee && (req.body.employeeId || req.body.id)) {
+      const empId = req.body.employeeId || req.body.id;
+      if (mongoose.isValidObjectId(empId)) {
+        employee = await Employee.findById(empId);
+      }
+    }
+
+    if (user && !employee) {
+      employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
+    } else if (employee && !user) {
+      user = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
+    }
+
+    if (!employee && !user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'Employee or User profile not found. Please verify authentication.'
       });
     }
 
-    // Find employee by email (case-insensitive)
-    const employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee profile not found. Please contact admin.'
-      });
-    }
+    // Ensure we have IDs for both
+    const finalEmployeeId = employee?._id || user?._id;
+    const finalUserId = user?._id || employee?._id;
+    const employeeName = employee?.name || user?.name || 'Employee';
+    const employeeEmail = employee?.email || user?.email || '';
 
     // Check if today is a holiday
     const { start: today, end: tomorrow } = getTodayDateRange();
@@ -129,59 +181,89 @@ const markAttendance = async (req, res) => {
 
     // Check if attendance already marked for today
     const existingAttendance = await Attendance.findOne({
-      $or: [{ employeeId: employee._id }, { userId: user._id }],
+      $or: [
+        { employeeId: finalEmployeeId },
+        { userId: finalUserId }
+      ],
       date: { $gte: today, $lt: tomorrow }
-    });
+    }).populate('employeeId', 'name email employeeId designation');
 
     if (existingAttendance) {
+      console.log('⚠️ [Attendance Flow] Duplicate check: attendance already exists for today');
       return res.status(200).json({
         success: true,
         alreadyMarked: true,
         message: 'Attendance already marked for today',
-        data: existingAttendance
+        data: existingAttendance,
+        attendance: existingAttendance
       });
     }
 
-    const checkInDate = new Date();
+    const checkInDate = rawCheckIn || rawCheckInAlt || rawDate ? new Date(rawCheckIn || rawCheckInAlt || rawDate) : new Date();
     const isLate = isLateArrival(checkInDate);
+
+    // Normalize verification method
+    let method = rawMethod || attendanceMethod || 'manual';
+    const lowerMethod = method.toString().toLowerCase();
+    if (lowerMethod.includes('face')) {
+      method = 'face_recognition';
+    } else if (lowerMethod.includes('gps') || lowerMethod.includes('geo')) {
+      method = 'geolocation';
+    } else if (lowerMethod.includes('qr')) {
+      method = 'qr_code';
+    }
+
+    const locationData = (latitude && longitude) ? {
+      latitude,
+      longitude,
+      accuracy: accuracy || null,
+      address: address || 'Mobile GPS Check-in',
+      isWithinOfficeRadius: true
+    } : (req.body.location || null);
 
     // Create new attendance record
     const attendance = await Attendance.create({
-      employeeId: employee._id,
-      userId: user._id,
+      employeeId: finalEmployeeId,
+      userId: finalUserId,
       date: new Date(),
       status,
       checkInTime: checkInDate,
       isActive: true,
       notes: notes || (isLate ? 'Standard Check-in (Late Arrival)' : 'Standard Check-in'),
-      verificationMethod: 'manual'
+      verificationMethod: method,
+      location: locationData
     });
 
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('employeeId', 'name email employeeId designation');
 
     // Create notification for admins
-    const admins = await User.find({ role: 'admin' }).select('_id');
-    for (const admin of admins) {
-      await Notification.create({
-        type: 'attendance',
-        title: 'Attendance Marked',
-        message: `${employee.name} (${employee.email}) has marked attendance at ${checkInDate.toLocaleTimeString()} (${isLate ? 'Late Arrival' : 'On Time'})`,
-        employeeId: employee._id,
-        employeeName: employee.name,
-        employeeEmail: employee.email,
-        senderId: user._id,
-        receiverId: admin._id
-      });
+    try {
+      const admins = await User.find({ role: 'admin' }).select('_id');
+      for (const admin of admins) {
+        await Notification.create({
+          type: 'attendance',
+          title: 'Attendance Marked',
+          message: `${employeeName} (${employeeEmail}) has marked attendance at ${checkInDate.toLocaleTimeString()} (${isLate ? 'Late Arrival' : 'On Time'})`,
+          employeeId: finalEmployeeId,
+          employeeName: employeeName,
+          employeeEmail: employeeEmail,
+          senderId: finalUserId,
+          receiverId: admin._id
+        });
+      }
+    } catch (notifErr) {
+      console.error('Notification error:', notifErr.message);
     }
 
     // Broadcast realtime update
-    await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'marked');
+    await broadcastAttendanceUpdate(req, populatedAttendance, employee || { _id: finalEmployeeId, name: employeeName, email: employeeEmail }, 'marked');
 
     res.status(201).json({
       success: true,
       message: `Attendance marked successfully (${isLate ? 'Late Arrival' : 'On Time'})`,
       data: populatedAttendance,
+      attendance: populatedAttendance,
       isLate
     });
   } catch (error) {
@@ -330,23 +412,30 @@ const getTodayAllAttendance = async (req, res) => {
       date: { $gte: today, $lt: tomorrow }
     }).populate('employeeId', 'name email employeeId designation');
 
-    // Map attendance to employees safely
-    const attendanceMap = {};
+    // Map attendance to employees by employeeId, userId, and email
+    const attendanceByEmpId = {};
+    const attendanceByUserId = {};
+    const attendanceByEmail = {};
+
     attendances.forEach(att => {
       const empIdStr = att.employeeId?._id ? att.employeeId._id.toString() : (att.employeeId ? att.employeeId.toString() : null);
-      if (empIdStr) {
-        attendanceMap[empIdStr] = att;
-      }
-      if (att.userId) {
-        attendanceMap[att.userId.toString()] = att;
+      if (empIdStr) attendanceByEmpId[empIdStr] = att;
+      if (att.userId) attendanceByUserId[att.userId.toString()] = att;
+      if (att.employeeId?.email) {
+        attendanceByEmail[att.employeeId.email.toLowerCase().trim()] = att;
       }
     });
 
     // Create response with attendance status
     const employeesWithAttendance = employees.map(emp => {
       const empObj = emp.toObject();
-      const attendance = attendanceMap[emp._id.toString()];
-      const isPresent = attendance && (attendance.status === 'Present' || attendance.isActive);
+      const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+      const attendance = attendanceByEmpId[emp._id.toString()] ||
+                         attendanceByUserId[emp._id.toString()] ||
+                         (emp.userId ? attendanceByUserId[emp.userId.toString()] : null) ||
+                         attendanceByEmail[empEmail];
+
+      const isPresent = attendance && (attendance.status === 'Present' || attendance.status === 'present' || attendance.isActive);
       const isLate = attendance?.checkInTime ? isLateArrival(attendance.checkInTime) : false;
       
       return {
@@ -364,7 +453,7 @@ const getTodayAllAttendance = async (req, res) => {
       };
     });
 
-    const presentCount = employeesWithAttendance.filter(e => e.attendanceToday && e.attendanceToday.status === 'Present').length;
+    const presentCount = employeesWithAttendance.filter(e => e.attendanceToday && (e.attendanceToday.status === 'Present' || e.attendanceToday.status === 'present')).length;
     const lateCount = employeesWithAttendance.filter(e => e.isLate).length;
     const activeCount = employeesWithAttendance.filter(e => e.isCheckedIn).length;
 
@@ -401,23 +490,30 @@ const getTodayAttendanceStatus = async (req, res) => {
       date: { $gte: today, $lt: tomorrow }
     }).populate('employeeId', 'name email employeeId designation');
 
-    // Map attendance to employees safely
-    const attendanceMap = {};
+    // Map attendance to employees by employeeId, userId, and email
+    const attendanceByEmpId = {};
+    const attendanceByUserId = {};
+    const attendanceByEmail = {};
+
     attendances.forEach(att => {
       const empIdStr = att.employeeId?._id ? att.employeeId._id.toString() : (att.employeeId ? att.employeeId.toString() : null);
-      if (empIdStr) {
-        attendanceMap[empIdStr] = att;
-      }
-      if (att.userId) {
-        attendanceMap[att.userId.toString()] = att;
+      if (empIdStr) attendanceByEmpId[empIdStr] = att;
+      if (att.userId) attendanceByUserId[att.userId.toString()] = att;
+      if (att.employeeId?.email) {
+        attendanceByEmail[att.employeeId.email.toLowerCase().trim()] = att;
       }
     });
 
     // Create response with active/inactive status
     const employeesWithStatus = employees.map(emp => {
       const empObj = emp.toObject();
-      const attendance = attendanceMap[emp._id.toString()];
-      const isPresent = attendance && (attendance.status === 'Present' || attendance.isActive);
+      const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+      const attendance = attendanceByEmpId[emp._id.toString()] ||
+                         attendanceByUserId[emp._id.toString()] ||
+                         (emp.userId ? attendanceByUserId[emp.userId.toString()] : null) ||
+                         attendanceByEmail[empEmail];
+
+      const isPresent = attendance && (attendance.status === 'Present' || attendance.status === 'present' || attendance.isActive);
       const isLate = attendance?.checkInTime ? isLateArrival(attendance.checkInTime) : false;
       
       let status = 'inactive';
@@ -440,7 +536,7 @@ const getTodayAttendanceStatus = async (req, res) => {
       };
     });
 
-    const presentCount = employeesWithStatus.filter(e => e.attendanceToday && e.attendanceToday.status === 'Present').length;
+    const presentCount = employeesWithStatus.filter(e => e.attendanceToday && (e.attendanceToday.status === 'Present' || e.attendanceToday.status === 'present')).length;
     const lateCount = employeesWithStatus.filter(e => e.isLate).length;
     const activeCount = employeesWithStatus.filter(e => e.attendanceStatus === 'active').length;
 
@@ -461,7 +557,6 @@ const getTodayAttendanceStatus = async (req, res) => {
     });
   }
 };
-
 // @desc    Get attendance history for an employee
 // @route   GET /api/attendance/history/:employeeId
 // @access  Private
@@ -470,7 +565,24 @@ const getAttendanceHistory = async (req, res) => {
     const { employeeId } = req.params;
     const { startDate, endDate } = req.query;
 
-    let query = { employeeId };
+    console.log('🔍 [Attendance Flow] GET /api/attendance/history for ID:', employeeId);
+
+    const emp = mongoose.isValidObjectId(employeeId) ? await Employee.findById(employeeId) : null;
+    const usr = mongoose.isValidObjectId(employeeId) ? await User.findById(employeeId) : null;
+
+    const idFilters = [{ employeeId: employeeId }, { userId: employeeId }];
+    if (emp) {
+      idFilters.push({ employeeId: emp._id });
+      const matchingUser = await User.findOne({ email: new RegExp(`^${emp.email.trim()}$`, 'i') });
+      if (matchingUser) idFilters.push({ userId: matchingUser._id });
+    }
+    if (usr) {
+      idFilters.push({ userId: usr._id });
+      const matchingEmp = await Employee.findOne({ email: new RegExp(`^${usr.email.trim()}$`, 'i') });
+      if (matchingEmp) idFilters.push({ employeeId: matchingEmp._id });
+    }
+
+    let query = { $or: idFilters };
 
     if (startDate && endDate) {
       query.date = {
@@ -481,7 +593,7 @@ const getAttendanceHistory = async (req, res) => {
 
     const attendances = await Attendance.find(query)
       .sort({ date: -1 })
-      .populate('employeeId', 'name email employeeId');
+      .populate('employeeId', 'name email employeeId designation');
 
     res.json({
       success: true,
@@ -492,7 +604,7 @@ const getAttendanceHistory = async (req, res) => {
     console.error('Get attendance history error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -503,10 +615,10 @@ const getAttendanceHistory = async (req, res) => {
 const adminMarkAttendance = async (req, res) => {
   try {
     const { employeeId, status = 'Present', notes = '' } = req.body;
-    const adminUserId = req.user.id;
+    const adminUserId = req.user?.id || req.user?.userId;
 
     // Check if user is admin
-    if (req.user.role !== 'admin') {
+    if (req.user?.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
@@ -522,15 +634,14 @@ const adminMarkAttendance = async (req, res) => {
       });
     }
 
+    const matchingUser = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
+    const finalUserId = matchingUser?._id || adminUserId;
+
     // Check if attendance already marked for today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: today, end: tomorrow } = getTodayDateRange();
 
     const existingAttendance = await Attendance.findOne({
-      employeeId: employee._id,
+      $or: [{ employeeId: employee._id }, { userId: finalUserId }],
       date: { $gte: today, $lt: tomorrow }
     });
 
@@ -545,24 +656,29 @@ const adminMarkAttendance = async (req, res) => {
     // Create new attendance record
     const attendance = await Attendance.create({
       employeeId: employee._id,
-      userId: adminUserId,
+      userId: finalUserId,
       date: new Date(),
       status,
       checkInTime: new Date(),
       isActive: true,
-      notes: notes || `Marked by admin: ${req.user.email}`
+      notes: notes || `Marked by admin: ${req.user?.email || 'Admin'}`
     });
+
+    const populatedAttendance = await Attendance.findById(attendance._id)
+      .populate('employeeId', 'name email employeeId designation');
+
+    await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'admin_marked');
 
     res.status(201).json({
       success: true,
       message: `Attendance marked for ${employee.name}`,
-      data: attendance
+      data: populatedAttendance
     });
   } catch (error) {
     console.error('Admin mark attendance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -581,37 +697,63 @@ const getAttendanceByDate = async (req, res) => {
       });
     }
     
-    const selectedDate = new Date(date);
-    selectedDate.setHours(0, 0, 0, 0);
-    
-    const nextDay = new Date(selectedDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    let startSearch, endSearch;
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+      const parts = date.split('T')[0].split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+
+      const startLocal = new Date(y, m, d, 0, 0, 0, 0);
+      const endLocal = new Date(y, m, d + 1, 0, 0, 0, 0);
+      const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+      const endUtc = new Date(Date.UTC(y, m, d + 1, 0, 0, 0, 0));
+
+      startSearch = new Date(Math.min(startLocal.getTime(), startUtc.getTime()));
+      endSearch = new Date(Math.max(endLocal.getTime(), endUtc.getTime()));
+    } else {
+      const d = new Date(date);
+      startSearch = new Date(d);
+      startSearch.setHours(0, 0, 0, 0);
+      endSearch = new Date(startSearch);
+      endSearch.setDate(endSearch.getDate() + 1);
+    }
     
     console.log('=== Get Attendance By Date ===');
-    console.log('Selected date:', selectedDate);
+    console.log('Search date window:', { startSearch, endSearch });
     
     // Get all employees
     const employees = await Employee.find().sort({ createdAt: -1 });
     
     // Get attendance records for selected date
     const attendances = await Attendance.find({
-      date: { $gte: selectedDate, $lt: nextDay }
+      date: { $gte: startSearch, $lt: endSearch }
     }).populate('employeeId', 'name email employeeId designation');
     
     console.log('Found attendances:', attendances.length);
     
-    // Map attendance to employees
-    const attendanceMap = {};
+    // Map attendance to employees by empId, userId, and email
+    const attendanceByEmpId = {};
+    const attendanceByUserId = {};
+    const attendanceByEmail = {};
+
     attendances.forEach(att => {
-      if (att.employeeId && att.employeeId._id) {
-        attendanceMap[att.employeeId._id.toString()] = att;
+      const empIdStr = att.employeeId?._id ? att.employeeId._id.toString() : (att.employeeId ? att.employeeId.toString() : null);
+      if (empIdStr) attendanceByEmpId[empIdStr] = att;
+      if (att.userId) attendanceByUserId[att.userId.toString()] = att;
+      if (att.employeeId?.email) {
+        attendanceByEmail[att.employeeId.email.toLowerCase().trim()] = att;
       }
     });
     
     // Create response with attendance status
     const employeesWithAttendance = employees.map(emp => {
       const empObj = emp.toObject();
-      const attendance = attendanceMap[emp._id.toString()];
+      const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+      const attendance = attendanceByEmpId[emp._id.toString()] ||
+                         attendanceByUserId[emp._id.toString()] ||
+                         (emp.userId ? attendanceByUserId[emp.userId.toString()] : null) ||
+                         attendanceByEmail[empEmail];
       
       let status = 'inactive';
       if (attendance) {
@@ -632,13 +774,13 @@ const getAttendanceByDate = async (req, res) => {
     });
     
     // Calculate stats
-    const presentCount = attendances.filter(a => a.status === 'Present').length;
-    const absentCount = employees.length - presentCount;
-    const onLeaveCount = attendances.filter(a => a.status === 'Leave').length;
+    const presentCount = attendances.filter(a => a.status === 'Present' || a.status === 'present').length;
+    const absentCount = Math.max(0, employees.length - presentCount);
+    const onLeaveCount = attendances.filter(a => a.status === 'Leave' || a.status === 'leave').length;
     
     res.json({
       success: true,
-      date: selectedDate,
+      date: date,
       total: employees.length,
       present: presentCount,
       absent: absentCount,
@@ -649,7 +791,7 @@ const getAttendanceByDate = async (req, res) => {
     console.error('Get attendance by date error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };

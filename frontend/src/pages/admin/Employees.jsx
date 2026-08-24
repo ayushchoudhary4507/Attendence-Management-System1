@@ -153,7 +153,7 @@ const Employees = ({ onLogout, userRole }) => {
             if (leaveMap[empId]) {
               statusMap[empId] = 'On Leave';
             } else {
-              const hasAttendance = emp.attendanceToday && emp.attendanceToday.status === 'Present';
+              const hasAttendance = emp.attendanceToday && (emp.attendanceToday.status === 'Present' || emp.attendanceToday.status === 'present' || emp.attendanceStatus === 'active');
               statusMap[empId] = hasAttendance ? 'Present' : 'Absent';
             }
           });
@@ -166,6 +166,28 @@ const Employees = ({ onLogout, userRole }) => {
     };
 
     fetchAttendanceStatus();
+
+    const handleSync = () => {
+      console.log('🔄 [Employees Page] Real-time sync triggered - fetching latest attendance status');
+      fetchAttendanceStatus();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAttendanceStatus();
+      }
+    };
+
+    window.addEventListener('attendance_updated', handleSync);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    const timer = setInterval(fetchAttendanceStatus, 25000);
+
+    return () => {
+      window.removeEventListener('attendance_updated', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(timer);
+    };
   }, [employees]);
 
   const fetchEmployees = async (showLoader = false) => {
