@@ -16,16 +16,16 @@ export const AttendanceProIcon = ({ size = 40, className = '', style = {} }) => 
         display: 'inline-block',
         verticalAlign: 'middle',
         borderRadius: `${Math.round(size * 0.24)}px`,
-        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+        boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
         flexShrink: 0,
         ...style,
       }}
     >
       <defs>
         <linearGradient id="amsIconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#3B82F6" />
-          <stop offset="50%" stopColor="#2563EB" />
-          <stop offset="100%" stopColor="#1D4ED8" />
+          <stop offset="0%" stopColor="#4F46E5" />
+          <stop offset="50%" stopColor="#6366F1" />
+          <stop offset="100%" stopColor="#7C3AED" />
         </linearGradient>
       </defs>
 

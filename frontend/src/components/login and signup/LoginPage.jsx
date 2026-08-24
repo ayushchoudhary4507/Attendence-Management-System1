@@ -102,9 +102,9 @@ const LoginPage = ({ onSignupClick, onLoginSuccess, skipWelcome = true }) => {
     );
   }
   return (
-    <div className="login-page-container">
+    <div className={`login-page ${isDarkMode ? 'dark' : 'light'}`}>
       {/* Background Decorative Gradients */}
-      <div className="login-bg-decorations">
+      <div className="login-bg-ambient" aria-hidden="true">
         <div className="bg-blob blob-purple" />
         <div className="bg-blob blob-blue" />
         <div className="bg-grid-overlay" />
