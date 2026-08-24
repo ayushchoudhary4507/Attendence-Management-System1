@@ -8,7 +8,6 @@ const {
   getOfficeLocation,
   checkOut,
   getMyTodayAttendance,
-  getMyAttendanceStats,
   getTodayAllAttendance,
   getTodayAttendanceStatus,
   getAttendanceHistory,
@@ -508,23 +507,19 @@ router.put('/checkout', authMiddleware, checkOut);
 // Get my today's attendance - Employee only
 router.get('/my-today', authMiddleware, getMyTodayAttendance);
 
-// Get personal attendance stats for logged in employee
-router.get('/my-stats', authMiddleware, getMyAttendanceStats);
-
 // Get all employees with today's attendance - Admin only
 router.get('/today', authMiddleware, getTodayAllAttendance);
 
 // Get today's attendance status (active/inactive) - Admin only
 router.get('/today-status', authMiddleware, getTodayAttendanceStatus);
 
-// Get attendance stats (present/absent count) - Admin / All
+// Get attendance stats (present/absent count) - Admin only
 router.get('/stats', authMiddleware, getAttendanceStats);
 
 // Get calendar data for a month
 router.get('/calendar', authMiddleware, getCalendarData);
 
-// Get attendance history for logged-in user or specified employee
-router.get('/history', authMiddleware, getAttendanceHistory);
+// Get attendance history for an employee
 router.get('/history/:employeeId', authMiddleware, getAttendanceHistory);
 
 // Admin mark attendance for any employee

@@ -342,36 +342,13 @@ export const attendanceAPI = {
     const response = await api.get('/attendance/stats');
     return response.data;
   },
-
-  // Get personal attendance stats for logged in employee
-  getMyStats: async () => {
-    const response = await api.get('/attendance/my-stats');
-    return response.data;
-  },
   
-  // Get personal attendance history for logged in employee
-  getMyAttendanceHistory: async (startDate, endDate, month, year) => {
-    const params = {};
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
-    if (month) params.month = month;
-    if (year) params.year = year;
-    const response = await api.get('/attendance/history', { params });
-    return response.data;
-  },
-
-  // Get attendance history for a specific employee
+  // Get attendance history for an employee
   getAttendanceHistory: async (employeeId, startDate, endDate) => {
     const params = {};
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     const response = await api.get(`/attendance/history/${employeeId}`, { params });
-    return response.data;
-  },
-
-  // Admin mark attendance for any employee
-  adminMarkAttendance: async (data) => {
-    const response = await api.post('/attendance/admin-mark', data);
     return response.data;
   },
 

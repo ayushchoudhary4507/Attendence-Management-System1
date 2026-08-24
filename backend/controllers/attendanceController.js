@@ -559,26 +559,19 @@ const getTodayAttendanceStatus = async (req, res) => {
   }
 };
 // @desc    Get attendance history for an employee
-// @route   GET /api/attendance/history, GET /api/attendance/history/:employeeId
+// @route   GET /api/attendance/history/:employeeId
 // @access  Private
 const getAttendanceHistory = async (req, res) => {
   try {
-    const targetId = req.params.employeeId || req.query.employeeId || req.user?.id || req.user?.userId;
-    const { startDate, endDate, month, year } = req.query;
+    const { employeeId } = req.params;
+    const { startDate, endDate } = req.query;
 
-    console.log('🔍 [Attendance Flow] GET /api/attendance/history for Target ID:', targetId);
+    console.log('🔍 [Attendance Flow] GET /api/attendance/history for ID:', employeeId);
 
-    if (!targetId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Employee ID or User ID is required'
-      });
-    }
+    const emp = mongoose.isValidObjectId(employeeId) ? await Employee.findById(employeeId) : null;
+    const usr = mongoose.isValidObjectId(employeeId) ? await User.findById(employeeId) : null;
 
-    const emp = mongoose.isValidObjectId(targetId) ? await Employee.findById(targetId) : null;
-    const usr = mongoose.isValidObjectId(targetId) ? await User.findById(targetId) : null;
-
-    const idFilters = [{ employeeId: targetId }, { userId: targetId }];
+    const idFilters = [{ employeeId: employeeId }, { userId: employeeId }];
     if (emp) {
       idFilters.push({ employeeId: emp._id });
       const matchingUser = await User.findOne({ email: new RegExp(`^${emp.email.trim()}$`, 'i') });
@@ -597,36 +590,15 @@ const getAttendanceHistory = async (req, res) => {
         $gte: new Date(startDate),
         $lte: new Date(endDate)
       };
-    } else if (month && year) {
-      const m = parseInt(month, 10) - 1;
-      const y = parseInt(year, 10);
-      const startMonth = new Date(Date.UTC(y, m, 1, 0, 0, 0));
-      const endMonth = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999));
-      query.date = { $gte: startMonth, $lte: endMonth };
     }
 
     const attendances = await Attendance.find(query)
       .sort({ date: -1 })
       .populate('employeeId', 'name email employeeId designation');
 
-    // Calculate personal stats from history
-    const presentCount = attendances.filter(a => a.status === 'Present').length;
-    const halfDayCount = attendances.filter(a => a.status === 'Half Day' || a.status === 'half-day').length;
-    const leaveCount = attendances.filter(a => a.status === 'Leave' || a.status === 'leave').length;
-    const absentCount = attendances.filter(a => a.status === 'Absent' || a.status === 'absent').length;
-    const totalHours = attendances.reduce((acc, curr) => acc + (curr.workHours || 0), 0);
-
     res.json({
       success: true,
       count: attendances.length,
-      stats: {
-        present: presentCount,
-        halfDay: halfDayCount,
-        leave: leaveCount,
-        absent: absentCount,
-        totalHours: parseFloat(totalHours.toFixed(1)),
-        attendanceRate: attendances.length > 0 ? Math.round(((presentCount + (halfDayCount * 0.5)) / attendances.length) * 100) : 100
-      },
       data: attendances
     });
   } catch (error) {
@@ -635,87 +607,6 @@ const getAttendanceHistory = async (req, res) => {
       success: false,
       message: 'Server error: ' + error.message
     });
-  }
-};
-
-// @desc    Get personal attendance stats for logged in employee
-// @route   GET /api/attendance/my-stats
-// @access  Private (Employee / Authenticated User)
-const getMyAttendanceStats = async (req, res) => {
-  try {
-    const userId = req.user?.id || req.user?.userId;
-    let user = await User.findById(userId);
-    let employee = null;
-    if (user) {
-      employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
-    } else {
-      employee = await Employee.findById(userId);
-      if (employee) user = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
-    }
-
-    if (!user && !employee) {
-      return res.status(404).json({ success: false, message: 'User profile not found' });
-    }
-
-    const idFilters = [];
-    if (user) idFilters.push({ userId: user._id });
-    if (employee) idFilters.push({ employeeId: employee._id });
-
-    // Current month range
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-    const monthlyRecords = await Attendance.find({
-      $or: idFilters,
-      date: { $gte: startOfMonth, $lte: endOfMonth }
-    }).sort({ date: -1 });
-
-    const totalRecords = await Attendance.find({ $or: idFilters });
-
-    const presentDays = monthlyRecords.filter(a => a.status === 'Present').length;
-    const halfDays = monthlyRecords.filter(a => a.status === 'Half Day' || a.status === 'half-day').length;
-    const leaveDays = monthlyRecords.filter(a => a.status === 'Leave' || a.status === 'leave').length;
-    const absentDays = monthlyRecords.filter(a => a.status === 'Absent' || a.status === 'absent').length;
-    const totalHours = monthlyRecords.reduce((acc, curr) => acc + (curr.workHours || 0), 0);
-
-    const approvedLeavesCount = await Leave.countDocuments({
-      $or: idFilters,
-      status: 'Approved'
-    });
-
-    const pendingLeavesCount = await Leave.countDocuments({
-      $or: idFilters,
-      status: 'Pending'
-    });
-
-    res.json({
-      success: true,
-      employee: {
-        id: employee?._id || user?._id,
-        name: employee?.name || user?.name,
-        email: employee?.email || user?.email,
-        employeeId: employee?.employeeId || 'EMP',
-        designation: employee?.designation || 'Staff',
-        department: employee?.department || 'Operations'
-      },
-      stats: {
-        presentDays,
-        halfDays,
-        leaveDays: leaveDays + approvedLeavesCount,
-        absentDays,
-        totalWorkHours: parseFloat(totalHours.toFixed(1)),
-        attendanceRate: monthlyRecords.length > 0 
-          ? Math.min(100, Math.round(((presentDays + (halfDays * 0.5)) / Math.max(1, presentDays + halfDays + absentDays)) * 100))
-          : 100,
-        approvedLeavesCount,
-        pendingLeavesCount,
-        allTimePresent: totalRecords.filter(a => a.status === 'Present').length
-      }
-    });
-  } catch (error) {
-    console.error('Get my attendance stats error:', error);
-    res.status(500).json({ success: false, message: 'Server error: ' + error.message });
   }
 };
 
@@ -1917,7 +1808,6 @@ module.exports = {
   getOfficeLocation,
   checkOut,
   getMyTodayAttendance,
-  getMyAttendanceStats,
   getTodayAllAttendance,
   getTodayAttendanceStatus,
   getAttendanceHistory,
