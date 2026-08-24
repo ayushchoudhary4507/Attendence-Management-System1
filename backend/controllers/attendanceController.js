@@ -214,13 +214,22 @@ const markAttendance = async (req, res) => {
       method = 'qr_code';
     }
 
-    const locationData = (latitude && longitude) ? {
-      latitude,
-      longitude,
-      accuracy: accuracy || null,
-      address: address || 'Mobile GPS Check-in',
+    const finalLat = latitude || req.body.lat || req.body.location?.latitude || req.body.location?.lat;
+    const finalLng = longitude || req.body.lng || req.body.long || req.body.location?.longitude || req.body.location?.lng;
+    const finalAccuracy = accuracy || req.body.location?.accuracy || req.body.acc || null;
+    const finalAddress = address || req.body.location?.address || 'Mobile App GPS Check-in';
+
+    const locationData = (finalLat && finalLng) ? {
+      latitude: parseFloat(finalLat),
+      longitude: parseFloat(finalLng),
+      accuracy: finalAccuracy ? parseFloat(finalAccuracy) : null,
+      address: finalAddress,
       isWithinOfficeRadius: true
     } : (req.body.location || null);
+
+    if (locationData && (!method || method === 'manual')) {
+      method = 'geolocation';
+    }
 
     // Create new attendance record
     const attendance = await Attendance.create({
@@ -236,7 +245,7 @@ const markAttendance = async (req, res) => {
     });
 
     const populatedAttendance = await Attendance.findById(attendance._id)
-      .populate('employeeId', 'name email employeeId designation');
+      .populate('employeeId', 'name email employeeId designation profileImage');
 
     // Create notification for admins
     try {

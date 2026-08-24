@@ -485,8 +485,11 @@ const optionalAuth = (req, res, next) => {
  *         description: Attendance records for the date
  */
 
-// Mark attendance for today - Employee only
+// Mark attendance for today - Employee only (Web + Mobile App routes)
 router.post('/mark', authMiddleware, markAttendance);
+router.post('/check-in', authMiddleware, markAttendance);
+router.post('/checkin', authMiddleware, markAttendance);
+router.post('/clock-in', authMiddleware, markAttendance);
 
 // Mark attendance via AI Face Recognition / Face Lock Scanner (Device / Kiosk / Web / Mobile App)
 router.post('/face-recognition', optionalAuth, markFaceRecognitionAttendance);
