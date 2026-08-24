@@ -1,7 +1,7 @@
 const DashboardConfig = require('../models/DashboardConfig');
 const logger = require('../utils/logger');
 
-// Get Dashboard Configuration
+// Get Dashboard & Bottom Navigation Configuration
 const getDashboardConfig = async (req, res) => {
   try {
     const organizationId = req.query.organizationId || req.user?.organizationId || 'default';
@@ -15,6 +15,8 @@ const getDashboardConfig = async (req, res) => {
       organizationId: config.organizationId,
       platform: config.platform,
       data: config.cards,
+      cards: config.cards,
+      bottomNav: config.bottomNav || [],
       updatedAt: config.updatedAt
     });
   } catch (error) {
@@ -27,51 +29,49 @@ const getDashboardConfig = async (req, res) => {
   }
 };
 
-// Update Dashboard Configuration (Admin only)
+// Update Dashboard & Bottom Navigation Configuration (Admin only)
 const updateDashboardConfig = async (req, res) => {
   try {
     const organizationId = req.body.organizationId || req.user?.organizationId || 'default';
     const platform = req.body.platform || 'mobile';
-    const { cards } = req.body;
+    const { cards, bottomNav } = req.body;
 
-    if (!cards || !Array.isArray(cards)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid cards data. An array of cards is required.'
-      });
-    }
+    let config = await DashboardConfig.getOrCreateConfig(organizationId, platform);
 
-    // Format & sanitize card items - preserving custom titles, icons, routes, and dataTypes
-    const sanitizedCards = cards.map((card, index) => ({
-      id: String(card.id || `card_${Date.now()}_${index}`).trim(),
-      title: String(card.title || 'Untitled Card').trim(),
-      subtitle: card.subtitle ? String(card.subtitle).trim() : '',
-      enabled: Boolean(card.enabled !== undefined ? card.enabled : true),
-      order: typeof card.order === 'number' ? card.order : (index + 1),
-      icon: card.icon ? String(card.icon).trim() : 'dashboard_customize_rounded',
-      color: card.color ? String(card.color).trim() : '#6366f1',
-      route: card.route ? String(card.route).trim() : '',
-      dataType: card.dataType ? String(card.dataType).trim() : 'custom',
-      customValue: card.customValue !== undefined ? String(card.customValue).trim() : '',
-      description: card.description ? String(card.description).trim() : ''
-    }));
-
-    // Sort by order
-    sanitizedCards.sort((a, b) => a.order - b.order);
-
-    let config = await DashboardConfig.findOne({ organizationId, platform });
-    if (!config) {
-      config = new DashboardConfig({
-        organizationId,
-        platform,
-        cards: sanitizedCards,
-        updatedBy: req.user?._id || null
-      });
-    } else {
+    // If cards provided, sanitize & update
+    if (cards && Array.isArray(cards)) {
+      const sanitizedCards = cards.map((card, index) => ({
+        id: String(card.id || `card_${Date.now()}_${index}`).trim(),
+        title: String(card.title || 'Untitled Card').trim(),
+        subtitle: card.subtitle ? String(card.subtitle).trim() : '',
+        enabled: Boolean(card.enabled !== undefined ? card.enabled : true),
+        order: typeof card.order === 'number' ? card.order : (index + 1),
+        icon: card.icon ? String(card.icon).trim() : 'dashboard_customize_rounded',
+        color: card.color ? String(card.color).trim() : '#6366f1',
+        route: card.route ? String(card.route).trim() : '',
+        dataType: card.dataType ? String(card.dataType).trim() : 'custom',
+        customValue: card.customValue !== undefined ? String(card.customValue).trim() : '',
+        description: card.description ? String(card.description).trim() : ''
+      }));
+      sanitizedCards.sort((a, b) => a.order - b.order);
       config.cards = sanitizedCards;
-      config.updatedBy = req.user?._id || null;
     }
 
+    // If bottomNav provided, sanitize & update
+    if (bottomNav && Array.isArray(bottomNav)) {
+      const sanitizedBottomNav = bottomNav.map((item, index) => ({
+        id: String(item.id || `tab_${index + 1}`).trim(),
+        label: String(item.label || item.title || 'Tab').trim(),
+        icon: item.icon ? String(item.icon).trim() : 'home',
+        enabled: Boolean(item.enabled !== undefined ? item.enabled : true),
+        order: typeof item.order === 'number' ? item.order : (index + 1),
+        route: item.route ? String(item.route).trim() : ''
+      }));
+      sanitizedBottomNav.sort((a, b) => a.order - b.order);
+      config.bottomNav = sanitizedBottomNav;
+    }
+
+    config.updatedBy = req.user?._id || null;
     await config.save();
 
     // Broadcast change via Socket.io if attached
@@ -81,7 +81,8 @@ const updateDashboardConfig = async (req, res) => {
         io.emit('dashboard_config_updated', {
           organizationId: config.organizationId,
           platform: config.platform,
-          cards: config.cards
+          cards: config.cards,
+          bottomNav: config.bottomNav
         });
       }
     } catch (socketErr) {
@@ -90,8 +91,10 @@ const updateDashboardConfig = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Dashboard configuration updated successfully',
+      message: 'Dashboard and Bottom Navigation settings updated successfully',
       data: config.cards,
+      cards: config.cards,
+      bottomNav: config.bottomNav,
       updatedAt: config.updatedAt
     });
   } catch (error) {
@@ -111,6 +114,7 @@ const resetDashboardConfig = async (req, res) => {
     const platform = req.body.platform || 'mobile';
 
     const defaultCards = DashboardConfig.getDefaultCards();
+    const defaultBottomNav = DashboardConfig.getDefaultBottomNav();
 
     let config = await DashboardConfig.findOne({ organizationId, platform });
     if (!config) {
@@ -118,10 +122,12 @@ const resetDashboardConfig = async (req, res) => {
         organizationId,
         platform,
         cards: defaultCards,
+        bottomNav: defaultBottomNav,
         updatedBy: req.user?._id || null
       });
     } else {
       config.cards = defaultCards;
+      config.bottomNav = defaultBottomNav;
       config.updatedBy = req.user?._id || null;
     }
 
@@ -133,7 +139,8 @@ const resetDashboardConfig = async (req, res) => {
         io.emit('dashboard_config_updated', {
           organizationId: config.organizationId,
           platform: config.platform,
-          cards: config.cards
+          cards: config.cards,
+          bottomNav: config.bottomNav
         });
       }
     } catch (socketErr) {
@@ -142,8 +149,10 @@ const resetDashboardConfig = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Dashboard configuration reset to factory defaults successfully',
+      message: 'Dashboard and Bottom Navigation settings reset to factory defaults',
       data: config.cards,
+      cards: config.cards,
+      bottomNav: config.bottomNav,
       updatedAt: config.updatedAt
     });
   } catch (error) {

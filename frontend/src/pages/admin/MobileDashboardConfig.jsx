@@ -136,6 +136,20 @@ const WEBSITE_MODULE_PRESETS = [
   }
 ];
 
+const DEFAULT_BOTTOM_NAV_PRESETS = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'home', enabled: true, order: 1, route: '/admin/dashboard' },
+  { id: 'employees', label: 'Employees', icon: 'people', enabled: true, order: 2, route: '/admin/employees' },
+  { id: 'leaves', label: 'Leaves', icon: 'business_center', enabled: true, order: 3, route: '/admin/leaves' },
+  { id: 'messages', label: 'Messages', icon: 'chat', enabled: true, order: 4, route: '/chat' },
+  { id: 'more', label: 'More', icon: 'more_horiz', enabled: true, order: 5, route: '/admin/more' },
+  { id: 'projects', label: 'Projects', icon: 'folder', enabled: false, order: 6, route: '/admin/projects' },
+  { id: 'shifts', label: 'Shifts', icon: 'schedule', enabled: false, order: 7, route: '/admin/shifts' },
+  { id: 'salary', label: 'Salary', icon: 'payments', enabled: false, order: 8, route: '/admin/salary' },
+  { id: 'analytics', label: 'Analytics', icon: 'analytics', enabled: false, order: 9, route: '/admin/analytics' },
+  { id: 'holidays', label: 'Holidays', icon: 'beach_access', enabled: false, order: 10, route: '/admin/holidays' },
+  { id: 'tasks', label: 'Tasks', icon: 'task_alt', enabled: false, order: 11, route: '/admin/tasks' }
+];
+
 const COLOR_OPTIONS = [
   '#6366f1', '#10b981', '#f59e0b', '#ef4444', 
   '#06b6d4', '#8b5cf6', '#ec4899', '#3b82f6', 
@@ -143,7 +157,11 @@ const COLOR_OPTIONS = [
 ];
 
 const MobileDashboardConfig = () => {
+  // Navigation settings tabs: 'cards' | 'bottomNav'
+  const [activeSection, setActiveSection] = useState('cards');
+
   const [cards, setCards] = useState([]);
+  const [bottomNav, setBottomNav] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -162,35 +180,59 @@ const MobileDashboardConfig = () => {
       setLoading(true);
       setStatusMessage(null);
       const res = await dashboardConfigAPI.getConfig({ platform: 'mobile' });
-      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
-        const sorted = res.data.map((c, idx) => ({
+      
+      // Load Cards
+      if (res && res.cards && Array.isArray(res.cards) && res.cards.length > 0) {
+        const sortedCards = res.cards.map((c, idx) => ({
           ...c,
           order: typeof c.order === 'number' ? c.order : idx + 1,
           color: c.color || '#6366f1',
           dataType: c.dataType || c.id || 'custom'
         }));
-        sorted.sort((a, b) => a.order - b.order);
-        setCards(sorted);
+        sortedCards.sort((a, b) => a.order - b.order);
+        setCards(sortedCards);
+      } else if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        const sortedCards = res.data.map((c, idx) => ({
+          ...c,
+          order: typeof c.order === 'number' ? c.order : idx + 1,
+          color: c.color || '#6366f1',
+          dataType: c.dataType || c.id || 'custom'
+        }));
+        sortedCards.sort((a, b) => a.order - b.order);
+        setCards(sortedCards);
       } else {
-        // Fallback default cards
         setCards(WEBSITE_MODULE_PRESETS.slice(0, 4).map((p, idx) => ({
           ...p,
           enabled: true,
           order: idx + 1
         })));
       }
+
+      // Load Bottom Navigation
+      if (res && res.bottomNav && Array.isArray(res.bottomNav) && res.bottomNav.length > 0) {
+        const sortedNav = res.bottomNav.map((item, idx) => ({
+          ...item,
+          order: typeof item.order === 'number' ? item.order : idx + 1
+        }));
+        sortedNav.sort((a, b) => a.order - b.order);
+        setBottomNav(sortedNav);
+      } else {
+        setBottomNav(DEFAULT_BOTTOM_NAV_PRESETS);
+      }
+
       setHasChanges(false);
     } catch (err) {
       console.error('Failed to load dashboard configuration:', err);
       setStatusMessage({
         type: 'error',
-        text: 'Failed to load configuration from server. Showing local preset list.'
+        text: 'Failed to load configuration from server. Showing default options.'
       });
       setCards(WEBSITE_MODULE_PRESETS.slice(0, 4).map((p, idx) => ({
         ...p,
         enabled: true,
         order: idx + 1
       })));
+      setBottomNav(DEFAULT_BOTTOM_NAV_PRESETS);
     } finally {
       setLoading(false);
     }
@@ -200,8 +242,8 @@ const MobileDashboardConfig = () => {
     loadConfig();
   }, []);
 
-  // Update card title text in real time
-  const handleTitleChange = (index, newTitle) => {
+  // --- CARDS HANDLERS ---
+  const handleCardTitleChange = (index, newTitle) => {
     setCards((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], title: newTitle };
@@ -211,8 +253,7 @@ const MobileDashboardConfig = () => {
     setStatusMessage(null);
   };
 
-  // Toggle card checkbox (enabled / disabled)
-  const handleToggle = (index) => {
+  const handleCardToggle = (index) => {
     setCards((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], enabled: !updated[index].enabled };
@@ -222,8 +263,7 @@ const MobileDashboardConfig = () => {
     setStatusMessage(null);
   };
 
-  // Change card color
-  const handleColorChange = (index, color) => {
+  const handleCardColorChange = (index, color) => {
     setCards((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], color };
@@ -232,7 +272,6 @@ const MobileDashboardConfig = () => {
     setHasChanges(true);
   };
 
-  // Delete card from dashboard
   const handleDeleteCard = (index) => {
     if (cards.length <= 1) {
       alert('You must have at least 1 card in the configuration list.');
@@ -251,8 +290,7 @@ const MobileDashboardConfig = () => {
     setStatusMessage(null);
   };
 
-  // Move card up
-  const handleMoveUp = (index) => {
+  const handleCardMoveUp = (index) => {
     if (index === 0) return;
     const newCards = [...cards];
     const temp = newCards[index - 1];
@@ -264,8 +302,7 @@ const MobileDashboardConfig = () => {
     setStatusMessage(null);
   };
 
-  // Move card down
-  const handleMoveDown = (index) => {
+  const handleCardMoveDown = (index) => {
     if (index === cards.length - 1) return;
     const newCards = [...cards];
     const temp = newCards[index + 1];
@@ -273,6 +310,57 @@ const MobileDashboardConfig = () => {
     newCards[index] = temp;
     newCards.forEach((c, idx) => { c.order = idx + 1; });
     setCards(newCards);
+    setHasChanges(true);
+    setStatusMessage(null);
+  };
+
+  // --- BOTTOM NAV HANDLERS ---
+  const handleNavLabelChange = (index, newLabel) => {
+    setBottomNav((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], label: newLabel };
+      return updated;
+    });
+    setHasChanges(true);
+    setStatusMessage(null);
+  };
+
+  const handleNavToggle = (index) => {
+    setBottomNav((prev) => {
+      const updated = [...prev];
+      const target = updated[index];
+      const currentlyEnabled = prev.filter(x => x.enabled).length;
+      if (target.enabled && currentlyEnabled <= 2) {
+        alert('Bottom Navigation bar must have at least 2 active tabs.');
+        return prev;
+      }
+      updated[index] = { ...target, enabled: !target.enabled };
+      return updated;
+    });
+    setHasChanges(true);
+    setStatusMessage(null);
+  };
+
+  const handleNavMoveUp = (index) => {
+    if (index === 0) return;
+    const newNav = [...bottomNav];
+    const temp = newNav[index - 1];
+    newNav[index - 1] = newNav[index];
+    newNav[index] = temp;
+    newNav.forEach((item, idx) => { item.order = idx + 1; });
+    setBottomNav(newNav);
+    setHasChanges(true);
+    setStatusMessage(null);
+  };
+
+  const handleNavMoveDown = (index) => {
+    if (index === bottomNav.length - 1) return;
+    const newNav = [...bottomNav];
+    const temp = newNav[index + 1];
+    newNav[index + 1] = newNav[index];
+    newNav[index] = temp;
+    newNav.forEach((item, idx) => { item.order = idx + 1; });
+    setBottomNav(newNav);
     setHasChanges(true);
     setStatusMessage(null);
   };
@@ -374,6 +462,14 @@ const MobileDashboardConfig = () => {
           route: c.route || '',
           customValue: c.customValue || '',
           description: c.description || ''
+        })),
+        bottomNav: bottomNav.map((item, idx) => ({
+          id: item.id,
+          label: item.label.trim() || 'Tab',
+          icon: item.icon || 'home',
+          enabled: Boolean(item.enabled),
+          order: idx + 1,
+          route: item.route || ''
         }))
       };
 
@@ -382,7 +478,7 @@ const MobileDashboardConfig = () => {
       if (res && res.success) {
         setStatusMessage({
           type: 'success',
-          text: '✅ App Dashboard Settings saved successfully! Flutter mobile app will display these exact boxes and names.'
+          text: '✅ App Dashboard Settings saved successfully! Mobile overview cards and bottom navigation bar will update accordingly.'
         });
         setHasChanges(false);
       } else {
@@ -399,9 +495,9 @@ const MobileDashboardConfig = () => {
     }
   };
 
-  // Reset to default cards
+  // Reset to default cards & bottom nav
   const handleReset = async () => {
-    if (!window.confirm('Are you sure you want to reset all boxes to factory default settings?')) {
+    if (!window.confirm('Are you sure you want to reset all boxes & bottom nav tabs to factory default settings?')) {
       return;
     }
 
@@ -409,17 +505,25 @@ const MobileDashboardConfig = () => {
       setSaving(true);
       setStatusMessage(null);
       const res = await dashboardConfigAPI.resetConfig();
-      if (res && res.success && Array.isArray(res.data)) {
-        setCards(res.data.map((c, idx) => ({
-          ...c,
-          order: idx + 1,
-          color: c.color || '#6366f1',
-          dataType: c.dataType || c.id
-        })));
+      if (res && res.success) {
+        if (Array.isArray(res.cards)) {
+          setCards(res.cards.map((c, idx) => ({
+            ...c,
+            order: idx + 1,
+            color: c.color || '#6366f1',
+            dataType: c.dataType || c.id
+          })));
+        }
+        if (Array.isArray(res.bottomNav)) {
+          setBottomNav(res.bottomNav.map((item, idx) => ({
+            ...item,
+            order: idx + 1
+          })));
+        }
         setHasChanges(false);
         setStatusMessage({
           type: 'success',
-          text: 'Dashboard boxes reset to default successfully!'
+          text: 'Dashboard boxes and bottom nav reset to defaults successfully!'
         });
       }
     } catch (err) {
@@ -434,6 +538,25 @@ const MobileDashboardConfig = () => {
   };
 
   const enabledCards = cards.filter((c) => c.enabled);
+  const enabledBottomNav = bottomNav.filter((n) => n.enabled);
+
+  // Helper icon renderer for mock bottom bar
+  const renderNavIcon = (iconType) => {
+    switch (iconType) {
+      case 'home': return '🏠';
+      case 'people': return '👥';
+      case 'business_center': return '💼';
+      case 'chat': return '💬';
+      case 'more_horiz': return '⋯';
+      case 'folder': return '📁';
+      case 'schedule': return '🗓️';
+      case 'payments': return '💰';
+      case 'analytics': return '📈';
+      case 'beach_access': return '🏖️';
+      case 'task_alt': return '✅';
+      default: return '🔘';
+    }
+  };
 
   return (
     <div className="dashboard-config-page">
@@ -441,22 +564,24 @@ const MobileDashboardConfig = () => {
       <div className="config-header-row">
         <div className="config-title-group">
           <div className="config-badge-chip">
-            <span className="live-pulse"></span> Dynamic Mobile Dashboard
+            <span className="live-pulse"></span> Dynamic Mobile App Settings
           </div>
           <h1 className="config-page-title">App Dashboard Settings</h1>
           <p className="config-page-subtitle">
-            Choose any box from the website sidebar, edit the name/title to whatever you want, and tick (☑) to show in the Flutter mobile app.
+            Configure both the <strong>Overview Cards</strong> and <strong>Bottom Navigation Bar</strong> for the Flutter mobile app.
           </p>
         </div>
 
         <div className="config-action-group">
-          <button
-            className="config-btn btn-add"
-            onClick={openAddModal}
-            disabled={loading || saving}
-          >
-            <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span> Add Box / Feature
-          </button>
+          {activeSection === 'cards' && (
+            <button
+              className="config-btn btn-add"
+              onClick={openAddModal}
+              disabled={loading || saving}
+            >
+              <span style={{ fontSize: '18px', fontWeight: 'bold' }}>+</span> Add Box / Feature
+            </button>
+          )}
           <button
             className="config-btn btn-secondary"
             onClick={loadConfig}
@@ -497,6 +622,24 @@ const MobileDashboardConfig = () => {
         </div>
       </div>
 
+      {/* Main Section Navigation Switcher */}
+      <div className="section-tab-switcher">
+        <button
+          className={`section-tab-btn ${activeSection === 'cards' ? 'active' : ''}`}
+          onClick={() => setActiveSection('cards')}
+        >
+          <span className="tab-icon">📊</span>
+          Overview Stat Cards ({enabledCards.length} Active)
+        </button>
+        <button
+          className={`section-tab-btn ${activeSection === 'bottomNav' ? 'active' : ''}`}
+          onClick={() => setActiveSection('bottomNav')}
+        >
+          <span className="tab-icon">📱</span>
+          Bottom Navigation Bar ({enabledBottomNav.length} Active Tabs)
+        </button>
+      </div>
+
       {/* Status Notifications */}
       {statusMessage && (
         <div className={`config-alert-banner ${statusMessage.type}`}>
@@ -515,133 +658,237 @@ const MobileDashboardConfig = () => {
 
       {/* Main Grid Layout */}
       <div className="config-grid-layout">
-        {/* Left Column: Configured Dashboard Cards */}
+        {/* Left Column: Config Panel */}
         <div className="config-cards-panel">
-          <div className="panel-card-header">
-            <div>
-              <h2 className="panel-heading">Dashboard Boxes Configuration</h2>
-              <p className="panel-subtext">
-                Type any custom title in the text box below. Tick (☑) to display that box in the mobile app.
-              </p>
-            </div>
-            <span className="active-counter-pill">
-              <strong>{enabledCards.length}</strong> of {cards.length} Active
-            </span>
-          </div>
+          {activeSection === 'cards' ? (
+            /* --- SECTION 1: OVERVIEW STAT CARDS --- */
+            <>
+              <div className="panel-card-header">
+                <div>
+                  <h2 className="panel-heading">Dashboard Overview Boxes</h2>
+                  <p className="panel-subtext">
+                    Type any custom name for the box. Tick (☑) to display that box on the mobile screen.
+                  </p>
+                </div>
+                <span className="active-counter-pill">
+                  <strong>{enabledCards.length}</strong> of {cards.length} Active
+                </span>
+              </div>
 
-          {loading ? (
-            <div className="config-loading-state">
-              <div className="spinner-lg"></div>
-              <p>Loading dashboard settings...</p>
-            </div>
-          ) : (
-            <div className="cards-config-list">
-              {cards.map((card, index) => {
-                const isEnabled = Boolean(card.enabled);
-                const cardColor = card.color || '#6366f1';
+              {loading ? (
+                <div className="config-loading-state">
+                  <div className="spinner-lg"></div>
+                  <p>Loading dashboard settings...</p>
+                </div>
+              ) : (
+                <div className="cards-config-list">
+                  {cards.map((card, index) => {
+                    const isEnabled = Boolean(card.enabled);
+                    const cardColor = card.color || '#6366f1';
 
-                return (
-                  <div
-                    key={card.id || index}
-                    className={`card-config-item ${isEnabled ? 'is-enabled' : 'is-disabled'}`}
-                    style={{ borderLeftColor: isEnabled ? cardColor : undefined }}
-                  >
-                    {/* Checkbox Tick for enable/disable */}
-                    <div className="checkbox-tick-container">
-                      <label className="checkbox-custom-label" title={isEnabled ? "Ticked (Showing in App)" : "Unticked (Hidden)"}>
-                        <input
-                          type="checkbox"
-                          checked={isEnabled}
-                          onChange={() => handleToggle(index)}
+                    return (
+                      <div
+                        key={card.id || index}
+                        className={`card-config-item ${isEnabled ? 'is-enabled' : 'is-disabled'}`}
+                        style={{ borderLeftColor: isEnabled ? cardColor : undefined }}
+                      >
+                        {/* Checkbox Tick */}
+                        <div className="checkbox-tick-container">
+                          <label className="checkbox-custom-label" title={isEnabled ? "Ticked (Showing in App)" : "Unticked (Hidden)"}>
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={() => handleCardToggle(index)}
+                            />
+                            <span className="checkbox-custom-box">
+                              {isEnabled && '✓'}
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Order Sequence */}
+                        <div className="card-order-controls">
+                          <button
+                            className="order-btn"
+                            onClick={() => handleCardMoveUp(index)}
+                            disabled={index === 0}
+                            title="Move Up"
+                          >
+                            ▲
+                          </button>
+                          <span className="order-number">#{index + 1}</span>
+                          <button
+                            className="order-btn"
+                            onClick={() => handleCardMoveDown(index)}
+                            disabled={index === cards.length - 1}
+                            title="Move Down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        {/* Card Color Indicator */}
+                        <div 
+                          className="card-color-dot"
+                          style={{ backgroundColor: cardColor }}
+                          title="Card Color"
                         />
-                        <span className="checkbox-custom-box">
-                          {isEnabled && '✓'}
-                        </span>
-                      </label>
-                    </div>
 
-                    {/* Order Sequence */}
-                    <div className="card-order-controls">
-                      <button
-                        className="order-btn"
-                        onClick={() => handleMoveUp(index)}
-                        disabled={index === 0}
-                        title="Move Up"
-                      >
-                        ▲
-                      </button>
-                      <span className="order-number">#{index + 1}</span>
-                      <button
-                        className="order-btn"
-                        onClick={() => handleMoveDown(index)}
-                        disabled={index === cards.length - 1}
-                        title="Move Down"
-                      >
-                        ▼
-                      </button>
-                    </div>
+                        {/* Editable Title and Type */}
+                        <div className="card-input-wrapper">
+                          <div className="card-type-row">
+                            <span className="card-data-badge">
+                              Module: <strong>{card.dataType || card.id}</strong>
+                            </span>
+                            {card.route && (
+                              <span className="card-route-badge">
+                                🔗 {card.route}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            className="card-title-input"
+                            value={card.title}
+                            onChange={(e) => handleCardTitleChange(index, e.target.value)}
+                            placeholder="Enter box name to show in App..."
+                          />
+                        </div>
 
-                    {/* Card Color Indicator & Icon */}
-                    <div 
-                      className="card-color-dot"
-                      style={{ backgroundColor: cardColor }}
-                      title="Card Theme Color"
-                    />
+                        {/* Color picker */}
+                        <div className="color-picker-mini">
+                          {COLOR_OPTIONS.slice(0, 4).map((c) => (
+                            <span
+                              key={c}
+                              className={`color-swatch ${cardColor === c ? 'selected' : ''}`}
+                              style={{ backgroundColor: c }}
+                              onClick={() => handleCardColorChange(index, c)}
+                            />
+                          ))}
+                        </div>
 
-                    {/* Editable Title and Type */}
-                    <div className="card-input-wrapper">
-                      <div className="card-type-row">
-                        <span className="card-data-badge">
-                          Module: <strong>{card.dataType || card.id}</strong>
-                        </span>
-                        {card.route && (
-                          <span className="card-route-badge">
-                            🔗 {card.route}
-                          </span>
-                        )}
+                        {/* Delete Button */}
+                        <button
+                          className="card-delete-btn"
+                          onClick={() => handleDeleteCard(index)}
+                          title="Remove box"
+                        >
+                          🗑️
+                        </button>
                       </div>
-                      <input
-                        type="text"
-                        className="card-title-input"
-                        value={card.title}
-                        onChange={(e) => handleTitleChange(index, e.target.value)}
-                        placeholder="Enter box name to show in App..."
-                        title="Edit box name"
-                      />
-                    </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                    {/* Color picker dropdown */}
-                    <div className="color-picker-mini">
-                      {COLOR_OPTIONS.slice(0, 4).map((c) => (
-                        <span
-                          key={c}
-                          className={`color-swatch ${cardColor === c ? 'selected' : ''}`}
-                          style={{ backgroundColor: c }}
-                          onClick={() => handleColorChange(index, c)}
-                        />
-                      ))}
-                    </div>
+              <div className="panel-bottom-actions">
+                <button className="add-box-bottom-btn" onClick={openAddModal}>
+                  <span>➕</span> Add Another Website Box / Custom Metric
+                </button>
+              </div>
+            </>
+          ) : (
+            /* --- SECTION 2: BOTTOM NAVIGATION BAR --- */
+            <>
+              <div className="panel-card-header">
+                <div>
+                  <h2 className="panel-heading">Mobile Bottom Navigation Tabs</h2>
+                  <p className="panel-subtext">
+                    Rename bottom navigation tabs, tick (☑) to show on the mobile bottom bar, and reorder (▲/▼).
+                  </p>
+                </div>
+                <span className="active-counter-pill">
+                  <strong>{enabledBottomNav.length}</strong> Tabs Enabled
+                </span>
+              </div>
 
-                    {/* Delete Card Button */}
-                    <button
-                      className="card-delete-btn"
-                      onClick={() => handleDeleteCard(index)}
-                      title="Remove this box"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+              {loading ? (
+                <div className="config-loading-state">
+                  <div className="spinner-lg"></div>
+                  <p>Loading bottom navigation settings...</p>
+                </div>
+              ) : (
+                <div className="cards-config-list">
+                  {bottomNav.map((item, index) => {
+                    const isEnabled = Boolean(item.enabled);
+
+                    return (
+                      <div
+                        key={item.id || index}
+                        className={`card-config-item ${isEnabled ? 'is-enabled' : 'is-disabled'}`}
+                        style={{ borderLeftColor: isEnabled ? '#6366f1' : undefined }}
+                      >
+                        {/* Checkbox Tick */}
+                        <div className="checkbox-tick-container">
+                          <label className="checkbox-custom-label" title={isEnabled ? "Ticked (Visible in Bottom Bar)" : "Unticked (Hidden)"}>
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={() => handleNavToggle(index)}
+                            />
+                            <span className="checkbox-custom-box">
+                              {isEnabled && '✓'}
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Order Sequence */}
+                        <div className="card-order-controls">
+                          <button
+                            className="order-btn"
+                            onClick={() => handleNavMoveUp(index)}
+                            disabled={index === 0}
+                            title="Move Up"
+                          >
+                            ▲
+                          </button>
+                          <span className="order-number">#{index + 1}</span>
+                          <button
+                            className="order-btn"
+                            onClick={() => handleNavMoveDown(index)}
+                            disabled={index === bottomNav.length - 1}
+                            title="Move Down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        {/* Icon display */}
+                        <div className="nav-tab-icon-badge">
+                          {renderNavIcon(item.icon)}
+                        </div>
+
+                        {/* Editable Tab Name */}
+                        <div className="card-input-wrapper">
+                          <div className="card-type-row">
+                            <span className="card-data-badge">
+                              Tab Key: <strong>{item.id}</strong>
+                            </span>
+                            {item.route && (
+                              <span className="card-route-badge">
+                                🔗 {item.route}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            className="card-title-input"
+                            value={item.label}
+                            onChange={(e) => handleNavLabelChange(index, e.target.value)}
+                            placeholder="Enter tab name (e.g. Dashboard, Employees, Leaves)..."
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="nav-help-info">
+                💡 <strong>Tip:</strong> You can rename tabs like <em>"Leaves"</em> to <em>"Leave Requests"</em> or <em>"Employees"</em> to <em>"Staff"</em>. The Flutter Mobile Bottom Navigation Bar will show your exact custom labels!
+              </div>
+            </>
           )}
-
-          {/* Quick Add Section Button */}
-          <div className="panel-bottom-actions">
-            <button className="add-box-bottom-btn" onClick={openAddModal}>
-              <span>➕</span> Add Another Website Box or Custom Metric
-            </button>
-          </div>
         </div>
 
         {/* Right Column: Live Mobile Mockup Preview */}
@@ -734,6 +981,19 @@ const MobileDashboardConfig = () => {
                   <div className="mock-action-chip">👤 Face ID</div>
                 </div>
               </div>
+            </div>
+
+            {/* --- LIVE BOTTOM NAVIGATION BAR PREVIEW --- */}
+            <div className="phone-live-bottom-nav">
+              {enabledBottomNav.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  className={`phone-bottom-nav-item ${idx === 0 ? 'active' : ''}`}
+                >
+                  <span className="nav-item-icon">{renderNavIcon(item.icon)}</span>
+                  <span className="nav-item-label">{item.label}</span>
+                </div>
+              ))}
             </div>
 
             {/* Phone Home Bar */}

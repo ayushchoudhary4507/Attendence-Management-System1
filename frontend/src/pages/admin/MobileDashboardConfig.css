@@ -21,8 +21,8 @@
   align-items: flex-start;
   flex-wrap: wrap;
   gap: 20px;
-  margin-bottom: 24px;
-  padding-bottom: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
 }
 
@@ -73,8 +73,47 @@
   font-size: 14px;
   color: var(--text-secondary, #64748b);
   margin: 0;
-  max-width: 600px;
+  max-width: 650px;
   line-height: 1.5;
+}
+
+/* Tab Switcher */
+.section-tab-switcher {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.section-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  background: var(--card-bg, #ffffff);
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.section-tab-btn:hover {
+  border-color: #cbd5e1;
+  color: var(--text-primary, #1e293b);
+}
+
+.section-tab-btn.active {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.tab-icon {
+  font-size: 16px;
 }
 
 /* Action Group */
@@ -365,6 +404,18 @@
   flex-shrink: 0;
 }
 
+.nav-tab-icon-badge {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* Input Wrapper */
 .card-input-wrapper {
   flex: 1;
@@ -483,6 +534,16 @@
 
 .add-box-bottom-btn:hover {
   background: rgba(99, 102, 241, 0.12);
+}
+
+.nav-help-info {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
 }
 
 /* Phone Mockup Frame */
@@ -723,6 +784,42 @@
   text-align: center;
 }
 
+/* Phone Live Bottom Navigation Bar */
+.phone-live-bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 4px 6px;
+  background: #0f172a;
+  border-top: 1px solid #334155;
+}
+
+.phone-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  color: #94a3b8;
+}
+
+.phone-bottom-nav-item.active {
+  color: #6366f1;
+}
+
+.nav-item-icon {
+  font-size: 14px;
+}
+
+.nav-item-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 54px;
+}
+
 .phone-home-indicator {
   width: 90px;
   height: 4px;
@@ -851,9 +948,15 @@ body.dark-theme .dashboard-config-page {
 }
 
 body.dark-theme .config-cards-panel,
-body.dark-theme .modal-content {
+body.dark-theme .modal-content,
+body.dark-theme .section-tab-btn {
   background: #1e293b;
   border-color: #334155;
+}
+
+body.dark-theme .section-tab-btn.active {
+  background: #6366f1;
+  border-color: #6366f1;
 }
 
 body.dark-theme .card-config-item {
@@ -871,4 +974,9 @@ body.dark-theme .form-input {
   background: #0f172a;
   color: #ffffff;
   border-color: #334155;
+}
+
+body.dark-theme .nav-help-info {
+  background: rgba(99, 102, 241, 0.15);
+  color: #cbd5e1;
 }
