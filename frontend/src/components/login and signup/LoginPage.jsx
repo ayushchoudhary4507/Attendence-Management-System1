@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-
 import { authAPI } from '../../services/api';
-
 import OTPLogin from './OTPLogin';
-
+import AttendanceProIcon from '../AttendanceProIcon';
 import './LoginPage.css';
 
 
@@ -103,14 +101,10 @@ const LoginPage = ({ onSignupClick, onLoginSuccess, skipWelcome = true }) => {
       />
     );
   }
-
-
-
-  // Login Form View
   return (
-    <div className={`login-page ${isDarkMode ? 'dark' : 'light'}`}>
-      {/* Ambient background glows */}
-      <div className="login-bg-ambient" aria-hidden="true">
+    <div className="login-page-container">
+      {/* Background Decorative Gradients */}
+      <div className="login-bg-decorations">
         <div className="bg-blob blob-purple" />
         <div className="bg-blob blob-blue" />
         <div className="bg-grid-overlay" />
@@ -120,7 +114,7 @@ const LoginPage = ({ onSignupClick, onLoginSuccess, skipWelcome = true }) => {
         {/* Left Side Feature Showcase Panel (Matching user screenshot) */}
         <div className="login-showcase-panel">
           <div className="showcase-brand">
-            <div className="showcase-logo-icon">📋</div>
+            <AttendanceProIcon size={46} />
             <span className="showcase-brand-name">AttendancePro</span>
           </div>
 
@@ -176,7 +170,7 @@ const LoginPage = ({ onSignupClick, onLoginSuccess, skipWelcome = true }) => {
         <div className="login-card-section">
           <div className="login-card">
             <div className="brand-header-compact">
-              <span className="brand-logo-icon">📋</span>
+              <AttendanceProIcon size={36} />
               <span className="brand-name-text">AttendancePro</span>
             </div>
 

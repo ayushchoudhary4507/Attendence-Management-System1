@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useNotifications } from '../../../context/NotificationContext';
+import AttendanceProIcon from '../../AttendanceProIcon';
 
 const EmployeeSidebar = ({ collapsed, activeTab, onNavigate }) => {
   const { unreadCount } = useNotifications();
@@ -24,7 +25,7 @@ const EmployeeSidebar = ({ collapsed, activeTab, onNavigate }) => {
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
         <div className="logo">
-          <div className="logo-icon">📋</div>
+          <AttendanceProIcon size={34} />
           {!collapsed && <span className="logo-text">AttendancePro</span>}
         </div>
       </div>

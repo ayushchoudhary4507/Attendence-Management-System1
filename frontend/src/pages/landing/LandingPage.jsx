@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import HeroVisualCarousel from './HeroVisualCarousel';
+import AttendanceProIcon from '../../components/AttendanceProIcon';
 import './LandingPage.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5005';
@@ -238,8 +239,8 @@ const LandingPage = () => {
       {/* Navigation */}
       <nav className="landing-nav">
         <div className="nav-logo">
-          <div className="logo-icon">📋</div>
-          <span>AttendancePro</span>
+          <AttendanceProIcon size={38} />
+          <span className="logo-text">Attendance<span className="brand-gradient">Pro</span></span>
         </div>
         <div className="nav-links">
           <a href="#features">Features</a>
@@ -405,7 +406,7 @@ const LandingPage = () => {
             {/* Column 1: Brand & Info */}
             <div className="footer-brand-col">
               <div className="footer-brand-header">
-                <div className="footer-logo-box">📋</div>
+                <AttendanceProIcon size={34} />
                 <span className="footer-brand-name">AttendancePro</span>
               </div>
               <p className="footer-brand-desc">

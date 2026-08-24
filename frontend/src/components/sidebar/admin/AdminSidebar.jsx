@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useNotifications } from '../../../context/NotificationContext';
+import AttendanceProIcon from '../../AttendanceProIcon';
 
 const AdminSidebar = ({ sidebarCollapsed, mobileSidebarOpen, isMobile, onOverlayClick, user }) => {
   const { unreadCount } = useNotifications();
@@ -42,7 +43,7 @@ const AdminSidebar = ({ sidebarCollapsed, mobileSidebarOpen, isMobile, onOverlay
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo">
-            <div className="logo-icon">📋</div>
+            <AttendanceProIcon size={34} />
             {!sidebarCollapsed && <span className="logo-text">AttendancePro</span>}
           </div>
         </div>

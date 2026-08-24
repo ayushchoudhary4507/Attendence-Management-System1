@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { authAPI } from '../../services/api';
+import AttendanceProIcon from '../AttendanceProIcon';
 import './OTPLogin.css';
 
 const OTPLogin = ({ onBack, onLoginSuccess }) => {
@@ -224,7 +225,7 @@ const OTPLogin = ({ onBack, onLoginSuccess }) => {
         {/* Left Side Feature Showcase Panel */}
         <div className="otp-showcase-panel">
           <div className="showcase-brand">
-            <div className="showcase-logo-icon">📋</div>
+            <AttendanceProIcon size={46} />
             <span className="showcase-brand-name">AttendancePro</span>
           </div>
 
