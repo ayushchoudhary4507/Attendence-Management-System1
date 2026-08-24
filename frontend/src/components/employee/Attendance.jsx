@@ -818,33 +818,29 @@ const Attendance = () => {
             {adminCheckMode === 'standard' && (
               <div className="method-detail-panel">
                 <div className="method-detail-header">
-                  <span>🕒 Standard Time Check-in</span>
+                  <span>Standard Time Check-in</span>
                   <span className="time-now-badge">{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                 </div>
                 <div className="shift-details-grid">
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">⏰</span>
                     <div>
                       <strong>Shift Start</strong>
                       <p>09:30 AM</p>
                     </div>
                   </div>
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">⚡</span>
                     <div>
                       <strong>Grace Period</strong>
                       <p>Until 09:45 AM</p>
                     </div>
                   </div>
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">🏁</span>
                     <div>
                       <strong>Shift End</strong>
                       <p>06:30 PM</p>
                     </div>
                   </div>
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">📊</span>
                     <div>
                       <strong>Total Hours</strong>
                       <p>9 Hours / Day</p>
@@ -868,7 +864,7 @@ const Attendance = () => {
                 >
                   {adminCheckLoading ? (
                     <><div className="loading-spinner sm"></div> Marking Attendance...</>
-                  ) : '🕒 Confirm Standard Check-in'}
+                  ) : 'Confirm Standard Check-in'}
                 </button>
               </div>
             )}
