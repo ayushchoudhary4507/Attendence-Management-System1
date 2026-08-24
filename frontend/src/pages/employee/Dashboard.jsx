@@ -583,44 +583,20 @@ const Dashboard = ({ onLogout, userRole }) => {
             </div>
           )}
 
-          {/* Clock In / Clock Out Quick Action Button in Header (Employee Only) */}
+          {/* Clock In / Clock Out Quick Action Button in Header */}
           {!isAdmin && (!myTodayAttendance || !myTodayAttendance.checkInTime) && (
-            <>
-              <button
-                onClick={() => setShowFaceModal(true)}
-                className="btn-face-scanner"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '9px 16px',
-                  borderRadius: '8px',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
-                  transition: 'all 0.2s'
-                }}
-                title="Mark Attendance with AI Face Recognition"
-              >
-                <span>👤</span> AI Face Scanner
-              </button>
-              <button
-                onClick={handleClockIn}
-                disabled={clockLoading}
-                className="btn-clockin"
-                title="Clock In for Today"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                {clockLoading ? 'Clocking In...' : 'Clock In'}
-              </button>
-            </>
+            <button
+              onClick={handleClockIn}
+              disabled={clockLoading}
+              className="btn-clockin"
+              title="Clock In for Today"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              {clockLoading ? 'Clocking In...' : 'Clock In'}
+            </button>
           )}
 
           {!isAdmin && myTodayAttendance && myTodayAttendance.checkInTime && !myTodayAttendance.checkOutTime && (
@@ -700,27 +676,6 @@ const Dashboard = ({ onLogout, userRole }) => {
           </div>
           <div className="clock-card-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             {(!myTodayAttendance || !myTodayAttendance?.checkInTime) && (
-              <>
-                <button
-                  onClick={() => setShowFaceModal(true)}
-                  className="btn-face-scanner"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '9px 18px',
-                    borderRadius: '8px',
-                    fontWeight: '600',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)'
-                  }}
-                >
-                  <span>👤</span> Face Recognition
-                </button>
                 <button
                   onClick={handleClockIn}
                   disabled={clockLoading}
@@ -728,7 +683,6 @@ const Dashboard = ({ onLogout, userRole }) => {
                 >
                   {clockLoading ? 'Clocking In...' : 'Clock In'}
                 </button>
-              </>
             )}
 
             {myTodayAttendance?.checkInTime && !myTodayAttendance?.checkOutTime && (

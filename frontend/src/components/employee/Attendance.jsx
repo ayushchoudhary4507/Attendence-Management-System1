@@ -396,7 +396,7 @@ const Attendance = () => {
     }
   };
 
-  // Mark attendance (Check In)
+  // Mark attendance (Check In with Auto GPS detection)
   const markAttendance = async () => {
     const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!currentToken) {
@@ -408,13 +408,43 @@ const Attendance = () => {
 
     setLoading(true);
     try {
+      let locationPayload = {};
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        try {
+          const coords = await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => resolve(pos.coords),
+              (err) => {
+                console.warn('Auto GPS capture skipped:', err.message);
+                resolve(null);
+              },
+              { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            );
+          });
+          if (coords) {
+            locationPayload = {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              accuracy: coords.accuracy,
+              verificationMethod: 'geolocation'
+            };
+          }
+        } catch (locErr) {
+          console.warn('Geolocation error:', locErr);
+        }
+      }
+
       const response = await fetch(`${API_BASE_URL}/attendance/mark`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${currentToken}`
         },
-        body: JSON.stringify({ status, notes })
+        body: JSON.stringify({
+          status,
+          notes,
+          ...locationPayload
+        })
       });
 
       const data = await response.json();
@@ -423,6 +453,9 @@ const Attendance = () => {
         setMessage('Attendance marked successfully!');
         setMessageType('success');
         setTodayAttendance(data.data);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('attendance_updated', { detail: data.data }));
+        }
       } else {
         setMessage(data.message || 'Failed to mark attendance');
         setMessageType('error');
@@ -953,26 +986,8 @@ const Attendance = () => {
                     <div className="loading-container">
                       <div className="loading-spinner"></div>
                     </div>
-                  ) : '✓ Standard Check In'}
+                  ) : '✓ Check In'}
                 </button>
-
-                <div style={{ marginTop: '12px' }}>
-                  <button
-                    type="button"
-                    className="btn-checkin"
-                    style={{
-                      background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
-                    }}
-                    onClick={() => setShowQRModal(true)}
-                  >
-                    <span>⚡ AI Face Lock / QR / GPS Verification Hub</span>
-                  </button>
-                </div>
               </div>
             </div>
 

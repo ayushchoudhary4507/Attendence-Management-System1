@@ -271,9 +271,42 @@ export const adminAPI = {
 
 // Attendance API
 export const attendanceAPI = {
-  // Mark attendance for today
-  markAttendance: async (status = 'Present', notes = '') => {
-    const response = await api.post('/attendance/mark', { status, notes });
+  // Mark attendance for today (automatically captures GPS location)
+  markAttendance: async (status = 'Present', notes = '', customLocation = null) => {
+    let loc = customLocation;
+    if (!loc && typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        loc = await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy
+            }),
+            (err) => {
+              console.warn('GPS location auto-detection skipped:', err.message);
+              resolve(null);
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+          );
+        });
+      } catch (e) {
+        console.warn('Location detection error:', e);
+      }
+    }
+
+    const payload = {
+      status,
+      notes,
+      ...(loc ? {
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        accuracy: loc.accuracy,
+        verificationMethod: 'geolocation'
+      } : {})
+    };
+
+    const response = await api.post('/attendance/mark', payload);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
     }
