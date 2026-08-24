@@ -269,6 +269,33 @@ const Attendance = () => {
     if (isAdmin) {
       fetchStaffAttendance();
     }
+
+    const handleSync = (event) => {
+      console.log('🔄 [Attendance Page] Attendance updated event received, refreshing data...', event?.detail);
+      checkTodayAttendance();
+      if (isAdmin) fetchStaffAttendance();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkTodayAttendance();
+        if (isAdmin) fetchStaffAttendance();
+      }
+    };
+
+    window.addEventListener('attendance_updated', handleSync);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    const timer = setInterval(() => {
+      checkTodayAttendance();
+      if (isAdmin) fetchStaffAttendance();
+    }, 25000);
+
+    return () => {
+      window.removeEventListener('attendance_updated', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(timer);
+    };
   }, [isAdmin]);
 
   // Admin GPS Check-In
@@ -1414,7 +1441,9 @@ const Attendance = () => {
         onClose={() => { setShowQRModal(false); setAdminCheckMode(null); }}
         onSuccess={(attendanceData) => {
           setTodayAttendance(attendanceData);
-          setMessage('✅ Verification successful! Attendance marked.');
+          checkTodayAttendance();
+          if (isAdmin) fetchStaffAttendance();
+          setMessage('✅ AI Face Verification successful! Attendance synchronized.');
           setMessageType('success');
           setShowQRModal(false);
           setAdminCheckMode(null);

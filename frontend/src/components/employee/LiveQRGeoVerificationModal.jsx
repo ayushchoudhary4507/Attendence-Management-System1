@@ -295,6 +295,8 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
         status: 'Present',
         notes: 'Verified via AI Face Recognition Scanner',
         verificationMethod: 'face_recognition',
+        email: user?.email,
+        employeeId: user?.employeeId || user?._id || user?.id,
         location: locationData ? {
           latitude: locationData.latitude,
           longitude: locationData.longitude,
@@ -303,16 +305,16 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
         } : null
       };
 
-      const res = await attendanceAPI.markAttendanceVerified(payload);
-      if (res.success) {
-        setFeedbackMsg({ text: '👤 AI Face Recognition Matched! Check-In Successful! 🎉', type: 'success' });
+      const res = await attendanceAPI.markFaceRecognition(payload);
+      if (res && res.success) {
+        setFeedbackMsg({ text: res.message || '👤 AI Face Recognition Matched! Check-In Successful! 🎉', type: 'success' });
         stopCamera();
         setTimeout(() => {
           if (onSuccess) onSuccess(res.data);
           onClose();
         }, 1200);
       } else {
-        setFeedbackMsg({ text: res.message || 'Face recognition verification failed', type: 'error' });
+        setFeedbackMsg({ text: res?.message || 'Face recognition verification failed', type: 'error' });
         setFaceScanning(false);
       }
     } catch (err) {

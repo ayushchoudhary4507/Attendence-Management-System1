@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import TaskManager from '../../components/admin/TaskManager';
 import MyTasks from '../../components/employee/MyTasks';
 import AdminLeavePopup from '../../components/admin/AdminLeavePopup';
+import LiveQRGeoVerificationModal from '../../components/employee/LiveQRGeoVerificationModal';
 import { attendanceAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
 import '../../components/admin/TaskManager.css';
@@ -59,6 +60,7 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showFaceModal, setShowFaceModal] = useState(false);
   const [taskStats, setTaskStats] = useState({
     total: 0,
     pending: 0,
@@ -71,6 +73,7 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
     absent: 0,
+    late: 0,
     total: 0,
     totalWorkHours: 0,
     activeNow: 0
@@ -188,9 +191,36 @@ const Dashboard = ({ onLogout, userRole }) => {
   // Centralized theme
   const { isDarkMode, toggleTheme } = useTheme();
 
+  // Setup initial load, background polling, and real-time invalidation listeners
   useEffect(() => {
     fetchDashboardData(true);
-  }, []);
+
+    const handleAttendanceSync = (event) => {
+      console.log('🔄 [Dashboard Sync] attendance_updated event received:', event.detail);
+      fetchDashboardData(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ [Dashboard Sync] App/Tab active - fetching latest attendance');
+        fetchDashboardData(false);
+      }
+    };
+
+    window.addEventListener('attendance_updated', handleAttendanceSync);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Fallback sync every 25 seconds
+    const intervalId = setInterval(() => {
+      fetchDashboardData(false);
+    }, 25000);
+
+    return () => {
+      window.removeEventListener('attendance_updated', handleAttendanceSync);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [currentUser]);
 
   const fetchDashboardData = async (isInitial = false) => {
     try {
@@ -295,14 +325,17 @@ const Dashboard = ({ onLogout, userRole }) => {
       let activeCount = 0;
       let presentCount = statsData?.present || 0;
       let absentCount = statsData?.absent || 0;
+      let lateCount = statsData?.late || 0;
 
       if (todayStatusData?.success && todayStatusData.data) {
-        const calculatedPresent = todayStatusData.data.filter(emp => emp.attendanceToday).length;
+        const calculatedPresent = todayStatusData.data.filter(emp => emp.attendanceToday && emp.attendanceToday.status === 'Present').length;
         const calculatedAbsent = todayStatusData.data.filter(emp => !emp.attendanceToday).length;
+        const calculatedLate = todayStatusData.data.filter(emp => emp.isLate || (emp.checkInTime && (new Date(emp.checkInTime).getHours() > 9 || (new Date(emp.checkInTime).getHours() === 9 && new Date(emp.checkInTime).getMinutes() > 30)))).length;
         
         if (calculatedAbsent > 0 || calculatedPresent > 0) {
           presentCount = calculatedPresent;
           absentCount = calculatedAbsent;
+          lateCount = calculatedLate || lateCount;
         }
 
         const statusMap = {};
@@ -330,10 +363,11 @@ const Dashboard = ({ onLogout, userRole }) => {
           name: emp.name,
           email: emp.email,
           designation: emp.designation,
-          status: emp.attendanceToday ? 'Present' : 'Absent',
+          status: emp.attendanceToday ? emp.attendanceToday.status || 'Present' : 'Absent',
           isActive: emp.attendanceStatus === 'active',
           checkInTime: emp.checkInTime,
           checkOutTime: emp.checkOutTime,
+          isLate: emp.isLate || (emp.checkInTime && (new Date(emp.checkInTime).getHours() > 9 || (new Date(emp.checkInTime).getHours() === 9 && new Date(emp.checkInTime).getMinutes() > 30))),
           workHours: emp.attendanceToday?.workHours || 0
         }));
         setAttendanceDetails(details);
@@ -342,6 +376,7 @@ const Dashboard = ({ onLogout, userRole }) => {
       setAttendanceStats({
         present: presentCount,
         absent: absentCount,
+        late: lateCount,
         activeNow: activeCount,
         totalWorkHours: totalHours.toFixed(1)
       });
@@ -533,18 +568,42 @@ const Dashboard = ({ onLogout, userRole }) => {
 
           {/* Clock In / Clock Out Quick Action Button in Header (Employee Only) */}
           {!isAdmin && (!myTodayAttendance || !myTodayAttendance.checkInTime) && (
-            <button
-              onClick={handleClockIn}
-              disabled={clockLoading}
-              className="btn-clockin"
-              title="Clock In for Today"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-              {clockLoading ? 'Clocking In...' : 'Clock In'}
-            </button>
+            <>
+              <button
+                onClick={() => setShowFaceModal(true)}
+                className="btn-face-scanner"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+                  transition: 'all 0.2s'
+                }}
+                title="Mark Attendance with AI Face Recognition"
+              >
+                <span>👤</span> AI Face Scanner
+              </button>
+              <button
+                onClick={handleClockIn}
+                disabled={clockLoading}
+                className="btn-clockin"
+                title="Clock In for Today"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                {clockLoading ? 'Clocking In...' : 'Clock In'}
+              </button>
+            </>
           )}
 
           {!isAdmin && myTodayAttendance && myTodayAttendance.checkInTime && !myTodayAttendance.checkOutTime && (
@@ -622,15 +681,37 @@ const Dashboard = ({ onLogout, userRole }) => {
                 : `Checked in at ${new Date(myTodayAttendance.checkInTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}. Click Clock Out when you finish.`}
             </p>
           </div>
-          <div className="clock-card-actions">
+          <div className="clock-card-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             {(!myTodayAttendance || !myTodayAttendance?.checkInTime) && (
-              <button
-                onClick={handleClockIn}
-                disabled={clockLoading}
-                className="btn-clockin"
-              >
-                {clockLoading ? 'Clocking In...' : 'Clock In'}
-              </button>
+              <>
+                <button
+                  onClick={() => setShowFaceModal(true)}
+                  className="btn-face-scanner"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '9px 18px',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)'
+                  }}
+                >
+                  <span>👤</span> Face Recognition
+                </button>
+                <button
+                  onClick={handleClockIn}
+                  disabled={clockLoading}
+                  className="btn-clockin"
+                >
+                  {clockLoading ? 'Clocking In...' : 'Clock In'}
+                </button>
+              </>
             )}
 
             {myTodayAttendance?.checkInTime && !myTodayAttendance?.checkOutTime && (
@@ -1403,6 +1484,18 @@ const Dashboard = ({ onLogout, userRole }) => {
           </div>
         </div>
       )}
+
+      {/* Face Scanner Verification Modal */}
+      <LiveQRGeoVerificationModal
+        isOpen={showFaceModal}
+        onClose={() => setShowFaceModal(false)}
+        onSuccess={(attData) => {
+          setMyTodayAttendance(attData);
+          setShowFaceModal(false);
+          fetchDashboardData(false);
+        }}
+        user={currentUser}
+      />
     </div>
   );
 };

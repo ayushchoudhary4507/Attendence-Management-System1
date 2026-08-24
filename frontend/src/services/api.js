@@ -14,12 +14,16 @@ const api = axios.create({
   timeoutErrorMessage: 'Request timed out. Server may be starting up, please try again.'
 });
 
-// Add token to requests if available
+// Add token and cache busting headers to requests
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Prevent browser caching on mobile and desktop
+  config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+  config.headers['Pragma'] = 'no-cache';
+  config.headers['Expires'] = '0';
   return config;
 });
 
@@ -256,12 +260,27 @@ export const attendanceAPI = {
   // Mark attendance for today
   markAttendance: async (status = 'Present', notes = '') => {
     const response = await api.post('/attendance/mark', { status, notes });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
+    return response.data;
+  },
+
+  // Mark attendance via AI Face Recognition / Face Lock Scanner
+  markFaceRecognition: async (payload) => {
+    const response = await api.post('/attendance/face-recognition', payload);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
     return response.data;
   },
 
   // Mark attendance with live QR / Geolocation verification
   markAttendanceVerified: async (verificationData) => {
     const response = await api.post('/attendance/mark-verified', verificationData);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
     return response.data;
   },
 
@@ -280,6 +299,9 @@ export const attendanceAPI = {
   // Check out
   checkOut: async () => {
     const response = await api.put('/attendance/checkout');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
     return response.data;
   },
   
@@ -298,6 +320,12 @@ export const attendanceAPI = {
   // Get today's attendance status with active/inactive (admin only)
   getTodayAttendanceStatus: async () => {
     const response = await api.get('/attendance/today-status');
+    return response.data;
+  },
+
+  // Get attendance stats (present, absent, late, active)
+  getAttendanceStats: async () => {
+    const response = await api.get('/attendance/stats');
     return response.data;
   },
   
