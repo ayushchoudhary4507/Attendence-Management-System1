@@ -1113,6 +1113,44 @@ const Attendance = () => {
                       </div>
                     </div>
 
+                    {att.location?.latitude && att.location?.longitude && (
+                      <div className="staff-location-preview" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        marginTop: '10px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontWeight: '600' }}>
+                          <span>📍</span>
+                          <span>GPS: {att.location.latitude.toFixed(4)}°, {att.location.longitude.toFixed(4)}°</span>
+                          {att.location.accuracy && <span style={{ color: '#94a3b8', fontSize: '11px' }}>(±{Math.round(att.location.accuracy)}m)</span>}
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps?q=${att.location.latitude},${att.location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: '#4f46e5',
+                            fontWeight: '700',
+                            textDecoration: 'none',
+                            background: '#ede9fe',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            border: '1px solid #c7d2fe'
+                          }}
+                          title="View exact location on Google Maps"
+                        >
+                          🗺️ View Map
+                        </a>
+                      </div>
+                    )}
+
                     {att.notes && (
                       <div className="staff-note-preview">
                         <strong>Note:</strong> {att.notes}

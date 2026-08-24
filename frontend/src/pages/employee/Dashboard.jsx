@@ -383,6 +383,7 @@ const Dashboard = ({ onLogout, userRole }) => {
             isActive: emp.attendanceStatus === 'active',
             checkInTime: emp.checkInTime,
             checkOutTime: emp.checkOutTime,
+            location: emp.attendanceToday?.location || null,
             isLate: emp.isLate || (emp.checkInTime && (new Date(emp.checkInTime).getHours() > 9 || (new Date(emp.checkInTime).getHours() === 9 && new Date(emp.checkInTime).getMinutes() > 30))),
             workHours: emp.attendanceToday?.workHours || 0
           };
@@ -1379,6 +1380,30 @@ const Dashboard = ({ onLogout, userRole }) => {
                         <p style={{ fontSize: '12px', color: '#059669', margin: '4px 0 0 0' }}>
                           Check-in: {new Date(emp.checkInTime).toLocaleTimeString()}
                         </p>
+                      )}
+                      {emp.location?.latitude && emp.location?.longitude && (
+                        <a
+                          href={`https://www.google.com/maps?q=${emp.location.latitude},${emp.location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: '11px',
+                            color: '#2563EB',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            marginTop: '5px',
+                            background: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontWeight: '700'
+                          }}
+                          title="Click to view detected GPS location on Google Maps"
+                        >
+                          📍 {emp.location.latitude.toFixed(4)}°, {emp.location.longitude.toFixed(4)}° • View Map
+                        </a>
                       )}
                     </div>
                     <div style={{ textAlign: 'right' }}>

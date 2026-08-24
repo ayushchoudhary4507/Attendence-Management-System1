@@ -298,7 +298,32 @@ const EmployeeWorkHours = () => {
                     {emp.displayStatus === 'active' ? '🟢 Active' : '🔴 Inactive'}
                   </span>
                 </td>
-                <td>{formatTime(emp.checkInTime)}</td>
+                <td>
+                  <div>{formatTime(emp.checkInTime)}</div>
+                  {emp.attendanceToday?.location?.latitude && emp.attendanceToday?.location?.longitude && (
+                    <a
+                      href={`https://www.google.com/maps?q=${emp.attendanceToday.location.latitude},${emp.attendanceToday.location.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: '11px',
+                        color: '#2563eb',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        marginTop: '3px',
+                        background: '#eff6ff',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        fontWeight: '600'
+                      }}
+                      title="View GPS location on Google Maps"
+                    >
+                      📍 Map
+                    </a>
+                  )}
+                </td>
                 <td>{formatTime(emp.checkOutTime)}</td>
                 <td>
                   <span className={`work-hours-badge ${emp.attendanceToday?.workHours > 0 || emp.displayStatus === 'active' ? 'has-hours' : ''} ${emp.isCurrentUser ? 'current-user-hours' : ''}`}>
