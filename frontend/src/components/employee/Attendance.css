@@ -1277,180 +1277,179 @@ body.dark-theme .no-leaves-icon {
     font-size: 11px;
     padding: 5px 12px;
   }
-
-  .time-stat {
-    padding: 8px 10px;
+  .time-label {
+    font-size: 10px;
   }
 
-  .time-value {
-    font-size: 14px;
+  .attendance-note {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .btn-checkin,
+  .btn-checkout {
+    padding: 12px 32px;
+    font-size: 15px;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  /* History section mobile */
+  .history-section h3 {
+    font-size: 16px;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  /* Leave section mobile */
+  .leave-section {
+    padding: 16px;
+  }
+
+  .leave-section h3 {
+    font-size: 16px;
+  }
+
+  .leave-form {
+    gap: 12px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .leave-form input,
+  .leave-form select,
+  .leave-form textarea {
+    padding: 12px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  .btn-submit-leave {
+    padding: 12px 24px;
+    font-size: 15px;
+    width: 100%;
+  }
+
+  /* Calendar mobile */
+  .leave-calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .calendar-header {
+    font-size: 11px;
+    padding: 8px 4px;
   }
 
   .calendar-day {
-    min-height: 35px;
-    font-size: 9px;
+    min-height: 50px;
+    padding: 4px;
+    font-size: 11px;
+  }
+
+  .leave-indicator {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* Leave cards mobile */
+  .leave-card {
+    padding: 12px;
+  }
+
+  .leave-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .leave-header h4 {
+    font-size: 14px;
+  }
+
+  .leave-type-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .leave-dates {
+    font-size: 12px;
+  }
+
+  .leave-reason {
+    font-size: 12px;
+  }
+
+  .no-leaves {
+    padding: 24px;
+  }
+
+  .no-leaves-icon {
+    font-size: 36px;
   }
 }
 
-/* ==========================================================================
-   MY LEAVE REQUESTS SECTION - Modern SaaS Glass Cards
-   ========================================================================== */
-.my-leaves-section {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin-top: 32px;
-  margin-bottom: 30px;
-}
+/* Small mobile styles (max-width: 480px) */
+@media (max-width: 480px) {
+  .attendance-page {
+    padding: 10px;
+  }
 
-.my-leaves-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-}
+  .attendance-header h1 {
+    font-size: 18px;
+  }
 
-.my-leaves-header h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  letter-spacing: -0.02em;
-}
+  .today-status-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
 
-.leaves-count-badge {
-  font-size: 11px;
-  font-weight: 800;
-  background: rgba(99, 102, 241, 0.18);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #818cf8;
-  padding: 3px 10px;
-  border-radius: 20px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
+  .time-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 
-.leaves-list-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
+  .time-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+  }
 
-.leave-request-card {
-  background: linear-gradient(150deg, rgba(15, 23, 42, 0.85) 0%, rgba(8, 12, 28, 0.9) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 16px !important;
-  padding: 20px 24px !important;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  color: #f8fafc;
-}
+  .time-value {
+    font-size: 16px;
+    margin: 0;
+  }
 
-.leave-request-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.35) !important;
-  box-shadow: 0 16px 35px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.2) inset !important;
-}
+  .time-label {
+    margin: 0;
+  }
 
-.leave-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
+  .btn-checkin,
+  .btn-checkout {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
 
-.leave-type-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+  .history-table-container {
+    margin: 0 -10px;
+    width: calc(100% + 20px);
+    border-radius: 0;
+  }
 
-.leave-type-name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.01em;
-}
+  /* Calendar extra small */
+  .calendar-day {
+    min-height: 40px;
+    font-size: 10px;
+  }
 
-.leave-status-pill {
-  padding: 5px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  letter-spacing: 0.02em;
-}
-
-.leave-status-pill.approved {
-  background: rgba(16, 185, 129, 0.16);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #34d399;
-}
-
-.leave-status-pill.pending {
-  background: rgba(245, 158, 11, 0.16);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #fbbf24;
-}
-
-.leave-status-pill.rejected {
-  background: rgba(239, 68, 68, 0.16);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  color: #f87171;
-}
-
-.leave-dates-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 14px;
-  background: rgba(10, 15, 30, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 12px 18px;
-  border-radius: 12px;
-}
-
-.leave-date-col {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.date-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #64748b;
-  letter-spacing: 0.05em;
-}
-
-.date-val {
-  font-size: 14px;
-  font-weight: 700;
-  color: #e2e8f0;
-}
-
-.leave-reason-box {
-  background: rgba(10, 15, 30, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 10px 14px;
-  border-radius: 10px;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.reason-label {
+  .calendar-header {
     font-size: 10px;
     padding: 6px 2px;
   }
@@ -1488,7 +1487,7 @@ body.dark-theme .no-leaves-icon {
 }
 
 /* ==========================================================================
-   MY LEAVE REQUESTS SECTION - Modern SaaS Glass Cards
+   MY LEAVE REQUESTS SECTION - Adaptive Theme (Light Mode Default + Dark Mode)
    ========================================================================== */
 .my-leaves-section {
   background: transparent !important;
@@ -1510,23 +1509,33 @@ body.dark-theme .no-leaves-icon {
   margin: 0;
   font-size: 20px;
   font-weight: 800;
-  color: #ffffff;
+  color: #0f172a;
   display: flex;
   align-items: center;
   gap: 12px;
   letter-spacing: -0.02em;
 }
 
+body.dark-theme .my-leaves-header h2 {
+  color: #f8fafc;
+}
+
 .leaves-count-badge {
   font-size: 11px;
   font-weight: 800;
-  background: rgba(99, 102, 241, 0.18);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  color: #818cf8;
+  background: #ede9fe;
+  border: 1px solid #c7d2fe;
+  color: #4f46e5;
   padding: 3px 10px;
   border-radius: 20px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+body.dark-theme .leaves-count-badge {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #818cf8;
 }
 
 .leaves-list-grid {
@@ -1536,20 +1545,32 @@ body.dark-theme .no-leaves-icon {
 }
 
 .leave-request-card {
-  background: linear-gradient(150deg, rgba(15, 23, 42, 0.85) 0%, rgba(8, 12, 28, 0.9) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
   border-radius: 16px !important;
   padding: 20px 24px !important;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03) !important;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  color: #f8fafc;
+  color: #0f172a;
 }
 
 .leave-request-card:hover {
   transform: translateY(-2px);
+  border-color: #a5b4fc !important;
+  box-shadow: 0 10px 25px -4px rgba(99, 102, 241, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.dark-theme .leave-request-card {
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.85) 0%, rgba(8, 12, 28, 0.9) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+}
+
+body.dark-theme .leave-request-card:hover {
   border-color: rgba(99, 102, 241, 0.35) !important;
   box-shadow: 0 16px 35px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(99, 102, 241, 0.2) inset !important;
 }
@@ -1571,8 +1592,12 @@ body.dark-theme .no-leaves-icon {
 .leave-type-name {
   font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
+  color: #0f172a;
   letter-spacing: -0.01em;
+}
+
+body.dark-theme .leave-type-name {
+  color: #ffffff;
 }
 
 .leave-status-pill {
@@ -1587,20 +1612,38 @@ body.dark-theme .no-leaves-icon {
 }
 
 .leave-status-pill.approved {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+}
+
+body.dark-theme .leave-status-pill.approved {
   background: rgba(16, 185, 129, 0.16);
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-color: rgba(16, 185, 129, 0.4);
   color: #34d399;
 }
 
 .leave-status-pill.pending {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #d97706;
+}
+
+body.dark-theme .leave-status-pill.pending {
   background: rgba(245, 158, 11, 0.16);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-color: rgba(245, 158, 11, 0.4);
   color: #fbbf24;
 }
 
 .leave-status-pill.rejected {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+body.dark-theme .leave-status-pill.rejected {
   background: rgba(239, 68, 68, 0.16);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-color: rgba(239, 68, 68, 0.4);
   color: #f87171;
 }
 
@@ -1608,10 +1651,15 @@ body.dark-theme .no-leaves-icon {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 14px;
-  background: rgba(10, 15, 30, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   padding: 12px 18px;
   border-radius: 12px;
+}
+
+body.dark-theme .leave-dates-row {
+  background: rgba(10, 15, 30, 0.5);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .leave-date-col {
@@ -1631,12 +1679,16 @@ body.dark-theme .no-leaves-icon {
 .date-val {
   font-size: 14px;
   font-weight: 700;
+  color: #0f172a;
+}
+
+body.dark-theme .date-val {
   color: #e2e8f0;
 }
 
 .leave-reason-box {
-  background: rgba(10, 15, 30, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   padding: 10px 14px;
   border-radius: 10px;
   display: flex;
@@ -1645,14 +1697,27 @@ body.dark-theme .no-leaves-icon {
   font-size: 13px;
 }
 
+body.dark-theme .leave-reason-box {
+  background: rgba(10, 15, 30, 0.6);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
 .reason-label {
   font-weight: 700;
-  color: #818cf8;
+  color: #4f46e5;
   font-size: 12px;
 }
 
+body.dark-theme .reason-label {
+  color: #818cf8;
+}
+
 .reason-text {
-  color: #94a3b8;
+  color: #334155;
+}
+
+body.dark-theme .reason-text {
+  color: #cbd5e1;
 }
 
 /* ─────────────────────────────────────────────────────
