@@ -199,7 +199,8 @@ const markAttendance = async (req, res) => {
       });
     }
 
-    const checkInDate = rawCheckIn || rawCheckInAlt || rawDate ? new Date(rawCheckIn || rawCheckInAlt || rawDate) : new Date();
+    // Always use authoritative real-time server timestamp (UTC) for live check-in
+    const checkInDate = new Date();
     const isLate = isLateArrival(checkInDate);
 
     // Normalize verification method

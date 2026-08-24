@@ -14,16 +14,16 @@ const api = axios.create({
   timeoutErrorMessage: 'Request timed out. Server may be starting up, please try again.'
 });
 
-// Add token and cache busting headers to requests + detailed API logging
+// Add token and logging to requests
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Prevent browser caching on mobile and desktop
-  config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-  config.headers['Pragma'] = 'no-cache';
-  config.headers['Expires'] = '0';
+  // Safe cache busting for GET requests without CORS preflight issues
+  if (config.method === 'get') {
+    config.params = { ...config.params, _t: Date.now() };
+  }
 
   console.log(`🌐 [API Request] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`, {
     params: config.params,
