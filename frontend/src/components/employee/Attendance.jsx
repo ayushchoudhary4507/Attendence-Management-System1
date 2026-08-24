@@ -1195,52 +1195,28 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* Leave Form Modal */}
+      {/* Apply Leave Modal */}
       {showLeaveForm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            width: '100%',
-            maxWidth: '450px',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-          }}>
-            <h2 style={{ marginBottom: '20px', color: '#1F2937', fontSize: '22px' }}>
-               Apply for {appliedLeaveType} Leave
+        <div className="leave-modal-overlay">
+          <div className="leave-modal-card">
+            <h2 className="leave-modal-title">
+              Apply for {appliedLeaveType?.toLowerCase().endsWith('leave') ? appliedLeaveType : `${appliedLeaveType} Leave`}
             </h2>
             
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+            <div className="leave-form-group">
+              <label className="leave-form-label">
                 Start Date:
               </label>
               <input
                 type="date"
                 value={leaveStartDate}
                 onChange={(e) => setLeaveStartDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '15px'
-                }}
+                className="leave-form-input"
               />
             </div>
             
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+            <div className="leave-form-group">
+              <label className="leave-form-label">
                 End Date:
               </label>
               <input
@@ -1248,18 +1224,12 @@ const Attendance = () => {
                 value={leaveEndDate}
                 onChange={(e) => setLeaveEndDate(e.target.value)}
                 min={leaveStartDate}
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '15px'
-                }}
+                className="leave-form-input"
               />
             </div>
             
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+            <div className="leave-form-group" style={{ marginBottom: '25px' }}>
+              <label className="leave-form-label">
                 Reason (optional):
               </label>
               <textarea
@@ -1267,48 +1237,24 @@ const Attendance = () => {
                 onChange={(e) => setLeaveReason(e.target.value)}
                 placeholder="Enter reason for leave..."
                 rows="3"
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  resize: 'vertical'
-                }}
+                className="leave-form-textarea"
               />
             </div>
             
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <div className="leave-modal-actions">
               <button
+                type="button"
                 onClick={() => setShowLeaveForm(false)}
                 disabled={applyLeaveLoading}
-                style={{
-                  padding: '12px 24px',
-                  background: '#F3F4F6',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '15px',
-                  fontWeight: '500'
-                }}
+                className="btn-leave-cancel"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleApplyLeave}
                 disabled={applyLeaveLoading}
-                style={{
-                  padding: '12px 24px',
-                  background: '#10B981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: applyLeaveLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  opacity: applyLeaveLoading ? 0.7 : 1
-                }}
+                className="btn-leave-submit"
               >
                 {applyLeaveLoading ? (
                   <div className="loading-container">
@@ -1323,61 +1269,23 @@ const Attendance = () => {
 
       {/* Leave Success Popup */}
       {showLeaveSuccessPopup && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            maxWidth: '400px',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-          }}>
-            <div style={{
-              fontSize: '60px',
-              marginBottom: '15px'
-            }}>✅</div>
-            <h2 style={{
-              color: '#10B981',
-              marginBottom: '10px',
-              fontSize: '22px'
-            }}>Leave Applied Successfully!</h2>
-            <p style={{
-              color: '#6B7280',
-              marginBottom: '20px',
-              fontSize: '16px'
-            }}>
-              Your <strong>{appliedLeaveType} Leave</strong> for today has been submitted successfully.
+        <div className="leave-modal-overlay">
+          <div className="leave-success-card">
+            <div className="leave-success-icon">✅</div>
+            <h2 className="leave-success-title">Leave Applied Successfully!</h2>
+            <p className="leave-success-desc">
+              Your <strong>{appliedLeaveType?.toLowerCase().endsWith('leave') ? appliedLeaveType : `${appliedLeaveType} Leave`}</strong> for today has been submitted successfully.
             </p>
-            <p style={{
-              color: '#9CA3AF',
-              fontSize: '14px',
-              marginBottom: '25px'
-            }}>
-              Status: <span style={{ color: '#F59E0B', fontWeight: '600' }}>⏳ Pending (Waiting for Admin Approval)</span>
-            </p>
+            <div style={{ marginBottom: '25px' }}>
+              <span className="leave-success-status">
+                ⏳ Pending (Waiting for Admin Approval)
+              </span>
+            </div>
             <button
+              type="button"
               onClick={() => setShowLeaveSuccessPopup(false)}
-              style={{
-                padding: '12px 30px',
-                background: '#10B981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '600'
-              }}
+              className="btn-leave-submit"
+              style={{ width: '100%' }}
             >
               OK, Got it!
             </button>
