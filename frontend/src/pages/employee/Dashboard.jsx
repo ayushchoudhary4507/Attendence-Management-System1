@@ -6,6 +6,7 @@ import AdminLeavePopup from '../../components/admin/AdminLeavePopup';
 import LiveQRGeoVerificationModal from '../../components/employee/LiveQRGeoVerificationModal';
 import { attendanceAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
+import { useNotifications } from '../../context/NotificationContext';
 import '../../components/admin/TaskManager.css';
 import '../../components/employee/MyTasks.css';
 import './Dashboard.css';
@@ -26,8 +27,10 @@ const getEmployeeAvatar = (emp) => {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(emp?.name || 'User')}&background=4F46E5&color=fff&size=45`;
 };
 
-const Dashboard = ({ onLogout, userRole }) => {
+const Dashboard = ({ userRole, onLogout }) => {
   const navigate = useNavigate();
+  const { showToast } = useNotifications();
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Get current logged in user info
   const [currentUser, setCurrentUser] = useState(null);
@@ -140,11 +143,18 @@ const Dashboard = ({ onLogout, userRole }) => {
       const res = await attendanceAPI.markAttendance('Present', 'Clocked in from Dashboard');
       if (res && (res.success || res.data)) {
         setMyTodayAttendance(res.data);
+        showToast(
+          '⏰ Clock-In Successful!',
+          `You clocked in successfully at ${new Date().toLocaleTimeString()} (${res.isLate ? 'Late Arrival ⏰' : 'On Time ✅'}).`,
+          'attendance',
+          { isLate: res.isLate, method: 'Direct Check-In' }
+        );
       }
       await fetchDashboardData();
     } catch (err) {
       console.error('Clock in error:', err);
       setApiError(err.message || 'Failed to clock in');
+      showToast('Clock-In Error', err.message || 'Failed to clock in', 'error');
     } finally {
       setClockLoading(false);
     }
@@ -170,6 +180,13 @@ const Dashboard = ({ onLogout, userRole }) => {
         const checkOutStr = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         const formattedWorkTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} mins`;
 
+        showToast(
+          '🏠 Clock-Out Confirmed',
+          `Checked out successfully at ${checkOutStr}! Work time: ${formattedWorkTime}.`,
+          'checkout',
+          { workHours: formattedWorkTime }
+        );
+
         setWorkSummaryModal({
           show: true,
           hours,
@@ -183,6 +200,7 @@ const Dashboard = ({ onLogout, userRole }) => {
     } catch (err) {
       console.error('Clock out error:', err);
       setApiError(err.message || 'Failed to clock out');
+      showToast('Clock-Out Error', err.message || 'Failed to clock out', 'error');
     } finally {
       setClockLoading(false);
     }

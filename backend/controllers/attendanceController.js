@@ -39,6 +39,202 @@ const emitNotification = (io, userId, notification) => {
   }
 };
 
+// Centralized helper to create notifications in DB and emit realtime socket events to all admins and the employee
+const createAndBroadcastAttendanceNotification = async (req, {
+  attendance,
+  employee,
+  user,
+  action = 'checkin', // 'checkin', 'checkout', 'admin_marked'
+  method = 'manual', // 'manual', 'geolocation', 'qr_code', 'face_recognition', 'admin_override'
+  isLate = false,
+  workHours = null,
+  customMessage = null
+}) => {
+  try {
+    const io = req.app?.get('io') || global._io;
+    const empName = employee?.name || user?.name || 'Employee';
+    const empEmail = employee?.email || user?.email || '';
+    const empId = employee?._id || user?._id;
+    const userId = user?._id || employee?._id;
+
+    // Determine readable method label and icon
+    let methodLabel = 'Direct Check-In';
+    let icon = '⏰';
+    const lowerMethod = (method || '').toString().toLowerCase();
+
+    if (lowerMethod.includes('face')) {
+      methodLabel = 'AI Face Recognition';
+      icon = '👤';
+    } else if (lowerMethod.includes('qr')) {
+      methodLabel = 'Live QR Code';
+      icon = '📱';
+    } else if (lowerMethod.includes('geo') || lowerMethod.includes('gps')) {
+      methodLabel = 'GPS Geolocation';
+      icon = '📍';
+    } else if (lowerMethod.includes('admin')) {
+      methodLabel = 'Admin Override';
+      icon = '🛡️';
+    }
+
+    const timeStr = (action === 'checkout' && attendance?.checkOutTime)
+      ? new Date(attendance.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+      : (attendance?.checkInTime ? new Date(attendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+
+    let title = '';
+    let message = '';
+    let notifType = 'attendance';
+
+    if (action === 'checkout') {
+      title = `🏠 Clocked Out: ${empName}`;
+      message = customMessage || `${empName} has clocked out at ${timeStr}${workHours !== null && workHours !== undefined ? ` (Total Worked: ${workHours} hrs)` : ''}.`;
+      notifType = 'checkout';
+    } else if (action === 'admin_marked') {
+      title = `🛡️ Attendance Marked: ${empName}`;
+      message = customMessage || `Attendance for ${empName} was marked by Administrator at ${timeStr}.`;
+      notifType = 'attendance';
+    } else {
+      title = `${icon} ${methodLabel} Check-In: ${empName}`;
+      const statusSuffix = isLate ? ' (Late Arrival ⏰)' : ' (On Time ✅)';
+      message = customMessage || `${empName} marked attendance via ${methodLabel} at ${timeStr}${statusSuffix}.`;
+      notifType = 'attendance';
+    }
+
+    // 1. Create DB notification for all Admins
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    const createdAdminNotifs = [];
+
+    for (const admin of admins) {
+      try {
+        const notif = await Notification.create({
+          type: notifType,
+          title,
+          message,
+          employeeId: empId,
+          employeeName: empName,
+          employeeEmail: empEmail,
+          senderId: userId,
+          senderName: empName,
+          receiverId: admin._id,
+          link: '/employees'
+        });
+        createdAdminNotifs.push({ notif, adminId: admin._id.toString() });
+      } catch (err) {
+        console.error('Error saving admin notification in DB:', err.message);
+      }
+    }
+
+    // 2. Also create DB notification for the Employee (if user account exists)
+    let empUserNotif = null;
+    if (userId) {
+      try {
+        empUserNotif = await Notification.create({
+          type: notifType,
+          title: action === 'checkout' ? '🏠 Clock-Out Confirmed' : `${icon} Attendance Marked (${methodLabel})`,
+          message: action === 'checkout'
+            ? `You have successfully clocked out at ${timeStr}${workHours !== null && workHours !== undefined ? ` (Work Hours: ${workHours} hrs)` : ''}.`
+            : `Your attendance was recorded at ${timeStr} via ${methodLabel}${isLate ? ' (Late Arrival)' : ' (On Time)'}.`,
+          employeeId: empId,
+          employeeName: empName,
+          employeeEmail: empEmail,
+          senderId: userId,
+          senderName: 'System',
+          receiverId: userId,
+          link: '/attendance'
+        });
+      } catch (err) {
+        console.error('Error saving employee notification in DB:', err.message);
+      }
+    }
+
+    // 3. Emit via Socket.io to online users
+    if (io) {
+      const onlineUsersMap = io.onlineUsers;
+
+      // Emit to each admin
+      for (const { notif, adminId } of createdAdminNotifs) {
+        const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+        if (adminOnline && adminOnline.isOnline) {
+          io.to(adminOnline.socketId).emit('newNotification', {
+            id: notif._id,
+            type: notifType,
+            title: notif.title,
+            message: notif.message,
+            senderId: userId,
+            senderName: empName,
+            employeeId: empId,
+            employeeName: empName,
+            employeeEmail: empEmail,
+            receiverId: adminId,
+            receiverRole: 'admin',
+            verificationMethod: method,
+            isLate,
+            action,
+            checkInTime: attendance?.checkInTime,
+            checkOutTime: attendance?.checkOutTime,
+            link: '/employees',
+            createdAt: notif.createdAt,
+            read: false
+          });
+          console.log(`📢 [Socket] Attendance notification emitted to Admin ${adminId}`);
+        }
+      }
+
+      // Emit to employee if online
+      if (empUserNotif && userId) {
+        const empOnline = onlineUsersMap ? onlineUsersMap.get(userId.toString()) : null;
+        if (empOnline && empOnline.isOnline) {
+          io.to(empOnline.socketId).emit('newNotification', {
+            id: empUserNotif._id,
+            type: notifType,
+            title: empUserNotif.title,
+            message: empUserNotif.message,
+            senderId: userId,
+            senderName: 'System',
+            employeeId: empId,
+            employeeName: empName,
+            employeeEmail: empEmail,
+            receiverId: userId.toString(),
+            receiverRole: 'employee',
+            verificationMethod: method,
+            isLate,
+            action,
+            checkInTime: attendance?.checkInTime,
+            checkOutTime: attendance?.checkOutTime,
+            link: '/attendance',
+            createdAt: empUserNotif.createdAt,
+            read: false
+          });
+          console.log(`📢 [Socket] Attendance notification emitted to Employee ${userId}`);
+        }
+      }
+
+      // 4. Global Broadcast Event for all active clients
+      const broadcastPayload = {
+        id: Date.now(),
+        type: notifType,
+        title,
+        message,
+        action,
+        method: methodLabel,
+        verificationMethod: method,
+        isLate,
+        employee: {
+          _id: empId,
+          name: empName,
+          email: empEmail
+        },
+        attendance,
+        createdAt: new Date()
+      };
+
+      io.emit('attendance_marked', broadcastPayload);
+      console.log(`📢 [Socket Broadcast] attendance_marked emitted for ${empName}`);
+    }
+  } catch (err) {
+    console.error('Error in createAndBroadcastAttendanceNotification:', err);
+  }
+};
+
 // Broadcast real-time attendance updates to web dashboard and mobile app
 const broadcastAttendanceUpdate = async (req, attendanceRecord, employee, action = 'marked') => {
   try {
@@ -85,6 +281,7 @@ const broadcastAttendanceUpdate = async (req, attendanceRecord, employee, action
     console.error('Error broadcasting attendance update:', err);
   }
 };
+
 
 // @desc    Mark attendance for today
 // @route   POST /api/attendance/mark
@@ -247,24 +444,15 @@ const markAttendance = async (req, res) => {
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('employeeId', 'name email employeeId designation profileImage');
 
-    // Create notification for admins
-    try {
-      const admins = await User.find({ role: 'admin' }).select('_id');
-      for (const admin of admins) {
-        await Notification.create({
-          type: 'attendance',
-          title: 'Attendance Marked',
-          message: `${employeeName} (${employeeEmail}) has marked attendance at ${checkInDate.toLocaleTimeString()} (${isLate ? 'Late Arrival' : 'On Time'})`,
-          employeeId: finalEmployeeId,
-          employeeName: employeeName,
-          employeeEmail: employeeEmail,
-          senderId: finalUserId,
-          receiverId: admin._id
-        });
-      }
-    } catch (notifErr) {
-      console.error('Notification error:', notifErr.message);
-    }
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee: employee || { _id: finalEmployeeId, name: employeeName, email: employeeEmail },
+      user,
+      action: 'checkin',
+      method,
+      isLate
+    });
 
     // Broadcast realtime update
     await broadcastAttendanceUpdate(req, populatedAttendance, employee || { _id: finalEmployeeId, name: employeeName, email: employeeEmail }, 'marked');
@@ -336,6 +524,16 @@ const checkOut = async (req, res) => {
 
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('employeeId', 'name email employeeId designation');
+
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee,
+      user,
+      action: 'checkout',
+      method: attendance.verificationMethod || 'manual',
+      workHours: attendance.workHours
+    });
 
     // Real-time synchronization broadcast across all devices/apps
     await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'checked_out');
@@ -700,6 +898,15 @@ const adminMarkAttendance = async (req, res) => {
 
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('employeeId', 'name email employeeId designation');
+
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee,
+      user: matchingUser,
+      action: 'admin_marked',
+      method: 'admin_override'
+    });
 
     await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'admin_marked');
 
@@ -1580,8 +1787,6 @@ const markAttendanceVerified = async (req, res) => {
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('employeeId', 'name email employeeId designation');
 
-    // Create rich notification for admins
-    const admins = await User.find({ role: 'admin' }).select('_id');
     const methodLabel = verificationMethod === 'qr_code' 
       ? '📱 QR Code' 
       : verificationMethod === 'geolocation' 
@@ -1589,19 +1794,17 @@ const markAttendanceVerified = async (req, res) => {
       : (verificationMethod === 'face_recognition' || verificationMethod === 'face_lock') 
       ? '👤 AI Face Lock' 
       : '✓ Verified';
-    
-    for (const admin of admins) {
-      await Notification.create({
-        type: 'attendance',
-        title: `Attendance Marked via ${methodLabel}`,
-        message: `${employee.name} checked in via ${methodLabel} (${isWithinOfficeRadius ? 'Inside Office Zone' : (distanceInMeters ? `${distanceInMeters}m away` : 'Remote')}) at ${checkInDate.toLocaleTimeString()} (${isLate ? 'Late Arrival' : 'On Time'})`,
-        employeeId: employee._id,
-        employeeName: employee.name,
-        employeeEmail: employee.email,
-        senderId: user._id,
-        receiverId: admin._id
-      });
-    }
+
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee,
+      user,
+      action: 'checkin',
+      method: verificationMethod,
+      isLate,
+      customMessage: `${employee.name} checked in via ${methodLabel} (${isWithinOfficeRadius ? 'Inside Office Zone' : (distanceInMeters ? `${distanceInMeters}m away` : 'Remote')}) at ${checkInDate.toLocaleTimeString()} (${isLate ? 'Late Arrival' : 'On Time'})`
+    });
 
     // Broadcast realtime update
     await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'verified_marked');
@@ -1748,22 +1951,16 @@ const markFaceRecognitionAttendance = async (req, res) => {
     console.log('✅ [Face Recognition Flow] Step 3: Saved successfully in database with ID:', attendance._id);
 
     // Step 4: Admin Notifications & Alerts
-    const admins = await User.find({ role: 'admin' }).select('_id');
     const empName = employee?.name || user?.name || 'Employee';
-    const empEmail = employee?.email || user?.email || '';
 
-    for (const admin of admins) {
-      await Notification.create({
-        type: 'attendance',
-        title: '👤 AI Face Recognition Attendance',
-        message: `${empName} (${empEmail}) verified and marked attendance via Face Recognition Scanner at ${effectiveCheckInTime.toLocaleTimeString()} (${isLate ? 'Late Arrival' : 'On Time'})`,
-        employeeId: resolvedEmployeeId,
-        employeeName: empName,
-        employeeEmail: empEmail,
-        senderId: resolvedUserId,
-        receiverId: admin._id
-      });
-    }
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee: employee || user,
+      user: user || employee,
+      action: 'checkin',
+      method: verificationMethod || 'face_recognition',
+      isLate
+    });
 
     // Step 5: Broadcast Real-time event across Mobile & Web
     console.log('📡 [Face Recognition Flow] Step 4 & 5: Broadcasting Realtime Synchronization...');

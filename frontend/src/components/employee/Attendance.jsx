@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL, attendanceAPI } from '../../services/api';
+import { useNotifications } from '../../context/NotificationContext';
 import LiveQRGeoVerificationModal from './LiveQRGeoVerificationModal';
 import './Attendance.css';
 
 const Attendance = () => {
+  const { showToast } = useNotifications();
   // Role-based system: admin sees GPS + Standard check-in controls, employee sees simple check-in
   const storedUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
   const userRole = (storedUser.role || localStorage.getItem('role') || sessionStorage.getItem('role') || 'employee').toLowerCase();
@@ -453,12 +455,19 @@ const Attendance = () => {
         setMessage('Attendance marked successfully!');
         setMessageType('success');
         setTodayAttendance(data.data);
+        showToast(
+          '⏰ Attendance Marked Successfully!',
+          `Your attendance was recorded at ${new Date().toLocaleTimeString()} (${data.isLate ? 'Late Arrival ⏰' : 'On Time ✅'}).`,
+          'attendance',
+          { isLate: data.isLate, method: locationPayload.verificationMethod || 'Direct Check-In' }
+        );
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('attendance_updated', { detail: data.data }));
         }
       } else {
         setMessage(data.message || 'Failed to mark attendance');
         setMessageType('error');
+        showToast('Attendance Notice', data.message || 'Failed to mark attendance', 'warning');
       }
     } catch (err) {
       setMessage('Server error. Please try again.');
@@ -500,9 +509,16 @@ const Attendance = () => {
         const minutes = totalMinutes % 60;
         setMessage(`🎉 Checked out successfully! Total work time today: ${hours} Hours ${minutes} Minutes.`);
         setMessageType('success');
+        showToast(
+          '🏠 Clock-Out Confirmed',
+          `Checked out successfully! Total work time today: ${hours}h ${minutes}m.`,
+          'checkout',
+          { workHours: `${hours}h ${minutes}m` }
+        );
       } else {
         setMessage(data.message || 'Failed to check out');
         setMessageType('error');
+        showToast('Check-Out Notice', data.message || 'Failed to check out', 'warning');
       }
     } catch (err) {
       setMessage('Server error. Please try again.');
