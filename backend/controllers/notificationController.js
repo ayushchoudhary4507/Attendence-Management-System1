@@ -1,4 +1,4 @@
-const Notification = require('../models/Notification');
+﻿const Notification = require('../models/Notification');
 const User = require('../models/User');
 
 // Helper: Create notification in DB + emit via socket to admin(s)
@@ -31,7 +31,7 @@ const createAndEmitNotification = async (io, notificationData) => {
             createdAt: notif.createdAt,
             read: false
           });
-          console.log(`📢 Notification emitted to admin ${admin._id}: ${notif.title}`);
+          console.log(`ðŸ“¢ Notification emitted to admin ${admin._id}: ${notif.title}`);
         }
       }
     }
@@ -110,7 +110,7 @@ const getNotifications = async (req, res) => {
     let filter = {};
     // Admin sees all, employee sees only notifications where they are receiver OR sender
     const user = await User.findById(userId);
-    console.log('🔍 Fetching notifications for user:', userId, 'Role:', user?.role);
+    console.log('ðŸ” Fetching notifications for user:', userId, 'Role:', user?.role);
     
     if (user && user.role !== 'admin') {
       const Employee = require('../models/Employee');
@@ -137,22 +137,22 @@ const getNotifications = async (req, res) => {
       }
 
       filter.$or = orConditions;
-      console.log('🔍 Employee notification filter:', JSON.stringify(filter));
+      console.log('ðŸ” Employee notification filter:', JSON.stringify(filter));
     } else {
-      console.log('🔍 Admin - fetching all notifications');
+      console.log('ðŸ” Admin - fetching all notifications');
     }
 
     if (type) filter.type = type;
     if (read !== undefined) filter.read = read === 'true';
 
-    console.log('🔍 Final filter:', filter);
+    console.log('ðŸ” Final filter:', filter);
     const notifications = await Notification.find(filter)
       .sort({ createdAt: -1 })
       .limit(100);
 
-    console.log('📥 Found', notifications.length, 'notifications');
+    console.log('ðŸ“¥ Found', notifications.length, 'notifications');
     const unreadCount = await Notification.countDocuments({ ...filter, read: false });
-    console.log('📥 Unread count:', unreadCount);
+    console.log('ðŸ“¥ Unread count:', unreadCount);
 
     res.json({
       success: true,
@@ -290,6 +290,76 @@ const deleteNotification = async (req, res) => {
   }
 };
 
+// @desc    Register FCM device token for push notifications
+// @route   POST /api/notifications/register-device
+// @access  Private
+const registerDevice = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.userId;
+    const { token, platform } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'FCM token is required' });
+    }
+
+    const validPlatform = ['android', 'ios', 'web'].includes(platform) ? platform : 'android';
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Ensure fcmTokens field exists
+    if (!user.fcmTokens) user.fcmTokens = [];
+
+    // Remove existing entry for this token (dedup) and add fresh
+    user.fcmTokens = user.fcmTokens.filter(t => t.token !== token);
+    user.fcmTokens.push({ token, platform: validPlatform, updatedAt: new Date() });
+
+    // Keep max 5 tokens per user
+    if (user.fcmTokens.length > 5) {
+      user.fcmTokens = user.fcmTokens.slice(-5);
+    }
+
+    await user.save();
+    console.log(`✅ FCM token registered for user ${userId} (${validPlatform})`);
+
+    res.json({ success: true, message: 'Device token registered successfully' });
+  } catch (error) {
+    console.error('Register device error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Unregister FCM device token (call on logout)
+// @route   DELETE /api/notifications/unregister-device
+// @access  Private
+const unregisterDevice = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.userId;
+    const token = req.body.token || req.query.token;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'FCM token is required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.fcmTokens) {
+      user.fcmTokens = user.fcmTokens.filter(t => t.token !== token);
+      await user.save();
+    }
+
+    console.log(`✅ FCM token unregistered for user ${userId}`);
+    res.json({ success: true, message: 'Device token removed successfully' });
+  } catch (error) {
+    console.error('Unregister device error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 module.exports = {
   createNotification,
   getNotifications,
@@ -297,5 +367,9 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  createAndEmitNotification
+  createAndEmitNotification,
+  registerDevice,
+  unregisterDevice
 };
+
+

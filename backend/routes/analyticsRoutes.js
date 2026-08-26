@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
@@ -153,7 +153,7 @@ const isLateArrival = (dateObj = new Date()) => {
 };
 
 // Get analytics dashboard data
-router.get('/dashboard', auth, async (req, res) => {
+const getDashboardData = async (req, res) => {
   try {
     const userId = req.user.id;
     const userRole = req.user.role;
@@ -297,7 +297,10 @@ router.get('/dashboard', auth, async (req, res) => {
     console.error('Analytics error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch analytics data' });
   }
-});
+};
+
+router.get('/dashboard', auth, getDashboardData);
+router.get('/overview', auth, getDashboardData);
 
 // Get real-time attendance stats
 router.get('/realtime', auth, async (req, res) => {
@@ -334,3 +337,4 @@ router.get('/realtime', auth, async (req, res) => {
 });
 
 module.exports = router;
+

@@ -300,6 +300,106 @@ router.post('/verify', async (req, res) => {
 
     console.log(`[OTP VERIFY] Token issued for: ${maskEmail(otpKey)}\n`);
 
+    // Send employee_login notification to admins (for OTP-based mobile login)
+    try {
+      if (user.role !== 'admin') {
+        const Notification = require('../models/Notification');
+        const { sendLoginNotificationToAdmins } = require('../utils/fcmService');
+        const loginDateObj = new Date();
+
+        // Detect source — OTP verify is always mobile-initiated
+        const loginSource = (req.body.loginSource === 'Web') ? 'Web' : 'Mobile';
+        const deviceInfo = req.body.deviceInfo || req.headers['x-device-info'] || '';
+        const xPlatform = (req.headers['x-platform'] || '').toLowerCase();
+        const finalSource = (xPlatform === 'web') ? 'Web' : loginSource;
+
+        const formattedLoginTime = loginDateObj.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+        const formattedLoginDate = loginDateObj.toLocaleDateString('en-GB', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+
+        const sourceEmoji = finalSource === 'Mobile' ? '📱' : '🌐';
+        const notifTitle = 'User Login Alert';
+        const notifMessage = `${user.name} logged in at ${formattedLoginTime} via ${finalSource} ${sourceEmoji}`;
+
+        const admins = await User.find({ role: 'admin' }).select('_id fcmTokens');
+        const activityNotifications = [];
+        for (const admin of admins) {
+          const adminNotification = await Notification.create({
+            type: 'employee_login',
+            title: notifTitle,
+            message: notifMessage,
+            senderId: user._id,
+            senderName: user.name,
+            employeeId: user._id,
+            employeeName: user.name,
+            employeeEmail: user.email,
+            receiverId: admin._id,
+            loginSource: finalSource,
+            deviceInfo: String(deviceInfo).substring(0, 200),
+            loginDate: formattedLoginDate,
+            loginTime: formattedLoginTime,
+            link: '/employees',
+          });
+          activityNotifications.push({ notification: adminNotification, admin });
+        }
+
+        const io = global._io;
+        const offlineAdmins = [];
+        for (const { notification, admin } of activityNotifications) {
+          const adminId = admin._id.toString();
+          const onlineUsersMap = io ? io.onlineUsers : null;
+          const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+          if (adminOnline && adminOnline.isOnline) {
+            io.to(adminOnline.socketId).emit('newNotification', {
+              id: notification._id,
+              type: 'employee_login',
+              notificationType: 'employee_login',
+              title: notifTitle,
+              message: notifMessage,
+              employeeId: user._id.toString(),
+              employeeName: user.name,
+              employeeEmail: user.email,
+              loginSource: finalSource,
+              loginTime: formattedLoginTime,
+              loginDate: formattedLoginDate,
+              senderId: user._id.toString(),
+              senderName: user.name,
+              receiverId: adminId,
+              link: '/employees',
+              createdAt: loginDateObj,
+              read: false
+            });
+          } else {
+            offlineAdmins.push(admin);
+          }
+        }
+        if (offlineAdmins.length > 0) {
+          sendLoginNotificationToAdmins(offlineAdmins, {
+            title: notifTitle,
+            message: notifMessage,
+            employeeName: user.name,
+            employeeEmail: user.email,
+            employeeId: user._id.toString(),
+            loginSource: finalSource,
+            loginDate: formattedLoginDate,
+            loginTime: formattedLoginTime
+          }).catch(err => console.error('FCM push error (non-critical):', err.message));
+        }
+        console.log(`✅ OTP-based login notification sent for ${user.email} (${finalSource})`);
+      }
+    } catch (notifErr) {
+      console.error('OTP verify: login notification error (non-critical):', notifErr.message);
+    }
+
     return res.json({
       success: true,
       message: 'Password reset and verification successful',

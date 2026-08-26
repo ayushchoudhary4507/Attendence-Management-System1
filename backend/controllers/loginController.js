@@ -1,10 +1,44 @@
-const bcrypt = require('bcryptjs');
+﻿const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const mongoose = require('mongoose');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+/**
+ * Detect login source from request headers and body.
+ * Priority: explicit body param > X-Platform header > User-Agent sniff
+ */
+const detectLoginSource = (req) => {
+  // 1. Explicit body param (most reliable — sent by Flutter app)
+  if (req.body.loginSource === 'Mobile') return 'Mobile';
+  if (req.body.loginSource === 'Web') return 'Web';
+
+  // 2. Custom header set by Flutter app
+  const platform = (req.headers['x-platform'] || '').toLowerCase();
+  if (platform === 'mobile' || platform === 'flutter' || platform === 'android' || platform === 'ios') {
+    return 'Mobile';
+  }
+
+  // 3. User-Agent sniff (Dart HTTP client)
+  const ua = req.headers['user-agent'] || '';
+  if (ua.includes('Dart') || ua.includes('dart') || ua.includes('Flutter') || ua.includes('okhttp')) {
+    return 'Mobile';
+  }
+
+  return 'Web';
+};
+
+/**
+ * Extract device info string from request.
+ */
+const extractDeviceInfo = (req) => {
+  const deviceInfo = req.body.deviceInfo || req.headers['x-device-info'] || '';
+  if (deviceInfo) return String(deviceInfo).substring(0, 200);
+  const ua = req.headers['user-agent'] || '';
+  return ua.substring(0, 200);
+};
 
 const loginController = async (req, res) => {
   try {
@@ -69,7 +103,11 @@ const loginController = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    console.log('✅ User logged in successfully from database:', email, 'Role:', user.role);
+    // Detect login source and device info
+    const loginSource = detectLoginSource(req);
+    const deviceInfo = extractDeviceInfo(req);
+
+    console.log(`✅ User logged in successfully from database: ${email} | Role: ${user.role} | Source: ${loginSource}`);
 
     // Late login detection (employees only, before 10 AM is considered on time)
     const now = new Date();
@@ -92,6 +130,8 @@ const loginController = async (req, res) => {
             employeeId: user._id,
             employeeName: user.name,
             employeeEmail: user.email,
+            loginSource,
+            deviceInfo,
             link: '/employees',
             read: false
           });
@@ -129,11 +169,11 @@ const loginController = async (req, res) => {
       }
     }
 
-    // Send employee_login notification to admin (only for employee logins)
+    // Send employee_login notification to all admins (only for non-admin logins)
     if (user.role !== 'admin') {
       try {
         const Notification = require('../models/Notification');
-        const User = require('../models/User');
+        const { sendLoginNotificationToAdmins } = require('../utils/fcmService');
         const loginDateObj = user.lastLogin || new Date();
 
         // Convert server UTC time to IST (Asia/Kolkata)
@@ -151,18 +191,21 @@ const loginController = async (req, res) => {
           year: 'numeric'
         });
 
-        const notifTitle = 'Employee Login';
-        const notifMessage = `${user.name} logged in at ${formattedLoginTime}.`;
+        const notifTitle = 'User Login Alert';
+        const sourceEmoji = loginSource === 'Mobile' ? '📱' : '🌐';
+        const notifMessage = `${user.name} logged in at ${formattedLoginTime} via ${loginSource} ${sourceEmoji}`;
 
         console.log('--- EMPLOYEE LOGIN NOTIFICATION DEBUG LOG ---');
         console.log('Employee ID:', user._id.toString());
         console.log('Employee Name:', user.name);
+        console.log('Login Source:', loginSource);
+        console.log('Device Info:', deviceInfo);
         console.log('Server UTC Login Time:', loginDateObj.toISOString());
         console.log('Converted IST Login Time:', formattedLoginTime);
         console.log('Notification Message:', notifMessage);
         console.log('---------------------------------------------');
 
-        const admins = await User.find({ role: 'admin' }).select('_id');
+        const admins = await User.find({ role: 'admin' }).select('_id fcmTokens');
         
         // Create notification for each admin
         const activityNotifications = [];
@@ -177,43 +220,65 @@ const loginController = async (req, res) => {
             employeeName: user.name,
             employeeEmail: user.email,
             receiverId: admin._id,
+            loginSource,
+            deviceInfo,
+            loginDate: formattedLoginDate,
+            loginTime: formattedLoginTime,
             link: '/employees',
           });
-          activityNotifications.push(adminNotification);
+          activityNotifications.push({ notification: adminNotification, admin });
         }
         console.log('✅ Employee login notifications created for admins');
 
-        // Emit to admins via socket
+        // Emit to online admins via socket; track offline admins for FCM push
         const io = global._io;
-        if (io) {
-          const onlineUsersMap = io.onlineUsers;
-          for (const admin of admins) {
-            const adminId = admin._id.toString();
-            const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
-            if (adminOnline && adminOnline.isOnline) {
-              const notification = activityNotifications.find(n => n.receiverId.toString() === adminId);
-              if (notification) {
-                io.to(adminOnline.socketId).emit('newNotification', {
-                  id: notification._id,
-                  type: 'employee_login',
-                  notificationType: 'employee_login',
-                  title: notifTitle,
-                  message: notifMessage,
-                  employeeId: user._id.toString(),
-                  employeeName: user.name,
-                  loginTime: formattedLoginTime,
-                  loginDate: formattedLoginDate,
-                  senderId: user._id.toString(),
-                  senderName: user.name,
-                  receiverId: adminId,
-                  link: '/employees',
-                  createdAt: loginDateObj,
-                  read: false
-                });
-                console.log(`📢 Employee login notification emitted to admin ${adminId}`);
-              }
-            }
+        const offlineAdmins = [];
+
+        for (const { notification, admin } of activityNotifications) {
+          const adminId = admin._id.toString();
+          const onlineUsersMap = io ? io.onlineUsers : null;
+          const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+
+          if (adminOnline && adminOnline.isOnline) {
+            io.to(adminOnline.socketId).emit('newNotification', {
+              id: notification._id,
+              type: 'employee_login',
+              notificationType: 'employee_login',
+              title: notifTitle,
+              message: notifMessage,
+              employeeId: user._id.toString(),
+              employeeName: user.name,
+              employeeEmail: user.email,
+              loginSource,
+              deviceInfo,
+              loginTime: formattedLoginTime,
+              loginDate: formattedLoginDate,
+              senderId: user._id.toString(),
+              senderName: user.name,
+              receiverId: adminId,
+              link: '/employees',
+              createdAt: loginDateObj,
+              read: false
+            });
+            console.log(`📢 Employee login notification emitted to online admin ${adminId}`);
+          } else {
+            // Admin is offline — queue for FCM push
+            offlineAdmins.push(admin);
           }
+        }
+
+        // Send FCM push to offline admins (graceful — skipped if no service account)
+        if (offlineAdmins.length > 0) {
+          sendLoginNotificationToAdmins(offlineAdmins, {
+            title: notifTitle,
+            message: notifMessage,
+            employeeName: user.name,
+            employeeEmail: user.email,
+            employeeId: user._id.toString(),
+            loginSource,
+            loginDate: formattedLoginDate,
+            loginTime: formattedLoginTime
+          }).catch(err => console.error('FCM push error (non-critical):', err.message));
         }
       } catch (notifError) {
         console.error('Failed to send login notification to admin:', notifError.message);

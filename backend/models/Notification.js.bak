@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({
   receiverId: {
@@ -43,23 +43,6 @@ const notificationSchema = new mongoose.Schema({
     default: ''
   },
   employeeEmail: {
-    type: String,
-    default: ''
-  },
-  loginSource: {
-    type: String,
-    enum: ['Web', 'Mobile', 'Unknown'],
-    default: 'Web'
-  },
-  deviceInfo: {
-    type: String,
-    default: ''
-  },
-  loginDate: {
-    type: String,
-    default: ''
-  },
-  loginTime: {
     type: String,
     default: ''
   },

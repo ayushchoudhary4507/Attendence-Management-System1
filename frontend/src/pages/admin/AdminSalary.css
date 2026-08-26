@@ -14,6 +14,13 @@
   gap: 16px;
 }
 
+.admin-salary .header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .admin-salary .header-left h1 {
   font-size: 1.75rem;
   font-weight: 700;
@@ -23,7 +30,7 @@
 
 .admin-salary .header-left p {
   color: var(--text-secondary, #666);
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 0.9rem;
 }
 
@@ -90,18 +97,21 @@
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 12px;
   overflow-x: auto;
+  width: 100%;
 }
 
 .admin-salary .data-table {
   width: 100%;
+  min-width: 900px;
   border-collapse: collapse;
 }
 
 .admin-salary .data-table th,
 .admin-salary .data-table td {
-  padding: 12px 16px;
+  padding: 12px 18px;
   text-align: left;
   border-bottom: 1px solid var(--border-color, #e5e7eb);
+  white-space: nowrap;
 }
 
 .admin-salary .data-table th {
