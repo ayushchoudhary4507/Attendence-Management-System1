@@ -9,7 +9,8 @@ const {
   sendMessage,
   getUnreadCount,
   getConversations,
-  markAsRead
+  markAsRead,
+  markAllMessagesAsRead
 } = require('../controllers/messageController');
 
 /**
@@ -347,6 +348,9 @@ router.get('/:userId', getMessages);
 
 // Send a message
 router.post('/', sendMessage);
+
+// Mark all direct & group messages as read
+router.put('/mark-all-read', markAllMessagesAsRead);
 
 // Mark all messages from a user as read
 router.put('/read/:userId', markAsRead);

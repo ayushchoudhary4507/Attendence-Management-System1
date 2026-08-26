@@ -280,11 +280,12 @@ router.get('/unread-count', auth, async (req, res) => {
     const groupIds = groups.map(g => g._id.toString());
 
     // Count unread messages per group
-    // A message is unread if the current user's ID is NOT in the readBy array
+    // A message is unread if the current user is not the sender and NOT in the readBy array
     const unreadCounts = await GroupMessage.aggregate([
       {
         $match: {
-          groupId: { $in: groupIds.map(id => new mongoose.Types.ObjectId(id)) }
+          groupId: { $in: groupIds.map(id => new mongoose.Types.ObjectId(id)) },
+          senderId: { $ne: new mongoose.Types.ObjectId(userId) }
         }
       },
       {
@@ -1292,6 +1293,48 @@ router.patch('/:groupId/make-admin/:userId', auth, async (req, res) => {
   } catch (error) {
     console.error('Error promoting member:', error);
     res.status(500).json({ success: false, message: 'Failed to promote member', error: error.message });
+  }
+});
+
+// @route   PATCH /api/groups/:groupId/mark-read
+// @desc    Mark all messages in a group as read for current user
+// @access  Private
+router.patch('/:groupId/mark-read', auth, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user.userId;
+
+    // Push userId to readBy for all group messages in this group
+    await GroupMessage.updateMany(
+      {
+        groupId: new mongoose.Types.ObjectId(groupId),
+        'readBy.userId': { $ne: new mongoose.Types.ObjectId(userId) }
+      },
+      {
+        $push: {
+          readBy: {
+            userId: new mongoose.Types.ObjectId(userId),
+            readAt: new Date()
+          }
+        }
+      }
+    );
+
+    // Also delete/remove group notifications for this user
+    const Notification = require('../models/Notification');
+    await Notification.deleteMany({
+      type: 'message',
+      receiverId: new mongoose.Types.ObjectId(userId),
+      groupId: new mongoose.Types.ObjectId(groupId)
+    });
+
+    res.json({
+      success: true,
+      message: 'Group messages marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking group messages as read:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark group messages as read', error: error.message });
   }
 });
 

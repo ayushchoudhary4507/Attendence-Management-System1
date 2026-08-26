@@ -407,6 +407,7 @@ const getUnreadCount = async (req, res) => {
 
     const count = await Message.countDocuments({
       receiverId: currentUserId,
+      senderId: { $ne: currentUserId },
       read: false
     });
 
@@ -415,6 +416,7 @@ const getUnreadCount = async (req, res) => {
       {
         $match: {
           receiverId: currentUserId,
+          senderId: { $ne: currentUserId },
           read: false
         }
       },
@@ -612,6 +614,14 @@ const markAsRead = async (req, res) => {
       }
     );
 
+    // Also remove / mark as read corresponding message notifications from Notification model
+    const Notification = require('../models/Notification');
+    await Notification.deleteMany({
+      type: 'message',
+      receiverId: currentUserId,
+      senderId: senderId
+    });
+
     res.status(200).json({
       success: true,
       message: 'Messages marked as read',
@@ -627,11 +637,70 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// Mark all direct & group messages as read for current user
+const markAllMessagesAsRead = async (req, res) => {
+  try {
+    const currentUserIdRaw = req.userId || req.user?._id || req.user?.id;
+    const currentUserIdStr = currentUserIdRaw?.toString();
+
+    if (!currentUserIdStr) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+
+    const currentUserId = new mongoose.Types.ObjectId(currentUserIdStr);
+
+    // 1. Mark all direct messages as read
+    await Message.updateMany(
+      { receiverId: currentUserId, read: false },
+      { $set: { read: true, readAt: new Date() } }
+    );
+
+    // 2. Mark all group messages in user's groups as read
+    const Group = require('../models/Group');
+    const GroupMessage = require('../models/GroupMessage');
+    const userGroups = await Group.find({ 'members.userId': currentUserId });
+    const groupIds = userGroups.map(g => g._id);
+
+    if (groupIds.length > 0) {
+      await GroupMessage.updateMany(
+        {
+          groupId: { $in: groupIds },
+          'readBy.userId': { $ne: currentUserId }
+        },
+        {
+          $push: {
+            readBy: {
+              userId: currentUserId,
+              readAt: new Date()
+            }
+          }
+        }
+      );
+    }
+
+    // 3. Remove all message notifications for this user
+    const Notification = require('../models/Notification');
+    await Notification.deleteMany({
+      type: 'message',
+      receiverId: currentUserId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'All messages marked as read'
+    });
+  } catch (error) {
+    console.error('Mark all messages as read error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark all as read', error: error.message });
+  }
+};
+
 module.exports = {
   getUsers,
   getMessages,
   sendMessage,
   getUnreadCount,
   getConversations,
-  markAsRead
+  markAsRead,
+  markAllMessagesAsRead
 };

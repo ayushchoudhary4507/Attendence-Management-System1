@@ -481,12 +481,20 @@ export const NotificationProvider = ({ children }) => {
       }
     });
 
-    newSocket.on('message_read', () => {
+    newSocket.on('message_read', (data) => {
       fetchUnreadMessageCount();
+      fetchNotifications();
+      if (data?.senderId) {
+        setNotifications(prev => prev.filter(n => !(n.type === 'message' && String(n.senderId) === String(data.senderId))));
+      }
     });
 
-    newSocket.on('group_message_read', () => {
+    newSocket.on('group_message_read', (data) => {
       fetchUnreadMessageCount();
+      fetchNotifications();
+      if (data?.groupId) {
+        setNotifications(prev => prev.filter(n => !(n.type === 'message' && String(n.groupId) === String(data.groupId))));
+      }
     });
 
     socketRefInternal.current = newSocket;
@@ -626,6 +634,7 @@ export const NotificationProvider = ({ children }) => {
     unreadCount,
     unreadMessageCount,
     fetchUnreadMessageCount,
+    fetchNotifications,
     setUnreadMessageCount,
     toastNotifications,
     isConnected,

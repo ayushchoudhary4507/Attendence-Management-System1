@@ -304,7 +304,7 @@ const ChatVoicePlayer = ({ src, duration: initialDuration }) => {
 // MAIN COMPONENT: Chat
 // ============================================
 const Chat = ({ user }) => {
-  const { fetchUnreadMessageCount } = useNotifications();
+  const { fetchUnreadMessageCount, fetchNotifications } = useNotifications();
   const [socket, setSocket] = useState(null);
   const [users, setUsers] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -1533,15 +1533,50 @@ const Chat = ({ user }) => {
         <div className={`chat-sidebar ${showMobileSidebar ? 'visible' : 'hidden'}`}>
           <div className="chat-sidebar-header">
             <h2>Messages</h2>
-            <button 
-              className="create-group-btn"
-              onClick={() => setShowCreateGroupModal(true)}
-              title="Create Group"
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-              </svg>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {(sidebarUsers.some(u => u.unreadCount > 0) || Object.values(groupUnreadCounts).some(c => c > 0)) && (
+                <button
+                  className="mark-all-read-btn"
+                  onClick={async () => {
+                    try {
+                      await chatAPI.markAllAsRead();
+                      setUnreadCounts({});
+                      setGroupUnreadCounts({});
+                      setConversations(prev => prev.map(c => ({ ...c, unreadCount: 0 })));
+                      fetchUnreadMessageCount();
+                      fetchNotifications();
+                    } catch (err) {
+                      console.error('Failed to mark all as read:', err);
+                    }
+                  }}
+                  title="Mark all messages as read"
+                  style={{
+                    background: 'rgba(99, 102, 241, 0.12)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    color: '#6366f1',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  ✓ Read All
+                </button>
+              )}
+              <button 
+                className="create-group-btn"
+                onClick={() => setShowCreateGroupModal(true)}
+                title="Create Group"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                </svg>
+              </button>
+            </div>
           </div>
           
           {/* Tabs */}
@@ -1551,8 +1586,10 @@ const Chat = ({ user }) => {
               onClick={() => setActiveTab('chats')}
             >
               Chats
-              {sidebarUsers.some(u => u.unreadCount > 0) && (
-                <span className="tab-badge"></span>
+              {sidebarUsers.reduce((sum, u) => sum + (Number(u.unreadCount) || 0), 0) > 0 && (
+                <span className="tab-badge">
+                  {sidebarUsers.reduce((sum, u) => sum + (Number(u.unreadCount) || 0), 0)}
+                </span>
               )}
             </button>
             <button 
@@ -1560,8 +1597,10 @@ const Chat = ({ user }) => {
               onClick={() => setActiveTab('groups')}
             >
               Groups
-              {groups.length > 0 && (
-                <span className="tab-badge">{groups.length}</span>
+              {Object.values(groupUnreadCounts).reduce((sum, c) => sum + (Number(c) || 0), 0) > 0 && (
+                <span className="tab-badge">
+                  {Object.values(groupUnreadCounts).reduce((sum, c) => sum + (Number(c) || 0), 0)}
+                </span>
               )}
             </button>
           </div>
@@ -1598,6 +1637,7 @@ const Chat = ({ user }) => {
                         try {
                           await chatAPI.markAsRead(item.userId);
                           fetchUnreadMessageCount();
+                          fetchNotifications();
                         } catch (err) {
                           console.error('Failed to mark messages as read:', err);
                         }
@@ -1677,6 +1717,7 @@ const Chat = ({ user }) => {
                           try {
                             await groupAPI.markAsRead(group._id);
                             fetchUnreadMessageCount();
+                            fetchNotifications();
                           } catch (err) {
                             console.error('Failed to mark group messages as read:', err);
                           }

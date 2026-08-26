@@ -533,6 +533,12 @@ export const chatAPI = {
     return response.data;
   },
 
+  // Mark all messages across direct & group chats as read
+  markAllAsRead: async () => {
+    const response = await api.put('/messages/mark-all-read');
+    return response.data;
+  },
+
   // Upload file
   uploadFile: async (formData, onProgress) => {
     const response = await api.post('/messages/upload', formData, {
