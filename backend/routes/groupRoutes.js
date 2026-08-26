@@ -517,7 +517,18 @@ router.get('/:groupId/messages', auth, async (req, res) => {
 
     res.json({
       success: true,
-      messages: messages.reverse() // Return in chronological order
+      messages: messages.reverse().map(msg => {
+        const msgObj = msg.toObject ? msg.toObject() : msg;
+        const senderObj = msgObj.senderId;
+        const senderIdStr = (senderObj && typeof senderObj === 'object') ? (senderObj._id?.toString() || senderObj.id?.toString()) : senderObj?.toString();
+        const senderNameStr = msgObj.senderName || (senderObj && typeof senderObj === 'object' ? senderObj.name : '') || 'Member';
+        return {
+          ...msgObj,
+          id: msgObj._id,
+          senderId: senderIdStr,
+          senderName: senderNameStr
+        };
+      })
     });
   } catch (error) {
     console.error('Error fetching group messages:', error);
@@ -620,10 +631,20 @@ router.post('/:groupId/messages', auth, async (req, res) => {
     // Populate sender info
     await groupMessage.populate('senderId', 'name email');
 
+    const msgObj = groupMessage.toObject ? groupMessage.toObject() : groupMessage;
+    const senderObj = msgObj.senderId;
+    const senderIdStr = (senderObj && typeof senderObj === 'object') ? (senderObj._id?.toString() || senderObj.id?.toString()) : senderObj?.toString();
+    const senderNameStr = msgObj.senderName || (senderObj && typeof senderObj === 'object' ? senderObj.name : '') || 'Member';
+
     res.status(201).json({
       success: true,
       message: 'Message sent successfully',
-      data: groupMessage
+      data: {
+        ...msgObj,
+        id: msgObj._id,
+        senderId: senderIdStr,
+        senderName: senderNameStr
+      }
     });
   } catch (error) {
     console.error('❌ Error sending group message:', error);

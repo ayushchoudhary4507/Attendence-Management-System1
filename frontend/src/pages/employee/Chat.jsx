@@ -364,8 +364,20 @@ const Chat = ({ user }) => {
   const recordingTimerRef = useRef(null);
   const previewAudioRef = useRef(null);
 
-  const currentUserId = user?.id || user?._id;
-  const currentUserName = user?.name || 'Current User';
+  const storedUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+  const currentUserId = user?.id || user?._id || storedUser?.id || storedUser?._id;
+  const currentUserName = user?.name || storedUser?.name || 'Current User';
+
+  // Helper to extract clean sender ID string
+  const getSenderId = (val) => {
+    if (!val) return '';
+    if (typeof val === 'object') {
+      if (val.senderId) return getSenderId(val.senderId);
+      if (val.sender) return getSenderId(val.sender);
+      return String(val._id || val.id || '');
+    }
+    return String(val);
+  };
   
   const selectedUserRef = useRef(selectedUser);
   const selectedGroupRef = useRef(selectedGroup);
@@ -565,7 +577,8 @@ const Chat = ({ user }) => {
 
     const handleReceiveGroupMessage = (data) => {
       const currentSelectedGroup = selectedGroupRef.current;
-      const isFromMe = String(data.senderId) === String(currentUserId);
+      const dataSenderId = getSenderId(data.senderId || data);
+      const isFromMe = Boolean(dataSenderId && currentUserId && dataSenderId === String(currentUserId));
       const isGroupOpen = currentSelectedGroup && String(data.groupId) === String(currentSelectedGroup._id);
 
       if (isGroupOpen) {
@@ -575,7 +588,7 @@ const Chat = ({ user }) => {
             id: data.id,
             tempId: data.tempId,
             groupId: data.groupId,
-            senderId: data.senderId,
+            senderId: dataSenderId || data.senderId,
             senderName: data.senderName,
             message: data.message,
             messageType: data.messageType || getFileCategory(data),
@@ -621,12 +634,13 @@ const Chat = ({ user }) => {
     };
 
     const handleGroupMessageSent = (data) => {
+      const dataSenderId = getSenderId(data.senderId || data);
       setMessages((prev) => {
         const hasTemp = prev.some(m => m.tempId === data.tempId || m.status === 'sending');
         if (hasTemp) {
           return prev.map(m =>
-            (m.tempId === data.tempId || (m.status === 'sending' && m.groupId === data.groupId && m.message === data.message))
-              ? { ...m, id: data.id, status: 'sent', tempId: undefined }
+            (m.tempId === data.tempId || (m.status === 'sending' && String(m.groupId) === String(data.groupId) && m.message === data.message))
+              ? { ...m, id: data.id, status: 'sent', tempId: undefined, senderId: dataSenderId || m.senderId }
               : m
           );
         }
@@ -635,7 +649,7 @@ const Chat = ({ user }) => {
         return [...prev, {
           id: data.id,
           groupId: data.groupId,
-          senderId: data.senderId,
+          senderId: dataSenderId || data.senderId,
           senderName: data.senderName,
           message: data.message,
           messageType: data.messageType || getFileCategory(data),
@@ -806,6 +820,9 @@ const Chat = ({ user }) => {
         if (response.success && response.messages) {
           setMessages(response.messages.map(msg => ({
             ...msg,
+            id: msg.id || msg._id,
+            senderId: getSenderId(msg.senderId) || msg.senderId,
+            senderName: msg.senderName || (typeof msg.senderId === 'object' ? msg.senderId?.name : '') || 'Member',
             timestamp: new Date(msg.timestamp),
             isGroupMessage: true
           })));
@@ -1830,8 +1847,12 @@ const Chat = ({ user }) => {
                         <span>{date}</span>
                       </div>
                       {msgs.map((msg, index) => {
-                        const isSentByMe = String(msg.senderId) === String(currentUserId);
-                        const isFirstInGroup = index === 0 || msgs[index - 1].senderId !== msg.senderId;
+                        const msgSenderId = getSenderId(msg.senderId || msg);
+                        const myUserId = String(currentUserId || '');
+                        const isSentByMe = Boolean(msgSenderId && myUserId && msgSenderId === myUserId);
+                        const prevSenderId = index > 0 ? getSenderId(msgs[index - 1].senderId || msgs[index - 1]) : null;
+                        const isFirstInGroup = index === 0 || prevSenderId !== msgSenderId;
+                        const senderDisplayName = msg.senderName || (typeof msg.senderId === 'object' ? msg.senderId?.name : '') || 'Member';
                         
                         return (
                           <div
@@ -1840,7 +1861,7 @@ const Chat = ({ user }) => {
                           >
                             <div className="message-content">
                               {!isSentByMe && selectedGroup && (
-                                <span className="message-sender">{msg.senderName}</span>
+                                <span className="message-sender">{senderDisplayName}</span>
                               )}
                               {renderMessageContent(msg)}
                               <div className="message-meta">
