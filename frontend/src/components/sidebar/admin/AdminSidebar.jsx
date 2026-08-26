@@ -4,7 +4,7 @@ import { useNotifications } from '../../../context/NotificationContext';
 import AttendanceProIcon from '../../AttendanceProIcon';
 
 const AdminSidebar = ({ sidebarCollapsed, mobileSidebarOpen, isMobile, onOverlayClick, user }) => {
-  const { unreadCount } = useNotifications();
+  const { unreadCount, unreadMessageCount } = useNotifications();
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -70,6 +70,17 @@ const AdminSidebar = ({ sidebarCollapsed, mobileSidebarOpen, isMobile, onOverlay
                     padding: '2px 4px'
                   }}>
                     {unreadCount}
+                  </span>
+                )}
+                {item.path === '/chat' && unreadMessageCount > 0 && (
+                  <span className="badge message-badge" style={{ 
+                    position: 'absolute', 
+                    top: '-5px', 
+                    right: '-5px',
+                    fontSize: '10px',
+                    padding: '2px 4px'
+                  }}>
+                    {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
                   </span>
                 )}
               </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { chatAPI, groupAPI } from '../../services/api';
+import { useNotifications } from '../../context/NotificationContext';
 import CreateGroupModal from '../../components/admin/CreateGroupModal';
 import GroupMembersModal from '../../components/admin/GroupMembersModal';
 import './Chat.css';
@@ -24,6 +25,34 @@ const formatDuration = (seconds) => {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s < 10 ? '0' : ''}${s}`;
+};
+
+// Check if message is an image file
+const isImageFile = (msg) => {
+  if (!msg) return false;
+  if (msg.messageType === 'image') return true;
+  const type = msg.fileType || msg.mimeType || '';
+  if (type.startsWith('image/')) return true;
+  const url = (msg.fileUrl || msg.file || msg.image || msg.url || '').toLowerCase();
+  const name = (msg.fileName || msg.message || '').toLowerCase();
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(url) || /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(name)) return true;
+  if (typeof url === 'string' && url.startsWith('data:image/')) return true;
+  return false;
+};
+
+// Format sidebar preview snippet safely
+const renderSidebarSnippet = (msg, msgType, fileName) => {
+  const category = getFileCategory({ message: msg, messageType: msgType, fileName, fileUrl: msg });
+  if (category === 'image') return '📷 Photo';
+  if (category === 'video') return '🎥 Video';
+  if (category === 'voice') return '🎤 Voice Message';
+  if (category === 'audio') return '🎵 Audio';
+  if (category === 'pdf') return `📄 ${fileName || 'PDF Document'}`;
+  if (category === 'word' || category === 'excel' || category === 'ppt' || category === 'archive' || category === 'document') {
+    return msg && msg.startsWith('📎 ') ? msg : `📁 ${fileName || 'Document'}`;
+  }
+  if (!msg) return '';
+  return msg.length > 32 ? msg.substring(0, 32) + '...' : msg;
 };
 
 // Determine file category from type / filename
@@ -275,6 +304,7 @@ const ChatVoicePlayer = ({ src, duration: initialDuration }) => {
 // MAIN COMPONENT: Chat
 // ============================================
 const Chat = ({ user }) => {
+  const { fetchUnreadMessageCount } = useNotifications();
   const [socket, setSocket] = useState(null);
   const [users, setUsers] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -1418,6 +1448,7 @@ const Chat = ({ user }) => {
         lastMessageTime: conv.lastMessage?.timestamp,
         lastMessage: conv.lastMessage?.message || '',
         lastMessageType: conv.lastMessage?.messageType || 'text',
+        lastFileName: conv.lastMessage?.fileName || '',
         hasConversation: true
       };
     });
@@ -1434,6 +1465,7 @@ const Chat = ({ user }) => {
           lastMessageTime: null,
           lastMessage: '',
           lastMessageType: 'text',
+          lastFileName: '',
           hasConversation: false
         });
       }
@@ -1565,6 +1597,7 @@ const Chat = ({ user }) => {
                         );
                         try {
                           await chatAPI.markAsRead(item.userId);
+                          fetchUnreadMessageCount();
                         } catch (err) {
                           console.error('Failed to mark messages as read:', err);
                         }
@@ -1603,9 +1636,7 @@ const Chat = ({ user }) => {
                         <span className="typing-indicator">typing...</span>
                       ) : item.lastMessage ? (
                         <p className={`last-message ${item.unreadCount > 0 ? 'unread' : ''}`}>
-                          {item.lastMessage.length > 32
-                            ? item.lastMessage.substring(0, 32) + '...'
-                            : item.lastMessage}
+                          {renderSidebarSnippet(item.lastMessage, item.lastMessageType, item.lastFileName)}
                         </p>
                       ) : (
                         <p className="user-email">{item.userEmail}</p>
@@ -1631,6 +1662,11 @@ const Chat = ({ user }) => {
               ) : (
                 groups.map((group) => {
                   const unreadCount = groupUnreadCounts[group._id] || 0;
+                  const senderName = group.lastMessage?.senderId?.name || 'Someone';
+                  const gMsg = group.lastMessage?.message || '';
+                  const gType = group.lastMessage?.messageType || '';
+                  const gFile = group.lastMessage?.fileName || '';
+
                   return (
                     <div
                       key={group._id}
@@ -1640,6 +1676,7 @@ const Chat = ({ user }) => {
                           setGroupUnreadCounts(prev => ({ ...prev, [group._id]: 0 }));
                           try {
                             await groupAPI.markAsRead(group._id);
+                            fetchUnreadMessageCount();
                           } catch (err) {
                             console.error('Failed to mark group messages as read:', err);
                           }
@@ -1661,12 +1698,8 @@ const Chat = ({ user }) => {
                         </h4>
                         {group.lastMessage ? (
                           <p className={`last-message ${unreadCount > 0 ? 'unread' : ''}`}>
-                            <span className="last-message-sender">
-                              {group.lastMessage.senderId?.name || 'Someone'}:
-                            </span>
-                            {group.lastMessage.message?.length > 25
-                              ? group.lastMessage.message.substring(0, 25) + '...'
-                              : group.lastMessage.message}
+                            <span className="last-message-sender">{senderName}: </span>
+                            <span>{renderSidebarSnippet(gMsg, gType, gFile)}</span>
                           </p>
                         ) : (
                           <p className="user-email">{group.members?.length || 0} members</p>

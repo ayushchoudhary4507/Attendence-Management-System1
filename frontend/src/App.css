@@ -2500,3 +2500,38 @@ rect.recharts-tooltip-cursor {
   border: none !important;
   box-shadow: none !important;
 }
+
+/* Sidebar Nav Badge Styles */
+.sidebar .nav-item .badge,
+.sidebar .nav-item .message-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff !important;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
+  animation: sidebarBadgePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1.5px solid #ffffff;
+  z-index: 2;
+  line-height: 1;
+}
+
+body.dark-theme .sidebar .nav-item .badge,
+body.dark-theme .sidebar .nav-item .message-badge {
+  border-color: #1e293b;
+}
+
+@keyframes sidebarBadgePop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}

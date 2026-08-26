@@ -254,12 +254,21 @@ io.on('connection', (socket) => {
         io.to(receiver.socketId).emit('receive_message', messageData);
         console.log(`Message delivered to receiver ${receiverId}`);
 
+        // Format notification message according to media type
+        const notifMsg = messageData.messageType === 'image' ? '📷 Photo'
+          : messageData.messageType === 'video' ? '🎥 Video'
+          : messageData.messageType === 'voice' ? '🎤 Voice Message'
+          : messageData.messageType === 'audio' ? '🎵 Audio'
+          : messageData.messageType === 'pdf' ? `📄 ${messageData.fileName || 'PDF Document'}`
+          : messageData.messageType === 'document' ? `📁 ${messageData.fileName || 'Document'}`
+          : (message && message.length > 50 ? message.substring(0, 50) + '...' : (message || 'New Message'));
+
         // Also send notification to receiver with receiverId for filtering
         io.to(receiver.socketId).emit('newNotification', {
           id: Date.now(),
           type: 'message',
           title: `New message from ${senderName}`,
-          message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+          message: notifMsg,
           senderId,
           senderName,
           receiverId,
@@ -408,11 +417,19 @@ io.on('connection', (socket) => {
             if (memberId !== senderId) {
               const memberOnline = onlineUsers.get(memberId);
               if (memberOnline && memberOnline.isOnline) {
+                const groupNotifMsg = messageData.messageType === 'image' ? '📷 Photo'
+                  : messageData.messageType === 'video' ? '🎥 Video'
+                  : messageData.messageType === 'voice' ? '🎤 Voice Message'
+                  : messageData.messageType === 'audio' ? '🎵 Audio'
+                  : messageData.messageType === 'pdf' ? `📄 ${messageData.fileName || 'PDF Document'}`
+                  : messageData.messageType === 'document' ? `📁 ${messageData.fileName || 'Document'}`
+                  : (message && message.length > 50 ? message.substring(0, 50) + '...' : (message || 'New Message'));
+
                 io.to(memberOnline.socketId).emit('newNotification', {
                   id: Date.now(),
                   type: 'message',
                   title: `${senderName} in ${group.name || 'Group'}`,
-                  message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+                  message: groupNotifMsg,
                   groupId,
                   senderId,
                   senderName,

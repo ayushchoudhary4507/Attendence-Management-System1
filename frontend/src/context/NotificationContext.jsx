@@ -55,6 +55,7 @@ export const NotificationProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [toastNotifications, setToastNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all', 'leave_request', 'user_activity', 'project_update', 'message'
@@ -83,6 +84,28 @@ export const NotificationProvider = ({ children }) => {
       oscillator.stop(audioCtx.currentTime + 0.5);
     } catch (e) {
       console.log('Audio play failed:', e);
+    }
+  }, []);
+
+  // Fetch unread messages count from direct messages + groups
+  const fetchUnreadMessageCount = useCallback(async () => {
+    try {
+      const [directRes, groupRes] = await Promise.allSettled([
+        apiCall('GET', '/messages/unread-count'),
+        apiCall('GET', '/groups/unread-count')
+      ]);
+
+      let total = 0;
+      if (directRes.status === 'fulfilled' && directRes.value?.success) {
+        total += (directRes.value.totalUnread || directRes.value.unreadCount || 0);
+      }
+      if (groupRes.status === 'fulfilled' && groupRes.value?.success && groupRes.value?.unreadCounts) {
+        const groupSum = Object.values(groupRes.value.unreadCounts).reduce((acc, c) => acc + (Number(c) || 0), 0);
+        total += groupSum;
+      }
+      setUnreadMessageCount(total);
+    } catch (err) {
+      console.error('Error fetching unread message count:', err);
     }
   }, []);
 
@@ -402,9 +425,74 @@ export const NotificationProvider = ({ children }) => {
       showT(data.notification?.title || 'Notification', data.notification?.message || '', data.notification?.type || 'info');
     });
 
+    // ===== REAL-TIME CHAT & MESSAGE NOTIFICATIONS =====
+    newSocket.on('receive_message', (data) => {
+      console.log('💬 Socket receive_message in NotificationContext:', data);
+      fetchUnreadMessageCount();
+
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const currentUserId = currentUser.id || currentUser._id;
+
+      if (String(data.receiverId) === String(currentUserId)) {
+        if (window.location.pathname !== '/chat') {
+          const msgType = data.messageType;
+          const snippet = msgType === 'image' ? '📷 Sent a photo'
+            : msgType === 'video' ? '🎥 Sent a video'
+            : msgType === 'voice' ? '🎤 Sent a voice message'
+            : msgType === 'audio' ? '🎵 Sent an audio file'
+            : msgType === 'pdf' ? `📄 PDF: ${data.fileName || 'Document'}`
+            : msgType === 'document' ? `📁 Document: ${data.fileName || 'File'}`
+            : (data.message && data.message.length > 60 ? data.message.substring(0, 60) + '...' : (data.message || 'Sent a message'));
+
+          showToastRef.current?.(
+            `New message from ${data.senderName || 'User'}`,
+            snippet,
+            'message'
+          );
+        }
+      }
+    });
+
+    newSocket.on('receive_group_message', (data) => {
+      console.log('👥 Socket receive_group_message in NotificationContext:', data);
+      fetchUnreadMessageCount();
+
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const currentUserId = currentUser.id || currentUser._id;
+
+      if (String(data.senderId) !== String(currentUserId)) {
+        if (window.location.pathname !== '/chat') {
+          const msgType = data.messageType;
+          const sender = data.senderName || 'Someone';
+          const snippet = msgType === 'image' ? `${sender}: 📷 Photo`
+            : msgType === 'video' ? `${sender}: 🎥 Video`
+            : msgType === 'voice' ? `${sender}: 🎤 Voice Note`
+            : msgType === 'audio' ? `${sender}: 🎵 Audio`
+            : msgType === 'pdf' ? `${sender}: 📄 ${data.fileName || 'PDF Document'}`
+            : msgType === 'document' ? `${sender}: 📁 ${data.fileName || 'Document'}`
+            : `${sender}: ${data.message && data.message.length > 50 ? data.message.substring(0, 50) + '...' : (data.message || 'New message')}`;
+
+          showToastRef.current?.(
+            `Group Message (${sender})`,
+            snippet,
+            'message'
+          );
+        }
+      }
+    });
+
+    newSocket.on('message_read', () => {
+      fetchUnreadMessageCount();
+    });
+
+    newSocket.on('group_message_read', () => {
+      fetchUnreadMessageCount();
+    });
+
     socketRefInternal.current = newSocket;
     setSocket(newSocket);
     fetchNotifications();
+    fetchUnreadMessageCount();
 
     return () => {
       newSocket.off('newNotification');
@@ -413,10 +501,14 @@ export const NotificationProvider = ({ children }) => {
       newSocket.off('new_leave_request');
       newSocket.off('new_message_notification');
       newSocket.off('receive_notification');
+      newSocket.off('receive_message');
+      newSocket.off('receive_group_message');
+      newSocket.off('message_read');
+      newSocket.off('group_message_read');
       newSocket.close();
       socketRefInternal.current = null;
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, fetchUnreadMessageCount]);
 
   // Run socket init on mount AND when login event fires
   useEffect(() => {
@@ -532,6 +624,9 @@ export const NotificationProvider = ({ children }) => {
     notifications,
     filteredNotifications,
     unreadCount,
+    unreadMessageCount,
+    fetchUnreadMessageCount,
+    setUnreadMessageCount,
     toastNotifications,
     isConnected,
     filter,
