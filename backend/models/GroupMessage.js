@@ -22,7 +22,7 @@ const groupMessageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'image', 'file', 'system'],
+    enum: ['text', 'image', 'video', 'audio', 'voice', 'pdf', 'document', 'file', 'system'],
     default: 'text'
   },
   fileUrl: {
@@ -36,6 +36,18 @@ const groupMessageSchema = new mongoose.Schema({
   fileType: {
     type: String,
     default: null
+  },
+  fileSize: {
+    type: Number,
+    default: 0
+  },
+  mimeType: {
+    type: String,
+    default: null
+  },
+  duration: {
+    type: Number,
+    default: 0
   },
   readBy: [{
     userId: {

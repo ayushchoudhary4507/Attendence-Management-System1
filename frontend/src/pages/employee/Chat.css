@@ -2482,113 +2482,801 @@ body.dark-theme .create-group-link:hover {
   }
 }
 
-/* Image & File Attachments in Messages */
+/* ============================================
+   MEDIA & FILE SHARING ENHANCEMENTS
+   ============================================ */
+
+/* Message Body Layout */
 .message-body-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
 }
 
+/* 1. IMAGE THUMBNAIL & LIGHTBOX */
 .message-image-container {
-  margin-top: 4px;
-  margin-bottom: 4px;
-  border-radius: 12px;
+  margin: 4px 0;
+  border-radius: 14px;
   overflow: hidden;
-  max-width: 280px;
-  max-height: 320px;
+  max-width: 320px;
+  max-height: 340px;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+  transition: all 0.25s ease;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .message-image-container:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .message-image {
   width: 100%;
   height: 100%;
-  max-height: 300px;
+  max-height: 320px;
   object-fit: cover;
   display: block;
-  border-radius: 10px;
 }
 
-.message-file-attachment {
+.media-overlay-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+.message-image-container:hover .media-overlay-badge {
+  opacity: 1;
+}
+
+/* 2. VIDEO PLAYER CONTAINER */
+.message-video-container {
+  margin: 4px 0;
+  max-width: 340px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0f172a;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.message-video-player {
+  width: 100%;
+  max-height: 280px;
+  display: block;
+  background: #000;
+  border-radius: 14px 14px 0 0;
+}
+
+.video-card-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
   padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  font-size: 0.78rem;
+}
+
+.video-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.video-size {
+  opacity: 0.75;
+  font-size: 0.72rem;
+}
+
+/* 3. CUSTOM AUDIO PLAYER */
+.chat-custom-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  min-width: 260px;
+  max-width: 320px;
+}
+
+.message-bubble.received .chat-custom-audio-player {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.audio-play-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #4f46e5;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.message-bubble.received .audio-play-btn {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.audio-play-btn:hover {
+  transform: scale(1.08);
+}
+
+.audio-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.audio-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.audio-filename {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.audio-size {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.audio-seek-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.audio-seek-bar {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.audio-seek-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4f46e5;
+  cursor: pointer;
+}
+
+.message-bubble.sent .audio-seek-bar::-webkit-slider-thumb {
+  background: #ffffff;
+}
+
+.audio-time-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  opacity: 0.85;
+}
+
+.audio-dl-btn {
+  color: inherit;
+  opacity: 0.8;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.audio-dl-btn:hover {
+  opacity: 1;
+}
+
+/* 4. CUSTOM VOICE NOTE BUBBLE */
+.chat-voice-note-bubble {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  min-width: 220px;
+  max-width: 290px;
+}
+
+.voice-play-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #4f46e5;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.message-bubble.received .voice-play-btn {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.voice-waveform-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+
+.voice-wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 24px;
+  padding: 2px 0;
+}
+
+.wave-bar {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+  min-height: 4px;
+  transition: background 0.15s ease, height 0.15s ease;
+}
+
+.message-bubble.received .wave-bar {
+  background: #cbd5e1;
+}
+
+.wave-bar.active {
+  background: #ffffff;
+}
+
+.message-bubble.received .wave-bar.active {
+  background: #4f46e5;
+}
+
+.voice-wave-bars.animating .wave-bar {
+  animation: wavePulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes wavePulse {
+  0% { transform: scaleY(0.7); }
+  100% { transform: scaleY(1.3); }
+}
+
+.voice-seek-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+}
+
+.voice-time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.voice-mic-badge {
+  font-size: 0.68rem;
+  opacity: 0.8;
+}
+
+/* 5. PDF CARD */
+.message-pdf-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 14px;
+  min-width: 250px;
+  max-width: 320px;
+}
+
+.message-bubble.sent .message-pdf-card {
   background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  margin: 4px 0;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.message-bubble.received .message-file-attachment {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.1);
+.pdf-icon-badge {
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.message-file-attachment .file-icon {
-  font-size: 20px;
+.message-bubble.sent .pdf-icon-badge {
+  color: #fecaca;
 }
 
-.message-file-attachment .file-details {
+.pdf-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  flex: 1;
 }
 
-.message-file-attachment .file-name {
-  font-weight: 600;
+.pdf-filename {
+  font-weight: 700;
   font-size: 0.88rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.message-file-attachment .file-type {
-  font-size: 0.75rem;
-  opacity: 0.75;
+.pdf-meta {
+  font-size: 0.72rem;
+  opacity: 0.8;
 }
 
-.message-file-attachment .file-download-btn {
-  padding: 4px 10px;
+.pdf-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-preview-btn,
+.pdf-download-btn {
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.pdf-preview-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.pdf-preview-btn:hover {
+  background: #dc2626;
+}
+
+.pdf-download-btn {
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+}
+
+.message-bubble.sent .pdf-download-btn {
   background: rgba(255, 255, 255, 0.25);
-  border-radius: 6px;
+  color: white;
+}
+
+/* 6. DOCUMENT CARDS (Word, Excel, PPT, Zip, Text) */
+.message-doc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  min-width: 250px;
+  max-width: 320px;
+}
+
+.message-bubble.sent .message-doc-card {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.doc-type-word { border-left: 4px solid #2563eb; }
+.doc-type-excel { border-left: 4px solid #16a34a; }
+.doc-type-ppt { border-left: 4px solid #ea580c; }
+.doc-type-archive { border-left: 4px solid #9333ea; }
+.doc-type-text_doc { border-left: 4px solid #64748b; }
+
+.doc-icon-badge {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.doc-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.doc-filename {
+  font-weight: 700;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-meta {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.doc-type-label {
+  font-weight: 600;
+}
+
+.doc-download-btn {
+  padding: 5px 10px;
+  border-radius: 8px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: inherit;
+  background: rgba(79, 70, 229, 0.12);
+  color: #4f46e5;
   text-decoration: none;
-  transition: background 0.2s ease;
   white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
-.message-file-attachment .file-download-btn:hover {
-  background: rgba(255, 255, 255, 0.4);
+.message-bubble.sent .doc-download-btn {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
 }
 
-/* Image Modal Lightbox */
-.image-modal-overlay {
+.doc-download-btn:hover {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+/* ============================================
+   ATTACHMENT POPOVER MENU
+   ============================================ */
+.attachment-menu-popover {
+  position: absolute;
+  bottom: 75px;
+  left: 55px;
+  background: var(--white);
+  border-radius: 20px;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  padding: 16px;
+  z-index: 1000;
+  width: 280px;
+  animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.attachment-menu-header {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-500);
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+.attachment-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.attachment-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 2px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.attachment-menu-item:hover {
+  background: var(--gray-100);
+  transform: translateY(-2px);
+}
+
+.attach-icon-circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.attachment-menu-item:hover .attach-icon-circle {
+  transform: scale(1.1);
+}
+
+.item-image .attach-icon-circle { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.item-video .attach-icon-circle { background: linear-gradient(135deg, #ec4899, #be185d); }
+.item-audio .attach-icon-circle { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.item-voice .attach-icon-circle { background: linear-gradient(135deg, #10b981, #047857); }
+.item-pdf .attach-icon-circle { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.item-doc .attach-icon-circle { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+.attachment-menu-item span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+/* ============================================
+   VOICE RECORDING STUDIO BAR
+   ============================================ */
+.chat-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.chat-voice-recorder-bar {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--white);
+  border-top: 1px solid var(--gray-200);
+  animation: fadeIn 0.2s ease-in;
+}
+
+.voice-recording-mode,
+.voice-preview-mode {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.voice-recording-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: recordPulse 1s infinite alternate;
+}
+
+@keyframes recordPulse {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.2); opacity: 1; }
+}
+
+.voice-recording-timer {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ef4444;
+  font-family: monospace;
+}
+
+.voice-live-waves {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+}
+
+.voice-live-waves span {
+  width: 4px;
+  background: #6366f1;
+  border-radius: 2px;
+  animation: liveWave 0.6s infinite alternate;
+}
+
+.voice-live-waves span:nth-child(1) { height: 8px; animation-delay: 0.1s; }
+.voice-live-waves span:nth-child(2) { height: 18px; animation-delay: 0.2s; }
+.voice-live-waves span:nth-child(3) { height: 24px; animation-delay: 0.3s; }
+.voice-live-waves span:nth-child(4) { height: 14px; animation-delay: 0.15s; }
+.voice-live-waves span:nth-child(5) { height: 10px; animation-delay: 0.25s; }
+
+@keyframes liveWave {
+  0% { transform: scaleY(0.4); }
+  100% { transform: scaleY(1.3); }
+}
+
+.voice-btn-cancel,
+.voice-btn-stop,
+.voice-btn-send,
+.voice-btn-play-preview {
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voice-btn-cancel {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.voice-btn-cancel:hover {
+  background: #fecaca;
+}
+
+.voice-btn-stop {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.voice-btn-stop:hover {
+  background: #4338ca;
+}
+
+.voice-btn-send {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.voice-btn-send:hover {
+  transform: translateY(-1px);
+}
+
+.voice-btn-play-preview {
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 1.1rem;
+}
+
+.voice-preview-duration {
+  flex: 1;
+  font-weight: 600;
+  color: var(--gray-700);
+  font-size: 0.9rem;
+}
+
+.chat-mic-quick-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: var(--gray-500);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.chat-mic-quick-btn:hover {
+  background: var(--gray-200);
+  color: #4f46e5;
+  transform: scale(1.1);
+}
+
+/* ============================================
+   UPLOAD PROGRESS BAR
+   ============================================ */
+.chat-upload-progress-container {
+  padding: 10px 24px;
+  background: var(--white);
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeIn 0.2s ease;
+}
+
+.upload-progress-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.upload-filename {
+  flex: 1;
+  margin-left: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-percent {
+  color: #4f46e5;
+}
+
+.upload-progress-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--gray-200);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.upload-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+  transition: width 0.2s ease;
+}
+
+/* ============================================
+   MEDIA MODALS & LIGHTBOXES
+   ============================================ */
+.media-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(10px);
   z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: fadeIn 0.2s ease-in-out;
+  padding: 20px;
 }
 
-.image-modal-content {
+.media-modal-content {
   position: relative;
   max-width: 90vw;
   max-height: 90vh;
@@ -2597,9 +3285,9 @@ body.dark-theme .create-group-link:hover {
   align-items: center;
 }
 
-.image-modal-close {
+.media-modal-close {
   position: absolute;
-  top: -40px;
+  top: -44px;
   right: 0;
   background: rgba(255, 255, 255, 0.2);
   border: none;
@@ -2615,25 +3303,25 @@ body.dark-theme .create-group-link:hover {
   transition: background 0.2s;
 }
 
-.image-modal-close:hover {
+.media-modal-close:hover {
   background: rgba(255, 255, 255, 0.4);
 }
 
-.image-modal-img {
+.media-modal-img {
   max-width: 90vw;
   max-height: 80vh;
   object-fit: contain;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
-.image-modal-actions {
+.media-modal-actions {
   margin-top: 14px;
 }
 
-.image-modal-download {
+.media-modal-download-btn {
   display: inline-block;
-  padding: 8px 18px;
+  padding: 8px 20px;
   background: #6366f1;
   color: white;
   text-decoration: none;
@@ -2642,7 +3330,114 @@ body.dark-theme .create-group-link:hover {
   transition: background 0.2s;
 }
 
-.image-modal-download:hover {
+.media-modal-download-btn:hover {
   background: #4f46e5;
 }
+
+/* PDF Modal Viewer */
+.media-modal-pdf-content {
+  width: 90vw;
+  max-width: 1000px;
+  height: 88vh;
+  background: #ffffff;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.pdf-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.pdf-modal-title {
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.pdf-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pdf-modal-dl-btn {
+  background: #4f46e5;
+  color: white;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.pdf-modal-dl-btn:hover {
+  background: #4338ca;
+}
+
+.pdf-modal-header .media-modal-close {
+  position: static;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.pdf-modal-iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ============================================
+   DARK MODE ENHANCEMENTS FOR MEDIA
+   ============================================ */
+body.dark-theme .attachment-menu-popover {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+body.dark-theme .attachment-menu-header {
+  color: #94a3b8;
+}
+
+body.dark-theme .attachment-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-theme .attachment-menu-item span {
+  color: #e2e8f0;
+}
+
+body.dark-theme .chat-voice-recorder-bar,
+body.dark-theme .chat-upload-progress-container {
+  background: #0f172a;
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-theme .message-bubble.received .chat-custom-audio-player,
+body.dark-theme .message-bubble.received .message-doc-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .message-bubble.received .message-pdf-card {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+body.dark-theme .pdf-modal-iframe {
+  background: #1e293b;
+}
+
 

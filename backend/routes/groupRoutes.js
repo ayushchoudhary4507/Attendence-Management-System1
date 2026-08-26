@@ -524,13 +524,36 @@ router.get('/:groupId/messages', auth, async (req, res) => {
   }
 });
 
+// Helper to detect/normalize messageType in group routes
+const detectGroupMessageType = (fileUrl, fileName, mimeType, explicitType) => {
+  if (explicitType && ['image', 'video', 'audio', 'voice', 'pdf', 'document'].includes(explicitType)) {
+    return explicitType;
+  }
+  if (!fileUrl && !fileName) return 'text';
+  const mime = (mimeType || '').toLowerCase();
+  const name = (fileName || fileUrl || '').toLowerCase();
+  if (explicitType === 'voice' || name.includes('voice_message') || name.includes('voice-record')) return 'voice';
+  if (mime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(name)) return 'image';
+  if (mime.startsWith('video/') || /\.(mp4|webm|ogg|mov|mkv|avi)$/i.test(name)) return 'video';
+  if (mime.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg)$/i.test(name)) return 'audio';
+  if (mime === 'application/pdf' || /\.pdf$/i.test(name)) return 'pdf';
+  if (
+    mime.includes('word') || mime.includes('excel') || mime.includes('spreadsheet') ||
+    mime.includes('presentation') || mime.includes('powerpoint') ||
+    /\.(doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar)$/i.test(name)
+  ) {
+    return 'document';
+  }
+  return 'document';
+};
+
 // @route   POST /api/groups/:groupId/messages
 // @desc    Send message to group (via API - socket handles real-time)
 // @access  Private
 router.post('/:groupId/messages', auth, async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { message, messageType, fileUrl, fileName, fileType } = req.body;
+    const { message, messageType, fileUrl, fileName, fileType, mimeType, fileSize, duration } = req.body;
     const senderId = req.user.userId;
     const senderName = req.user.name || req.user.email;
 
@@ -552,14 +575,17 @@ router.post('/:groupId/messages', auth, async (req, res) => {
       return res.status(403).json({ success: false, message: 'You are not a member of this group' });
     }
 
-    const messageText = message ? message.trim() : (fileName ? `📎 ${fileName}` : 'Attachment');
-    let computedMessageType = messageType || 'text';
-    if (fileUrl) {
-      if (fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl || fileName)) {
-        computedMessageType = 'image';
-      } else {
-        computedMessageType = 'file';
-      }
+    const effectiveMimeType = mimeType || fileType || null;
+    const computedMessageType = detectGroupMessageType(fileUrl, fileName, effectiveMimeType, messageType);
+
+    let messageText = message ? message.trim() : '';
+    if (!messageText) {
+      if (computedMessageType === 'voice') messageText = '🎤 Voice Message';
+      else if (computedMessageType === 'image') messageText = '📷 Photo';
+      else if (computedMessageType === 'video') messageText = '🎥 Video';
+      else if (computedMessageType === 'audio') messageText = '🎵 Audio';
+      else if (fileName) messageText = `📎 ${fileName}`;
+      else messageText = 'Attachment';
     }
 
     // Create message
@@ -571,7 +597,10 @@ router.post('/:groupId/messages', auth, async (req, res) => {
       messageType: computedMessageType,
       fileUrl: fileUrl || null,
       fileName: fileName || null,
-      fileType: fileType || null,
+      fileType: effectiveMimeType,
+      mimeType: effectiveMimeType,
+      fileSize: fileSize || 0,
+      duration: duration || 0,
       timestamp: new Date(),
       readBy: [{ userId: senderId, readAt: new Date() }]
     });

@@ -18,7 +18,7 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'image', 'file'],
+    enum: ['text', 'image', 'video', 'audio', 'voice', 'pdf', 'document', 'file'],
     default: 'text'
   },
   fileUrl: {
@@ -32,6 +32,18 @@ const messageSchema = new mongoose.Schema({
   fileType: {
     type: String,
     default: null
+  },
+  fileSize: {
+    type: Number,
+    default: 0
+  },
+  mimeType: {
+    type: String,
+    default: null
+  },
+  duration: {
+    type: Number,
+    default: 0
   },
   timestamp: {
     type: Date,

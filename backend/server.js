@@ -1,4 +1,4 @@
-﻿const dns = require('dns');
+const dns = require('dns');
 if (dns.setDefaultResultOrder) dns.setDefaultResultOrder('ipv4first');
 const express = require('express');
 const cors = require('cors');
@@ -12,7 +12,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 require('dotenv').config();
-
 
 const logger = require('./utils/logger');
 const connectDB = require('./utils/db');
@@ -68,7 +67,6 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Rate Limiting — OTP endpoints (stricter: 5 requests per 15 min per IP)
-// Per-email rate limiting is also enforced inside otpRoutes.js
 const otpLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 5, // max 5 OTP requests per IP per window
@@ -81,10 +79,10 @@ app.use('/api/auth/resend', otpLimiter);
 
 // Logging Middleware
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
-app.use(express.json({ limit: '10mb' })); // Increased limit for AI data
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Debug: Log all incoming requests (optional, handled by morgan now)
+// Debug: Log all incoming requests
 if (process.env.NODE_ENV === 'development') {
     app.use((req, res, next) => {
         logger.debug(`📥 ${req.method} ${req.originalUrl}`);
@@ -97,9 +95,9 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Attendence Management Systemnn1',
+      title: 'Attendance Management System API',
       version: '1.0.0',
-      description: 'API documentation for the Attendence Management System backend',
+      description: 'API documentation for the Attendance Management System backend',
     },
     servers: [
       {
@@ -112,8 +110,6 @@ const swaggerOptions = {
 };
 
 const specs = swaggerJsdoc(swaggerOptions);
-
-// Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Import routes
@@ -172,8 +168,8 @@ app.use('/api/health', healthRoutes);
 app.use(errorHandler);
 
 // Socket.io real-time messaging
-const onlineUsers = new Map(); // userId -> { socketId, lastSeen }
-const typingUsers = new Map(); // userId -> { receiverId, timeout }
+const onlineUsers = new Map(); // userId -> { socketId, lastSeen, isOnline }
+const typingUsers = new Map(); // userId -> timeout
 
 // Expose io globally so controllers can emit notifications
 global._io = io;
@@ -232,8 +228,6 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // The message should already be saved to DB via API
-      // We just need to broadcast it to the receiver
       const serverIsoTime = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
       const messageData = {
         id: id || tempId,
@@ -246,6 +240,9 @@ io.on('connection', (socket) => {
         fileUrl: data.fileUrl || null,
         fileName: data.fileName || null,
         fileType: data.fileType || null,
+        mimeType: data.mimeType || data.fileType || null,
+        fileSize: data.fileSize || 0,
+        duration: data.duration || 0,
         timestamp: serverIsoTime,
         createdAt: serverIsoTime,
         read: false
@@ -265,7 +262,7 @@ io.on('connection', (socket) => {
           message: message.length > 50 ? message.substring(0, 50) + '...' : message,
           senderId,
           senderName,
-          receiverId, // Include receiverId so frontend can verify
+          receiverId,
           createdAt: new Date()
         });
         console.log(`Message notification sent to receiver ${receiverId}`);
@@ -390,6 +387,9 @@ io.on('connection', (socket) => {
         fileUrl: data.fileUrl || null,
         fileName: data.fileName || null,
         fileType: data.fileType || null,
+        mimeType: data.mimeType || data.fileType || null,
+        fileSize: data.fileSize || 0,
+        duration: data.duration || 0,
         timestamp: timestamp || new Date(),
         read: false
       };
@@ -531,7 +531,6 @@ io.on('connection', (socket) => {
 
     const targetUser = onlineUsers.get(userId);
     if (targetUser && targetUser.isOnline) {
-      // Emit both event names for compatibility
       io.to(targetUser.socketId).emit('newNotification', notification);
       io.to(targetUser.socketId).emit('receive_notification', { userId, notification });
       console.log(`Notification sent to user ${userId}:`, notification.title);
@@ -599,10 +598,8 @@ io.on('connection', (socket) => {
           if (onlineUsers.has(socket.userId) && !onlineUsers.get(socket.userId).isOnline) {
             onlineUsers.delete(socket.userId);
           }
-        }, 60000); // Remove after 1 minute
+        }, 60000);
       }
-      
-
       
       // Broadcast offline status
       io.emit('user_status', {
