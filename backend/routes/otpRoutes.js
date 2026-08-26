@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const User = require('../models/User');
@@ -7,80 +7,101 @@ const { authMiddleware } = require('../middleware/adminMiddleware');
 const { sendOTP } = require('../utils/emailService');
 const { sendSMS } = require('../utils/smsService');
 
-console.log('otpRoutes loaded - registering routes: /send, /verify, /resend');
+console.log('otpRoutes loaded - registering routes: /send, /verify, /resend, /register-otp');
 
+// ─────────────────────────────────────────────────────────────────────────────
 // In-memory OTP storage (use Redis in production)
+// ─────────────────────────────────────────────────────────────────────────────
 const otpStore = new Map();
 
-// Generate 6-digit OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-email rate limiter: max 5 OTP send attempts per identifier per 10 minutes
+// ─────────────────────────────────────────────────────────────────────────────
+const otpRateStore = new Map();
+const OTP_RATE_LIMIT = 5;
+const OTP_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+const checkOtpRateLimit = (key) => {
+  const now = Date.now();
+  const entry = otpRateStore.get(key);
+  if (!entry || now > entry.resetAt) {
+    otpRateStore.set(key, { count: 1, resetAt: now + OTP_RATE_WINDOW_MS });
+    return { allowed: true, remaining: OTP_RATE_LIMIT - 1, resetInMs: OTP_RATE_WINDOW_MS };
+  }
+  if (entry.count >= OTP_RATE_LIMIT) {
+    return { allowed: false, remaining: 0, resetInMs: entry.resetAt - now };
+  }
+  entry.count += 1;
+  return { allowed: true, remaining: OTP_RATE_LIMIT - entry.count, resetInMs: entry.resetAt - now };
 };
 
-// Flutter-side OTP registration: Flutter generates OTP, sends email itself, and stores OTP here
-// This route NEVER sends email - just verifies user + stores OTP. Responds in <100ms.
-router.post('/register-otp', async (req, res) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Email format validator
+// ─────────────────────────────────────────────────────────────────────────────
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (str) => EMAIL_REGEX.test(String(str || '').trim());
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generate 6-digit OTP
+// ─────────────────────────────────────────────────────────────────────────────
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mask OTP for logging: "382910" => "3*****"
+// ─────────────────────────────────────────────────────────────────────────────
+const maskOTP = (otp) => {
+  if (!otp || otp.length < 2) return '******';
+  return otp[0] + '*'.repeat(otp.length - 1);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mask email for logging: "user@gmail.com" => "u***@gmail.com"
+// ─────────────────────────────────────────────────────────────────────────────
+const maskEmail = (email) => {
+  if (!email) return '(none)';
+  return String(email).replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.max(1, b.length)) + c);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core send-OTP logic — shared by /send and /resend
+// ─────────────────────────────────────────────────────────────────────────────
+const executeSendOtp = async (req, res) => {
+  const endpoint = req.originalUrl || '/api/auth/send';
+  console.log('\n' + '='.repeat(56));
+  console.log(`[OTP SEND] Endpoint called: POST ${endpoint}`);
+  console.log(`[OTP SEND] Body keys received: ${Object.keys(req.body || {}).join(', ')}`);
+
   try {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
-      return res.status(400).json({ success: false, message: 'Email and OTP required' });
-    }
-
-    const targetEmail = email.trim().toLowerCase();
-
-    // Verify user exists
-    let user = await User.findOne({ email: targetEmail });
-    let userModel = 'User';
-    if (!user) {
-      user = await Employee.findOne({ email: targetEmail });
-      if (user) userModel = 'Employee';
-    }
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'No account found with this email address'
-      });
-    }
-
-    // Store OTP (provided by Flutter) with 5 minute expiry
-    otpStore.set(targetEmail, {
-      otp: String(otp).trim(),
-      userId: user._id,
-      userModel,
-      expiresAt: Date.now() + 5 * 60 * 1000
-    });
-
-    console.log('[register-otp] OTP stored for:', targetEmail, '| OTP:', otp);
-
-    // Respond immediately - no email sending here (Flutter handles email)
-    return res.json({ success: true, message: 'OTP registered successfully' });
-  } catch (error) {
-    console.error('register-otp error:', error);
-    return res.status(500).json({ success: false, message: error.message || 'Failed to register OTP' });
-  }
-});
-
-// Send OTP
-router.post('/send', async (req, res) => {
-  console.log('OTP /send route handler called');
-  console.log('Request body:', req.body);
-  try {
-    const { email, mobile, phone } = req.body;
+    const { email, mobile, phone } = req.body || {};
     const inputMobile = mobile || phone;
-    
+
     if (!email && !inputMobile) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Email or mobile number required' 
-      });
+      console.warn('[OTP SEND] Rejected: no email or mobile in request');
+      return res.status(400).json({ success: false, message: 'Email or mobile number required' });
     }
 
+    // Email format validation
+    if (email && !isValidEmail(email)) {
+      console.warn(`[OTP SEND] Rejected: invalid email format -> "${email}"`);
+      return res.status(400).json({ success: false, message: 'Invalid email address format. Please enter a valid email.' });
+    }
+
+    // Per-identifier rate limit
+    const rateLimitKey = email ? email.trim().toLowerCase() : String(inputMobile).replace(/\D/g, '');
+    const rateCheck = checkOtpRateLimit(rateLimitKey);
+    if (!rateCheck.allowed) {
+      const waitMin = Math.ceil(rateCheck.resetInMs / 60000);
+      console.warn(`[OTP SEND] Rate limited: ${maskEmail(email || inputMobile)} — retry in ${waitMin} min`);
+      return res.status(429).json({ success: false, message: `Too many OTP requests. Please wait ${waitMin} minute(s) before trying again.` });
+    }
+
+    // Look up user by email or mobile
     let user;
     let userModel = 'User';
     let targetEmail = email ? email.trim().toLowerCase() : null;
 
     if (email) {
+      console.log(`[OTP SEND] Looking up user by email: ${maskEmail(targetEmail)}`);
       user = await User.findOne({ email: targetEmail });
       if (!user) {
         user = await Employee.findOne({ email: targetEmail });
@@ -90,167 +111,186 @@ router.post('/send', async (req, res) => {
       const cleanDigits = String(inputMobile).replace(/\D/g, '');
       const clean10 = cleanDigits.length > 10 ? cleanDigits.slice(-10) : cleanDigits;
       const phoneRegex = new RegExp(clean10);
+      console.log(`[OTP SEND] Looking up user by mobile: ***${clean10.slice(-4)}`);
 
-      user = await User.findOne({
-        $or: [
-          { phone: phoneRegex },
-          { mobile: phoneRegex },
-          { phoneNumber: phoneRegex }
-        ]
-      });
-      
+      user = await User.findOne({ $or: [{ phone: phoneRegex }, { mobile: phoneRegex }, { phoneNumber: phoneRegex }] });
       if (!user) {
-        user = await Employee.findOne({
-          $or: [
-            { phone: phoneRegex },
-            { mobile: phoneRegex },
-            { contact: phoneRegex },
-            { phoneNumber: phoneRegex }
-          ]
-        });
+        user = await Employee.findOne({ $or: [{ phone: phoneRegex }, { mobile: phoneRegex }, { contact: phoneRegex }, { phoneNumber: phoneRegex }] });
         if (user) userModel = 'Employee';
       }
-
-      if (user) {
-        targetEmail = user.email || null;
-      }
+      if (user) targetEmail = user.email || null;
     }
-    
+
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'No account found with this ' + (email ? 'email' : 'phone number') 
-      });
+      console.warn(`[OTP SEND] User not found for: ${maskEmail(email || inputMobile)}`);
+      return res.status(404).json({ success: false, message: 'No account found with this ' + (email ? 'email address' : 'phone number') });
     }
 
-    // Generate OTP
+    console.log(`[OTP SEND] User found — model: ${userModel}`);
+
+    // Generate OTP and store it
     const otp = generateOTP();
-    const otpKey = email 
-      ? email.trim().toLowerCase() 
-      : (inputMobile ? String(inputMobile).replace(/\D/g, '') : 'default');
-    
-    // Store OTP with expiry (5 minutes)
+    const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? String(inputMobile).replace(/\D/g, '') : 'default');
+
     otpStore.set(otpKey, {
       otp,
       userId: user._id,
       userModel,
-      expiresAt: Date.now() + 5 * 60 * 1000
+      expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    console.log(`OTP for ${otpKey} (${targetEmail || 'no-email'}): ${otp}`);
+    // SECURITY: Only log masked OTP
+    console.log(`[OTP SEND] OTP generated | Key: ${maskEmail(otpKey)} | OTP: ${maskOTP(otp)} | Expires: 5 min`);
 
-    const maskedEmail = targetEmail 
-      ? targetEmail.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.max(1, b.length)) + c)
-      : '';
-
-    // Send email and SMS (awaited for Vercel/Serverless container lifecycle)
+    // Send OTP email to the ENTERED email address (dynamic, from request body)
     let emailResult = null;
-    let smsResult = null;
-
     if (targetEmail) {
+      console.log(`[OTP SEND] Sending OTP email -> Recipient: ${maskEmail(targetEmail)}`);
       try {
         emailResult = await sendOTP(targetEmail, otp);
-        console.log('[OTP EMAIL RESULT]:', emailResult);
-      } catch (err) {
-        console.error('[OTP EMAIL ERROR]:', err.message);
+        if (emailResult && emailResult.success) {
+          console.log(`[OTP SEND] SMTP/API SUCCESS — OTP email sent to: ${maskEmail(targetEmail)}`);
+        } else {
+          console.error(`[OTP SEND] SMTP/API FAILED for: ${maskEmail(targetEmail)} | Reason: ${emailResult ? emailResult.message : 'unknown'}`);
+        }
+      } catch (emailErr) {
+        console.error(`[OTP SEND] Email threw exception for: ${maskEmail(targetEmail)} | ${emailErr.message}`);
+        emailResult = { success: false, message: emailErr.message };
       }
     }
 
+    // Send SMS if mobile provided
+    let smsResult = null;
     if (inputMobile) {
       try {
         const cleanDigits = String(inputMobile).replace(/\D/g, '');
         const clean10 = cleanDigits.length > 10 ? cleanDigits.slice(-10) : cleanDigits;
         smsResult = await sendSMS(clean10, `Your Attendance System OTP is ${otp}. Valid for 5 minutes.`);
-        console.log('[OTP SMS RESULT]:', smsResult);
-      } catch (err) {
-        console.error('[OTP SMS ERROR]:', err.message);
+        console.log(`[OTP SEND] SMS result: ${JSON.stringify(smsResult)}`);
+      } catch (smsErr) {
+        console.error(`[OTP SEND] SMS error: ${smsErr.message}`);
       }
     }
 
-    res.json({
+    console.log('='.repeat(56) + '\n');
+
+    // SECURITY: Never include the OTP in the API response
+    const maskedEmail = maskEmail(targetEmail || '');
+    return res.json({
       success: true,
-      message: `OTP generated successfully for ${maskedEmail || 'account'}`,
+      message: `OTP sent successfully to ${maskedEmail}`,
       targetEmail: maskedEmail,
-      otp: otp,
-      emailSent: emailResult ? emailResult.success : false
+      emailSent: emailResult ? emailResult.success : false,
     });
 
   } catch (error) {
-    console.error('Send OTP error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to send OTP: ' + (error.message || 'Unknown error') 
+    console.error(`[OTP SEND] Unhandled error: ${error.message}`);
+    console.error(error.stack);
+    return res.status(500).json({ success: false, message: 'Failed to send OTP: ' + (error.message || 'Unknown error') });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /register-otp  — Flutter-side: store Flutter-generated OTP server-side
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/register-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ success: false, message: 'Email and OTP required' });
+    if (!isValidEmail(email)) return res.status(400).json({ success: false, message: 'Invalid email address format' });
+
+    const targetEmail = email.trim().toLowerCase();
+
+    let user = await User.findOne({ email: targetEmail });
+    let userModel = 'User';
+    if (!user) {
+      user = await Employee.findOne({ email: targetEmail });
+      if (user) userModel = 'Employee';
+    }
+
+    if (!user) return res.status(404).json({ success: false, message: 'No account found with this email address' });
+
+    otpStore.set(targetEmail, {
+      otp: String(otp).trim(),
+      userId: user._id,
+      userModel,
+      expiresAt: Date.now() + 5 * 60 * 1000,
     });
+
+    console.log(`[register-otp] OTP stored for: ${maskEmail(targetEmail)} | OTP: ${maskOTP(String(otp))}`);
+    return res.json({ success: true, message: 'OTP registered successfully' });
+  } catch (error) {
+    console.error('register-otp error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to register OTP' });
   }
 });
 
-// Verify OTP and Reset Password / Login
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /send — Generate OTP, store it, email it to the user-entered address
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/send', (req, res) => {
+  console.log('[OTP] POST /send called');
+  return executeSendOtp(req, res);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /verify — Verify OTP and optionally reset password
+// ─────────────────────────────────────────────────────────────────────────────
 router.post('/verify', async (req, res) => {
+  console.log('\n[OTP VERIFY] POST /verify called');
   try {
     const { email, mobile, phone, otp, password, newPassword } = req.body;
     const inputMobile = mobile || phone;
-    
-    if (!otp) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'OTP required' 
-      });
-    }
+
+    if (!otp) return res.status(400).json({ success: false, message: 'OTP required' });
+    if (email && !isValidEmail(email)) return res.status(400).json({ success: false, message: 'Invalid email address format' });
 
     const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? String(inputMobile).replace(/\D/g, '') : '');
-    const storedData = otpStore.get(otpKey);
+    if (!otpKey) return res.status(400).json({ success: false, message: 'Email or mobile required' });
 
+    const storedData = otpStore.get(otpKey);
     if (!storedData) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'OTP not found or expired' 
-      });
+      console.warn(`[OTP VERIFY] No OTP found for: ${maskEmail(otpKey)}`);
+      return res.status(400).json({ success: false, message: 'OTP not found or expired. Please request a new OTP.' });
     }
 
-    // Check expiry
     if (Date.now() > storedData.expiresAt) {
       otpStore.delete(otpKey);
-      return res.status(400).json({ 
-        success: false, 
-        message: 'OTP expired' 
-      });
+      console.warn(`[OTP VERIFY] OTP expired for: ${maskEmail(otpKey)}`);
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
     }
 
-    // Verify OTP
-    if (storedData.otp !== otp.trim()) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid OTP' 
-      });
+    // Constant-time comparison to prevent timing attacks
+    const providedOtp = otp.trim();
+    const isMatch = crypto.timingSafeEqual(
+      Buffer.from(storedData.otp.padEnd(10, '0')),
+      Buffer.from(providedOtp.padEnd(10, '0'))
+    );
+
+    if (!isMatch) {
+      console.warn(`[OTP VERIFY] Invalid OTP attempt for: ${maskEmail(otpKey)}`);
+      return res.status(400).json({ success: false, message: 'Invalid OTP. Please check the code sent to your email.' });
     }
 
-    // Get user from correct model
+    console.log(`[OTP VERIFY] OTP verified for: ${maskEmail(otpKey)}`);
+
     const Model = storedData.userModel === 'Employee' ? Employee : User;
     const user = await Model.findById(storedData.userId);
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
-    }
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // Update password using base64 hashing (matching loginController & registerController)
     const nextPassword = newPassword || password;
     if (nextPassword) {
       const hashedPassword = Buffer.from(nextPassword).toString('base64');
       user.password = hashedPassword;
       await user.save();
-
-      // Also update in User collection if Model was Employee or vice-versa
       if (user.email) {
         await User.updateOne({ email: user.email }, { $set: { password: hashedPassword } });
       }
+      console.log(`[OTP VERIFY] Password updated for: ${maskEmail(otpKey)}`);
     }
 
-    // Clear OTP
     otpStore.delete(otpKey);
 
-    // Generate JWT token
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role },
@@ -258,51 +298,31 @@ router.post('/verify', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({
+    console.log(`[OTP VERIFY] Token issued for: ${maskEmail(otpKey)}\n`);
+
+    return res.json({
       success: true,
       message: 'Password reset and verification successful',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
 
   } catch (error) {
-    console.error('Verify OTP error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to verify OTP: ' + (error.message || 'Unknown error') 
-    });
+    console.error(`[OTP VERIFY] Error: ${error.message}`);
+    return res.status(500).json({ success: false, message: 'Failed to verify OTP: ' + (error.message || 'Unknown error') });
   }
 });
 
-// Resend OTP
-router.post('/resend', async (req, res) => {
-  try {
-    const { email, mobile, phone } = req.body;
-    const inputMobile = mobile || phone;
-    const otpKey = email ? email.trim().toLowerCase() : (inputMobile ? String(inputMobile).replace(/\D/g, '') : null);
-    
-    if (!otpKey) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Email or mobile required' 
-      });
-    }
-
-    // Trigger send route handler logic
-    req.body.mobile = inputMobile;
-    return router.handle(req, res);
-  } catch (error) {
-    console.error('Resend OTP error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to resend OTP' 
-    });
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /resend — Re-send OTP to same identifier (reuses send logic)
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/resend', (req, res) => {
+  console.log('[OTP] POST /resend called — delegating to send logic');
+  const { email, mobile, phone } = req.body || {};
+  if (!email && !mobile && !phone) {
+    return res.status(400).json({ success: false, message: 'Email or mobile required' });
   }
+  return executeSendOtp(req, res);
 });
 
 module.exports = router;

@@ -1,4 +1,4 @@
-const dns = require('dns');
+﻿const dns = require('dns');
 if (dns.setDefaultResultOrder) dns.setDefaultResultOrder('ipv4first');
 const express = require('express');
 const cors = require('cors');
@@ -59,13 +59,25 @@ app.use(helmet({
     crossOriginResourcePolicy: false, // Allow cross-origin images
 }));
 
-// Rate Limiting
+// Rate Limiting — global
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // limit each IP to 1000 requests per windowMs
+    max: 1000, // limit each IP to 1000 requests per 15 min
     message: 'Too many requests from this IP, please try again after 15 minutes'
 });
 app.use('/api/', limiter);
+
+// Rate Limiting — OTP endpoints (stricter: 5 requests per 15 min per IP)
+// Per-email rate limiting is also enforced inside otpRoutes.js
+const otpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // max 5 OTP requests per IP per window
+    message: 'Too many OTP requests from this IP. Please wait 15 minutes before trying again.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/auth/send', otpLimiter);
+app.use('/api/auth/resend', otpLimiter);
 
 // Logging Middleware
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));

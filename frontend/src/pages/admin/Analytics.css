@@ -83,7 +83,7 @@
   margin-bottom: 24px;
 }
 
-.stat-card {
+.analytics-page .stat-card {
   position: relative;
   overflow: hidden;
   background: white;
@@ -94,7 +94,7 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.stat-card::before {
+.analytics-page .stat-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -103,90 +103,90 @@
   height: 4px;
 }
 
-.stat-card:nth-child(1) {
+.analytics-page .stat-card:nth-child(1) {
   background: linear-gradient(145deg, #ede9fe 0%, #ddd6fe 100%);
   border-color: rgba(124, 58, 237, 0.2);
 }
 
-.stat-card:nth-child(1)::before {
+.analytics-page .stat-card:nth-child(1)::before {
   background: linear-gradient(90deg, #7c3aed, #8b5cf6);
 }
 
-.stat-card:nth-child(1) .stat-value {
+.analytics-page .stat-card:nth-child(1) .stat-value {
   color: #7c3aed;
 }
 
-.stat-card:nth-child(2) {
+.analytics-page .stat-card:nth-child(2) {
   background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%);
   border-color: rgba(37, 99, 235, 0.2);
 }
 
-.stat-card:nth-child(2)::before {
+.analytics-page .stat-card:nth-child(2)::before {
   background: linear-gradient(90deg, #2563eb, #3b82f6);
 }
 
-.stat-card:nth-child(2) .stat-value {
+.analytics-page .stat-card:nth-child(2) .stat-value {
   color: #2563eb;
 }
 
-.stat-card:nth-child(3) {
+.analytics-page .stat-card:nth-child(3) {
   background: linear-gradient(145deg, #d1fae5 0%, #a7f3d0 100%);
   border-color: rgba(5, 150, 105, 0.2);
 }
 
-.stat-card:nth-child(3)::before {
+.analytics-page .stat-card:nth-child(3)::before {
   background: linear-gradient(90deg, #059669, #10b981);
 }
 
-.stat-card:nth-child(3) .stat-value {
+.analytics-page .stat-card:nth-child(3) .stat-value {
   color: #059669;
 }
 
-.stat-card:nth-child(4) {
+.analytics-page .stat-card:nth-child(4) {
   background: linear-gradient(145deg, #fef3c7 0%, #fde68a 100%);
   border-color: rgba(217, 119, 6, 0.2);
 }
 
-.stat-card:nth-child(4)::before {
+.analytics-page .stat-card:nth-child(4)::before {
   background: linear-gradient(90deg, #d97706, #f59e0b);
 }
 
-.stat-card:nth-child(4) .stat-value {
+.analytics-page .stat-card:nth-child(4) .stat-value {
   color: #d97706;
 }
 
-.stat-card:nth-child(5) {
+.analytics-page .stat-card:nth-child(5) {
   background: linear-gradient(145deg, #fce7f3 0%, #fbcfe8 100%);
   border-color: rgba(219, 39, 119, 0.2);
 }
 
-.stat-card:nth-child(5)::before {
+.analytics-page .stat-card:nth-child(5)::before {
   background: linear-gradient(90deg, #db2777, #ec4899);
 }
 
-.stat-card:nth-child(5) .stat-value {
+.analytics-page .stat-card:nth-child(5) .stat-value {
   color: #db2777;
 }
 
-.stat-card:nth-child(6) {
+.analytics-page .stat-card:nth-child(6) {
   background: linear-gradient(145deg, #e0f2fe 0%, #bae6fd 100%);
   border-color: rgba(14, 165, 233, 0.2);
 }
 
-.stat-card:nth-child(6)::before {
+.analytics-page .stat-card:nth-child(6)::before {
   background: linear-gradient(90deg, #0284c7, #06b6d4);
 }
 
-.stat-card:nth-child(6) .stat-value {
+.analytics-page .stat-card:nth-child(6) .stat-value {
   color: #0284c7;
 }
 
-.stat-card:hover {
+.analytics-page .stat-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.stat-card-clickable {
+.analytics-page .stat-card-clickable {
   cursor: pointer;
   position: relative;
   overflow: hidden;

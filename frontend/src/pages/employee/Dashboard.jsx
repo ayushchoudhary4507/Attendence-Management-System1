@@ -511,6 +511,20 @@ const Dashboard = ({ userRole, onLogout }) => {
     }
   };
 
+  const colorGradients = {
+    '#7E22CE': 'linear-gradient(90deg, #7E22CE, #A855F7)',
+    '#1D4ED8': 'linear-gradient(90deg, #1D4ED8, #3B82F6)',
+    '#15803D': 'linear-gradient(90deg, #15803D, #22C55E)',
+    '#C2410C': 'linear-gradient(90deg, #C2410C, #F97316)',
+    '#BE185D': 'linear-gradient(90deg, #BE185D, #EC4899)',
+    '#0E7490': 'linear-gradient(90deg, #0E7490, #06B6D4)',
+    '#0369A1': 'linear-gradient(90deg, #0369A1, #0EA5E9)',
+    '#6B21A8': 'linear-gradient(90deg, #6B21A8, #8B5CF6)',
+    '#B91C1C': 'linear-gradient(90deg, #B91C1C, #EF4444)',
+    '#6D28D9': 'linear-gradient(90deg, #6D28D9, #8B5CF6)',
+    '#047857': 'linear-gradient(90deg, #047857, #10B981)',
+  };
+
   const StatCard = ({ title, value, icon, bg, border, titleColor, iconBg, iconColor, linkTo, onClick }) => {
     const navigate = useNavigate();
 
@@ -522,13 +536,20 @@ const Dashboard = ({ userRole, onLogout }) => {
       }
     };
 
+    const cardAccent = iconColor || titleColor || '#6366F1';
+    const cardGradient = colorGradients[cardAccent] || `linear-gradient(90deg, ${cardAccent}, #6366F1)`;
+
     return (
       <div 
         className={`stat-card ${linkTo || onClick ? 'stat-card-clickable' : ''}`}
-        style={!isDarkMode ? { 
-          background: bg || 'var(--card-bg, #FFFFFF)', 
-          borderColor: border || 'var(--border-color, #E5E7EB)' 
-        } : {}}
+        style={{
+          ...(!isDarkMode ? { 
+            background: bg || 'var(--card-bg, #FFFFFF)', 
+            borderColor: border || 'var(--border-color, #E5E7EB)' 
+          } : {}),
+          '--card-accent': cardAccent,
+          '--card-gradient': cardGradient
+        }}
         onClick={handleClick}
       >
         <div className="stat-card-top">
