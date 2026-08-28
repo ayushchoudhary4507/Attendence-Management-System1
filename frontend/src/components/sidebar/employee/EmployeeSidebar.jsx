@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useNotifications } from '../../../context/NotificationContext';
+import AttendanceProIcon from '../../AttendanceProIcon';
 
 const EmployeeSidebar = ({ collapsed, activeTab, onNavigate }) => {
-  const { unreadCount } = useNotifications();
+  const { unreadCount, unreadMessageCount } = useNotifications();
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -24,7 +25,7 @@ const EmployeeSidebar = ({ collapsed, activeTab, onNavigate }) => {
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
         <div className="logo">
-          <div className="logo-icon">📋</div>
+          <AttendanceProIcon size={34} />
           {!collapsed && <span className="logo-text">AttendancePro</span>}
         </div>
       </div>
@@ -49,6 +50,17 @@ const EmployeeSidebar = ({ collapsed, activeTab, onNavigate }) => {
                   padding: '2px 4px'
                 }}>
                   {unreadCount}
+                </span>
+              )}
+              {item.path === '/chat' && unreadMessageCount > 0 && (
+                <span className="badge message-badge" style={{ 
+                  position: 'absolute', 
+                  top: '-5px', 
+                  right: '-5px',
+                  fontSize: '10px',
+                  padding: '2px 4px'
+                }}>
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
                 </span>
               )}
             </div>

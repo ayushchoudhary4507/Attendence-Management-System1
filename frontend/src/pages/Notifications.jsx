@@ -123,9 +123,10 @@ const NotificationsPage = () => {
       {/* Filter and Search Controls Bar */}
       <div className="notifications-controls-bar">
         <div className="filter-pills-scroll">
-          {['all', 'leave_request', 'user_activity', 'project_update', 'message', 'shift_assigned', 'salary_generated'].map(f => {
+          {['all', 'attendance', 'leave_request', 'user_activity', 'project_update', 'message', 'shift_assigned', 'salary_generated'].map(f => {
             const filterLabels = {
               all: 'All Notifications',
+              attendance: 'Attendance',
               leave_request: 'Leave Requests',
               user_activity: 'User Activity',
               project_update: 'Projects',

@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { attendanceAPI } from '../../services/api';
+import { useNotifications } from '../../context/NotificationContext';
 import './LiveQRGeoVerificationModal.css';
 
-const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
-  const [activeTab, setActiveTab] = useState('geo'); // 'geo' | 'scan_qr' | 'kiosk_qr' | 'face_lock'
-  
+const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user, initialTab = 'geo' }) => {
+  const { showToast } = useNotifications();
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
   // Geolocation state
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState('');
@@ -13,12 +21,12 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
   const [officeSettings, setOfficeSettings] = useState(null);
   const [distanceFromOffice, setDistanceFromOffice] = useState(null);
   const [isWithinRange, setIsWithinRange] = useState(false);
-  
+
   // QR Kiosk Display state
   const [qrTokenData, setQrTokenData] = useState(null);
   const [qrCountdown, setQrCountdown] = useState(45);
   const [qrLoading, setQrLoading] = useState(false);
-  
+
   // QR Manual / Scanner state
   const [manualQrToken, setManualQrToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -213,15 +221,24 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
       const res = await attendanceAPI.markAttendanceVerified(payload);
       if (res.success) {
         setFeedbackMsg({ text: '✓ GPS Verified Check-In Successful!', type: 'success' });
+        showToast(
+          '📍 GPS Attendance Marked!',
+          `GPS location verified (${isWithinRange ? 'Inside Office Campus' : 'Remote Location'}). Check-in recorded (${res.isLate ? 'Late Arrival ⏰' : 'On Time ✅'}).`,
+          'attendance',
+          { isLate: res.isLate, method: 'GPS Geolocation' }
+        );
         setTimeout(() => {
           if (onSuccess) onSuccess(res.data);
           onClose();
         }, 1200);
       } else {
         setFeedbackMsg({ text: res.message || 'Failed to mark attendance', type: 'error' });
+        showToast('GPS Verification Notice', res.message || 'Failed to mark attendance', 'warning');
       }
     } catch (err) {
-      setFeedbackMsg({ text: err.response?.data?.message || err.message || 'Verification failed', type: 'error' });
+      const errMsg = err.response?.data?.message || err.message || 'Verification failed';
+      setFeedbackMsg({ text: errMsg, type: 'error' });
+      showToast('GPS Check-In Error', errMsg, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -255,15 +272,24 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
       const res = await attendanceAPI.markAttendanceVerified(payload);
       if (res.success) {
         setFeedbackMsg({ text: '🎉 QR Code Verified Check-In Successful!', type: 'success' });
+        showToast(
+          '📱 QR Code Attendance Marked!',
+          `Live QR Code verified successfully. Check-in recorded at ${new Date().toLocaleTimeString()} (${res.isLate ? 'Late Arrival ⏰' : 'On Time ✅'}).`,
+          'attendance',
+          { isLate: res.isLate, method: 'Live QR Code' }
+        );
         setTimeout(() => {
           if (onSuccess) onSuccess(res.data);
           onClose();
         }, 1200);
       } else {
         setFeedbackMsg({ text: res.message || 'Invalid or expired QR code', type: 'error' });
+        showToast('QR Code Notice', res.message || 'Invalid or expired QR code', 'warning');
       }
     } catch (err) {
-      setFeedbackMsg({ text: err.response?.data?.message || err.message || 'QR verification failed', type: 'error' });
+      const errMsg = err.response?.data?.message || err.message || 'QR verification failed';
+      setFeedbackMsg({ text: errMsg, type: 'error' });
+      showToast('QR Verification Error', errMsg, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -295,6 +321,8 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
         status: 'Present',
         notes: 'Verified via AI Face Recognition Scanner',
         verificationMethod: 'face_recognition',
+        email: user?.email,
+        employeeId: user?.employeeId || user?._id || user?.id,
         location: locationData ? {
           latitude: locationData.latitude,
           longitude: locationData.longitude,
@@ -303,21 +331,30 @@ const LiveQRGeoVerificationModal = ({ isOpen, onClose, onSuccess, user }) => {
         } : null
       };
 
-      const res = await attendanceAPI.markAttendanceVerified(payload);
-      if (res.success) {
-        setFeedbackMsg({ text: '👤 AI Face Recognition Matched! Check-In Successful! 🎉', type: 'success' });
+      const res = await attendanceAPI.markFaceRecognition(payload);
+      if (res && res.success) {
+        setFeedbackMsg({ text: res.message || '👤 AI Face Recognition Matched! Check-In Successful! 🎉', type: 'success' });
         stopCamera();
+        showToast(
+          '👤 AI Face Lock Check-In Successful!',
+          `Facial geometry matched for ${user?.name || 'Employee'}. Attendance recorded at ${new Date().toLocaleTimeString()} (${res.isLate ? 'Late Arrival ⏰' : 'On Time ✅'}).`,
+          'attendance',
+          { isLate: res.isLate, method: 'AI Face Recognition' }
+        );
         setTimeout(() => {
           if (onSuccess) onSuccess(res.data);
           onClose();
         }, 1200);
       } else {
-        setFeedbackMsg({ text: res.message || 'Face recognition verification failed', type: 'error' });
+        setFeedbackMsg({ text: res?.message || 'Face recognition verification failed', type: 'error' });
         setFaceScanning(false);
+        showToast('Face Scanner Notice', res?.message || 'Face recognition verification failed', 'warning');
       }
     } catch (err) {
-      setFeedbackMsg({ text: err.response?.data?.message || err.message || 'Face lock verification failed', type: 'error' });
+      const errMsg = err.response?.data?.message || err.message || 'Face lock verification failed';
+      setFeedbackMsg({ text: errMsg, type: 'error' });
       setFaceScanning(false);
+      showToast('Face Scanner Error', errMsg, 'error');
     } finally {
       setSubmitting(false);
     }

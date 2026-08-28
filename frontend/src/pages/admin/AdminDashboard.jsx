@@ -65,10 +65,36 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    fetchStats();
-    fetchUsers();
-    fetchEmployeesForAttendance();
-    fetchLeaves();
+    const refreshAll = () => {
+      fetchStats();
+      fetchUsers();
+      fetchEmployeesForAttendance();
+      fetchLeaves();
+    };
+
+    refreshAll();
+
+    const handleSync = () => {
+      console.log('🔄 [Admin Dashboard] Syncing latest attendance & stats');
+      refreshAll();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshAll();
+      }
+    };
+
+    window.addEventListener('attendance_updated', handleSync);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    const timer = setInterval(refreshAll, 25000);
+
+    return () => {
+      window.removeEventListener('attendance_updated', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(timer);
+    };
   }, []);
 
   // Create new user

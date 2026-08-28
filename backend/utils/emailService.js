@@ -1,16 +1,23 @@
-const nodemailer = require('nodemailer');
+﻿const nodemailer = require('nodemailer');
 const https = require('https');
 
 /**
- * Send email via Resend REST API (HTTPS Port 443 - 100% bypasses Render SMTP block)
+ * Send email via Resend REST API (HTTPS Port 443 — bypasses Render SMTP block)
+ * NOTE: Free Resend accounts can only send to verified recipient emails.
+ *       If recipients are arbitrary Gmail addresses, use Gmail SMTP or upgrade Resend plan.
  */
 const sendViaResend = (apiKey, fromUser, toEmail, otp, htmlBody, textBody) => {
   return new Promise((resolve, reject) => {
-    const fromAddr = fromUser.includes('<') ? fromUser : (fromUser.includes('@resend.dev') ? fromUser : 'Attendance System <onboarding@resend.dev>');
+    const fromAddr = fromUser.includes('<')
+      ? fromUser
+      : fromUser.includes('@resend.dev')
+      ? fromUser
+      : 'Attendance System <onboarding@resend.dev>';
+
     const payload = JSON.stringify({
       from: fromAddr,
       to: [toEmail.trim()],
-      subject: 'Your OTP for Attendance System: ' + otp,
+      subject: 'Your OTP for Attendance System',
       html: htmlBody,
       text: textBody,
     });
@@ -21,43 +28,53 @@ const sendViaResend = (apiKey, fromUser, toEmail, otp, htmlBody, textBody) => {
       path: '/emails',
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + apiKey.trim(),
+        Authorization: 'Bearer ' + apiKey.trim(),
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(payload),
       },
       timeout: 10000,
     };
 
+    console.log(`[emailService] Resend API -> recipient: ${toEmail.trim()}`);
+
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', chunk => data += chunk);
+      res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log('✅ [RESEND API SUCCESS]:', data);
+          console.log(`[emailService] Resend API SUCCESS for ${toEmail.trim()} — status ${res.statusCode}`);
           resolve({ success: true, message: 'OTP sent via Resend API' });
         } else {
-          console.error('❌ [RESEND API ERROR]:', res.statusCode, data);
-          reject(new Error('Resend API (' + res.statusCode + '): ' + data));
+          const errMsg = `Resend API (${res.statusCode}): ${data}`;
+          console.error(`[emailService] Resend API FAILED for ${toEmail.trim()} — ${errMsg}`);
+          reject(new Error(errMsg));
         }
       });
     });
 
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Resend API timeout')); });
+    req.on('error', (err) => {
+      console.error(`[emailService] Resend API network error for ${toEmail.trim()}: ${err.message}`);
+      reject(err);
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      console.error(`[emailService] Resend API timeout for ${toEmail.trim()}`);
+      reject(new Error('Resend API timeout'));
+    });
     req.write(payload);
     req.end();
   });
 };
 
 /**
- * Send email via Brevo (Sendinblue) REST API (HTTPS Port 443 - 100% bypasses Render SMTP block)
+ * Send email via Brevo (Sendinblue) REST API (HTTPS Port 443)
  */
 const sendViaBrevo = (apiKey, senderEmail, toEmail, otp, htmlBody, textBody) => {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify({
       sender: { name: 'Attendance System', email: senderEmail || 'noreply@ams.com' },
       to: [{ email: toEmail.trim() }],
-      subject: 'Your OTP for Attendance System: ' + otp,
+      subject: 'Your OTP for Attendance System',
       htmlContent: htmlBody,
       textContent: textBody,
     });
@@ -75,32 +92,55 @@ const sendViaBrevo = (apiKey, senderEmail, toEmail, otp, htmlBody, textBody) => 
       timeout: 10000,
     };
 
+    console.log(`[emailService] Brevo API -> recipient: ${toEmail.trim()}`);
+
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', chunk => data += chunk);
+      res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log('✅ [BREVO API SUCCESS]:', data);
+          console.log(`[emailService] Brevo API SUCCESS for ${toEmail.trim()} — status ${res.statusCode}`);
           resolve({ success: true, message: 'OTP sent via Brevo API' });
         } else {
-          console.error('❌ [BREVO API ERROR]:', res.statusCode, data);
-          reject(new Error('Brevo API (' + res.statusCode + '): ' + data));
+          const errMsg = `Brevo API (${res.statusCode}): ${data}`;
+          console.error(`[emailService] Brevo API FAILED for ${toEmail.trim()} — ${errMsg}`);
+          reject(new Error(errMsg));
         }
       });
     });
 
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Brevo API timeout')); });
+    req.on('error', (err) => {
+      console.error(`[emailService] Brevo API network error for ${toEmail.trim()}: ${err.message}`);
+      reject(err);
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      console.error(`[emailService] Brevo API timeout for ${toEmail.trim()}`);
+      reject(new Error('Brevo API timeout'));
+    });
     req.write(payload);
     req.end();
   });
 };
 
 /**
- * Send OTP email to user (supports Resend API, Brevo API, and Gmail SMTP with auto-fallback)
+ * Send OTP email to the user's entered email address.
+ * Tries: Resend API -> Brevo API -> Gmail SMTP (port 587) -> Gmail SMTP (port 465)
+ *
+ * IMPORTANT: The `email` param comes directly from req.body.email (dynamic).
+ * The SMTP/API credentials are only the SENDER account — never the recipient.
+ *
+ * @param {string} email  - Recipient email (from request body — dynamic per user)
+ * @param {string} otp    - 6-digit OTP (DO NOT log the full OTP here)
  */
 const sendOTP = async (email, otp) => {
-  const htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">' +
+  const recipientEmail = email.trim();
+  console.log(`\n[emailService] ===== Sending OTP email =====`);
+  console.log(`[emailService] Recipient : ${recipientEmail}`);
+  console.log(`[emailService] OTP       : [MASKED — not logged for security]`);
+
+  const htmlBody =
+    '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f5f5f5;">' +
     '<div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">' +
     '<h2 style="color: #4F46E5; margin-bottom: 20px;">Attendance System</h2>' +
     '<p style="font-size: 16px; color: #333; margin-bottom: 20px;">Your One-Time Password (OTP) for password reset / login is:</p>' +
@@ -109,118 +149,149 @@ const sendOTP = async (email, otp) => {
     '</div>' +
     '<p style="font-size: 14px; color: #666; margin-top: 20px;">This OTP is valid for <strong>5 minutes</strong>. Do not share it with anyone.</p>' +
     '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">' +
-    '<p style="font-size: 12px; color: #999; text-align: center;">If you didn\'t request this OTP, please ignore this email.<br>&copy; ' + new Date().getFullYear() + ' Attendance System. All rights reserved.</p>' +
+    '<p style="font-size: 12px; color: #999; text-align: center;">If you did not request this OTP, please ignore this email.<br>&copy; ' +
+    new Date().getFullYear() +
+    ' Attendance Management System. All rights reserved.</p>' +
     '</div></div>';
 
-  const textBody = 'Your OTP for Attendance System is: ' + otp + '\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.\n\nIf you didn\'t request this OTP, please ignore this email.';
+  const textBody =
+    'Your OTP for Attendance System is: ' +
+    otp +
+    '\n\nThis OTP is valid for 5 minutes. Do not share it with anyone.\n\nIf you did not request this OTP, please ignore this email.';
 
-  // 1. Check if RESEND_API_KEY is available (Fastest, 100% reliable HTTPS)
+  // ── Strategy 1: Resend API (HTTPS — bypasses Render port blocks) ───────────
+  // WARNING: Free Resend plan only allows sending to verified email addresses.
+  // If emails are not arriving for unverified recipients, remove RESEND_API_KEY
+  // from Render environment variables to skip this step.
   const resendApiKey = process.env.RESEND_API_KEY || process.env.RESEND_KEY;
   if (resendApiKey) {
     try {
+      console.log(`[emailService] Trying Strategy 1: Resend API`);
       const fromEmail = process.env.EMAIL_USER || 'onboarding@resend.dev';
-      const res = await sendViaResend(resendApiKey, fromEmail, email, otp, htmlBody, textBody);
-      return res;
+      const result = await sendViaResend(resendApiKey, fromEmail, recipientEmail, otp, htmlBody, textBody);
+      console.log(`[emailService] ===== Email SENT via Resend =====\n`);
+      return result;
     } catch (resendErr) {
-      console.warn('⚠️ Resend API failed, trying other methods:', resendErr.message);
+      console.warn(`[emailService] Strategy 1 (Resend) failed: ${resendErr.message}`);
+      console.warn(`[emailService] Falling through to next strategy...`);
     }
   }
 
-  // 2. Check if BREVO_API_KEY is available (Fastest, 100% reliable HTTPS)
+  // ── Strategy 2: Brevo (Sendinblue) API (HTTPS) ────────────────────────────
   const brevoApiKey = process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
   if (brevoApiKey) {
     try {
-      const fromEmail = process.env.EMAIL_USER || process.env.BREVO_SENDER || 'ayushchoudhary4507@gmail.com';
-      const res = await sendViaBrevo(brevoApiKey, fromEmail, email, otp, htmlBody, textBody);
-      return res;
+      console.log(`[emailService] Trying Strategy 2: Brevo API`);
+      const fromEmail = process.env.EMAIL_USER || process.env.BREVO_SENDER || 'noreply@ams.com';
+      const result = await sendViaBrevo(brevoApiKey, fromEmail, recipientEmail, otp, htmlBody, textBody);
+      console.log(`[emailService] ===== Email SENT via Brevo =====\n`);
+      return result;
     } catch (brevoErr) {
-      console.warn('⚠️ Brevo API failed, trying SMTP:', brevoErr.message);
+      console.warn(`[emailService] Strategy 2 (Brevo) failed: ${brevoErr.message}`);
+      console.warn(`[emailService] Falling through to SMTP...`);
     }
   }
 
-  // 3. Fallback to Gmail SMTP / Custom SMTP
+  // ── Strategy 3 & 4: Gmail SMTP ────────────────────────────────────────────
+  // NOTE: Render free tier blocks SMTP ports 25, 465, 587. These strategies
+  // work on local dev and on paid Render plans.
   const rawUser = process.env.EMAIL_USER || '';
   const rawPass = process.env.EMAIL_PASS || '';
-  const user = rawUser.replace(/['"]/g, '').trim();
-  const pass = rawPass.replace(/['"\s]/g, '').trim();
+  const smtpUser = rawUser.replace(/['"]/g, '').trim();
+  const smtpPass = rawPass.replace(/['"\s]/g, '').trim();
 
-  if (!user || !pass) {
-    const errMsg = 'Email configuration missing in environment. Please set EMAIL_USER and EMAIL_PASS (or RESEND_API_KEY / BREVO_API_KEY) in Render dashboard.';
-    console.error('[EMAIL OTP ERROR]:', errMsg);
+  if (!smtpUser || !smtpPass) {
+    const errMsg =
+      '[emailService] SMTP credentials missing. Set EMAIL_USER + EMAIL_PASS (or RESEND_API_KEY) in environment.';
+    console.error(errMsg);
     return { success: false, message: errMsg };
   }
 
+  console.log(`[emailService] SMTP sender account: ${smtpUser} (this is the sender, not the recipient)`);
+
   const mailOptions = {
-    from: '"Attendance System" <' + user + '>',
-    to: email.trim(),
-    subject: 'Your OTP for Attendance System: ' + otp,
+    from: `"Attendance Management System" <${smtpUser}>`,
+    to: recipientEmail,
+    subject: 'Your OTP for Attendance System',
     html: htmlBody,
     text: textBody,
   };
 
   let lastError = null;
 
-  // Try Strategy A: service: 'gmail'
+  // Strategy 3: Gmail service (port auto)
   try {
+    console.log(`[emailService] Trying Strategy 3: Gmail SMTP (service:gmail) -> ${recipientEmail}`);
     const transporter = nodemailer.createTransport({
       service: 'gmail',
-      auth: { user, pass },
+      auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
     });
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ [EMAIL SUCCESS via service:gmail]: MessageId:', info.messageId);
+    console.log(`[emailService] Strategy 3 SUCCESS — MessageId: ${info.messageId} — Recipient: ${recipientEmail}`);
+    console.log(`[emailService] ===== Email SENT via Gmail SMTP =====\n`);
     return { success: true, message: 'OTP email sent successfully' };
   } catch (err1) {
-    console.warn('⚠️ [SMTP Strategy A failed]:', err1.message);
+    console.warn(`[emailService] Strategy 3 (Gmail service) FAILED: ${err1.message}`);
     lastError = err1;
   }
 
-  // Try Strategy B: smtp.gmail.com port 587
+  // Strategy 4: Gmail port 587 (STARTTLS)
   try {
+    console.log(`[emailService] Trying Strategy 4: Gmail SMTP port 587 -> ${recipientEmail}`);
     const transporter587 = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
       secure: false,
-      auth: { user, pass },
+      auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
     });
     const info = await transporter587.sendMail(mailOptions);
-    console.log('✅ [EMAIL SUCCESS via port 587]: MessageId:', info.messageId);
+    console.log(`[emailService] Strategy 4 SUCCESS — MessageId: ${info.messageId} — Recipient: ${recipientEmail}`);
+    console.log(`[emailService] ===== Email SENT via port 587 =====\n`);
     return { success: true, message: 'OTP email sent successfully' };
   } catch (err2) {
-    console.warn('⚠️ [SMTP Strategy B failed]:', err2.message);
+    console.warn(`[emailService] Strategy 4 (port 587) FAILED: ${err2.message}`);
     lastError = err2;
   }
 
-  // Try Strategy C: smtp.gmail.com port 465
+  // Strategy 5: Gmail port 465 (SSL)
   try {
+    console.log(`[emailService] Trying Strategy 5: Gmail SMTP port 465 -> ${recipientEmail}`);
     const transporter465 = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
-      auth: { user, pass },
+      auth: { user: smtpUser, pass: smtpPass },
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
     });
     const info = await transporter465.sendMail(mailOptions);
-    console.log('✅ [EMAIL SUCCESS via port 465]: MessageId:', info.messageId);
+    console.log(`[emailService] Strategy 5 SUCCESS — MessageId: ${info.messageId} — Recipient: ${recipientEmail}`);
+    console.log(`[emailService] ===== Email SENT via port 465 =====\n`);
     return { success: true, message: 'OTP email sent successfully' };
   } catch (err3) {
-    console.error('❌ [SMTP Strategy C failed]:', err3.message);
+    console.error(`[emailService] Strategy 5 (port 465) FAILED: ${err3.message}`);
     lastError = err3;
   }
 
+  console.error(`[emailService] ALL strategies FAILED for recipient: ${recipientEmail}`);
+  console.error(`[emailService] Last error: ${lastError ? lastError.message : 'none'}`);
+  console.error(`[emailService] NOTE: Render free tier blocks SMTP ports. Use RESEND_API_KEY or BREVO_API_KEY in Render env vars.\n`);
+
   return {
     success: false,
-    message: lastError ? lastError.message : 'Connection timeout (Render blocks direct SMTP ports. Use Resend or Brevo API key in Render environment)'
+    message: lastError
+      ? lastError.message
+      : 'All email delivery strategies failed. Check Render environment variables.',
   };
 };
 

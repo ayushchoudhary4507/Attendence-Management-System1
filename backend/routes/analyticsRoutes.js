@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const Employee = require('../models/Employee');
 const Attendance = require('../models/Attendance');
@@ -144,8 +144,16 @@ const { authMiddleware: auth } = require('../middleware/authMiddleware');
  *         description: Server error
  */
 
+// Helper function to check if check-in is late arrival (after 09:30 AM)
+const isLateArrival = (dateObj = new Date()) => {
+  const d = new Date(dateObj);
+  const hours = d.getHours();
+  const minutes = d.getMinutes();
+  return hours > 9 || (hours === 9 && minutes > 30);
+};
+
 // Get analytics dashboard data
-router.get('/dashboard', auth, async (req, res) => {
+const getDashboardData = async (req, res) => {
   try {
     const userId = req.user.id;
     const userRole = req.user.role;
@@ -159,30 +167,33 @@ router.get('/dashboard', auth, async (req, res) => {
     
     const attendanceQuery = userRole === 'admin' 
       ? { date: { $gte: thirtyDaysAgo } }
-      : { employee: userId, date: { $gte: thirtyDaysAgo } };
+      : { $or: [{ employeeId: userId }, { userId: userId }], date: { $gte: thirtyDaysAgo } };
     
     const attendance = await Attendance.find(attendanceQuery)
-      .populate('employee', 'name email');
+      .populate('employeeId', 'name email employeeId designation');
     
     // Get projects
     const projects = await Project.find({});
     
     // Calculate stats
     const totalEmployees = employees.length;
-    const activeProjects = projects.filter(p => p.status === 'in-progress' || p.status === 'active').length;
+    const activeProjects = projects.filter(p => p.status === 'in-progress' || p.status === 'active' || p.status === 'In Progress').length;
     
     // Today's attendance
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const todayAttendance = attendance.filter(a => {
       const attDate = new Date(a.date);
-      attDate.setHours(0, 0, 0, 0);
-      return attDate.getTime() === today.getTime();
+      return attDate >= today && attDate < tomorrow;
     });
     
-    const presentToday = todayAttendance.filter(a => a.status === 'present').length;
-    const absentToday = todayAttendance.filter(a => a.status === 'absent').length;
-    const onLeaveToday = todayAttendance.filter(a => a.status === 'leave').length;
+    const presentToday = todayAttendance.filter(a => a.status === 'Present' || a.status === 'present').length;
+    const onLeaveToday = todayAttendance.filter(a => a.status === 'Leave' || a.status === 'leave').length;
+    const absentToday = Math.max(0, totalEmployees - presentToday - onLeaveToday);
+    const lateToday = todayAttendance.filter(a => a.checkInTime && isLateArrival(a.checkInTime)).length;
     
     // Monthly stats
     const currentMonth = new Date().getMonth();
@@ -193,7 +204,7 @@ router.get('/dashboard', auth, async (req, res) => {
       return attDate.getMonth() === currentMonth && attDate.getFullYear() === currentYear;
     });
     
-    const totalLeaves = monthlyAttendance.filter(a => a.status === 'leave').length;
+    const totalLeaves = monthlyAttendance.filter(a => a.status === 'Leave' || a.status === 'leave').length;
     const avgWorkHours = monthlyAttendance.length > 0 
       ? Math.round(monthlyAttendance.reduce((sum, a) => sum + (a.workHours || 8), 0) / monthlyAttendance.length)
       : 0;
@@ -235,19 +246,19 @@ router.get('/dashboard', auth, async (req, res) => {
       
       monthlyData.push({
         name: months[monthIndex],
-        present: monthAttendance.filter(a => a.status === 'present').length,
-        absent: monthAttendance.filter(a => a.status === 'absent').length,
-        leave: monthAttendance.filter(a => a.status === 'leave').length,
-        halfDay: monthAttendance.filter(a => a.status === 'half-day').length
+        present: monthAttendance.filter(a => a.status === 'Present' || a.status === 'present').length,
+        absent: monthAttendance.filter(a => a.status === 'Absent' || a.status === 'absent').length,
+        leave: monthAttendance.filter(a => a.status === 'Leave' || a.status === 'leave').length,
+        halfDay: monthAttendance.filter(a => a.status === 'Half Day' || a.status === 'Half-Day' || a.status === 'half-day').length
       });
     }
     
     // Attendance distribution for pie chart
     const attendanceTypes = [
-      { name: 'Present', value: monthlyAttendance.filter(a => a.status === 'present').length, color: '#10b981' },
-      { name: 'Absent', value: monthlyAttendance.filter(a => a.status === 'absent').length, color: '#ef4444' },
-      { name: 'Leave', value: monthlyAttendance.filter(a => a.status === 'leave').length, color: '#f59e0b' },
-      { name: 'Half Day', value: monthlyAttendance.filter(a => a.status === 'half-day').length, color: '#8b5cf6' }
+      { name: 'Present', value: monthlyAttendance.filter(a => a.status === 'Present' || a.status === 'present').length, color: '#10b981' },
+      { name: 'Absent', value: monthlyAttendance.filter(a => a.status === 'Absent' || a.status === 'absent').length, color: '#ef4444' },
+      { name: 'Leave', value: monthlyAttendance.filter(a => a.status === 'Leave' || a.status === 'leave').length, color: '#f59e0b' },
+      { name: 'Half Day', value: monthlyAttendance.filter(a => a.status === 'Half Day' || a.status === 'Half-Day' || a.status === 'half-day').length, color: '#8b5cf6' }
     ].filter(item => item.value > 0);
     
     // Recent activity
@@ -256,8 +267,8 @@ router.get('/dashboard', auth, async (req, res) => {
       .reverse()
       .map(a => ({
         id: a._id,
-        name: a.employee?.name || 'Employee',
-        action: a.status === 'present' ? 'checked in' : a.status === 'leave' ? 'on leave' : a.status,
+        name: a.employeeId?.name || 'Employee',
+        action: a.status === 'Present' || a.status === 'present' ? 'checked in' : a.status === 'Leave' || a.status === 'leave' ? 'on leave' : a.status,
         time: new Date(a.date).toLocaleDateString(),
         status: a.status
       }));
@@ -270,6 +281,7 @@ router.get('/dashboard', auth, async (req, res) => {
           presentToday,
           absentToday,
           onLeaveToday,
+          lateToday,
           totalLeaves,
           activeProjects,
           avgWorkHours,
@@ -285,23 +297,35 @@ router.get('/dashboard', auth, async (req, res) => {
     console.error('Analytics error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch analytics data' });
   }
-});
+};
+
+router.get('/dashboard', auth, getDashboardData);
+router.get('/overview', auth, getDashboardData);
 
 // Get real-time attendance stats
 router.get('/realtime', auth, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     
+    const totalEmployees = await Employee.countDocuments({ status: 'Active' });
     const todayAttendance = await Attendance.find({
-      date: { $gte: today }
-    }).populate('employee', 'name');
+      date: { $gte: today, $lt: tomorrow }
+    }).populate('employeeId', 'name email');
     
+    const presentCount = todayAttendance.filter(a => a.status === 'Present' || a.status === 'present').length;
+    const onLeaveCount = todayAttendance.filter(a => a.status === 'Leave' || a.status === 'leave').length;
+    const lateCount = todayAttendance.filter(a => a.checkInTime && isLateArrival(a.checkInTime)).length;
+    const absentCount = Math.max(0, totalEmployees - presentCount - onLeaveCount);
+
     const stats = {
-      present: todayAttendance.filter(a => a.status === 'present').length,
-      absent: todayAttendance.filter(a => a.status === 'absent').length,
-      leave: todayAttendance.filter(a => a.status === 'leave').length,
-      late: todayAttendance.filter(a => a.status === 'late').length,
+      total: totalEmployees,
+      present: presentCount,
+      absent: absentCount,
+      leave: onLeaveCount,
+      late: lateCount,
       lastUpdated: new Date()
     };
     
@@ -313,3 +337,4 @@ router.get('/realtime', auth, async (req, res) => {
 });
 
 module.exports = router;
+

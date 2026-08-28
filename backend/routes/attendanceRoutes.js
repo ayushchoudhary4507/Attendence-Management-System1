@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   markAttendance,
   markAttendanceVerified,
+  markFaceRecognitionAttendance,
   getLiveQRToken,
   getOfficeLocation,
   checkOut,
@@ -24,6 +25,15 @@ const {
   updateAttendance
 } = require('../controllers/attendanceController');
 const { authMiddleware, adminMiddleware } = require('../middleware/adminMiddleware');
+
+// Optional auth helper to support both user token and hardware device / kiosk requests
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authMiddleware(req, res, next);
+  }
+  next();
+};
 
 /**
  * @swagger
@@ -475,8 +485,15 @@ const { authMiddleware, adminMiddleware } = require('../middleware/adminMiddlewa
  *         description: Attendance records for the date
  */
 
-// Mark attendance for today - Employee only
+// Mark attendance for today - Employee only (Web + Mobile App routes)
 router.post('/mark', authMiddleware, markAttendance);
+router.post('/check-in', authMiddleware, markAttendance);
+router.post('/checkin', authMiddleware, markAttendance);
+router.post('/clock-in', authMiddleware, markAttendance);
+
+// Mark attendance via AI Face Recognition / Face Lock Scanner (Device / Kiosk / Web / Mobile App)
+router.post('/face-recognition', optionalAuth, markFaceRecognitionAttendance);
+router.post('/face-mark', optionalAuth, markFaceRecognitionAttendance);
 
 // Mark attendance with live QR / Geolocation verification - Employee only
 router.post('/mark-verified', authMiddleware, markAttendanceVerified);

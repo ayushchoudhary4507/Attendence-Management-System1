@@ -14,19 +14,37 @@ const api = axios.create({
   timeoutErrorMessage: 'Request timed out. Server may be starting up, please try again.'
 });
 
-// Add token to requests if available
+// Add token and logging to requests
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Safe cache busting for GET requests without CORS preflight issues
+  if (config.method === 'get') {
+    config.params = { ...config.params, _t: Date.now() };
+  }
+
+  console.log(`🌐 [API Request] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`, {
+    params: config.params,
+    data: config.data
+  });
   return config;
 });
 
-// Handle 401 responses - clear stale tokens and redirect to login
+// Handle API responses with logging and 401 error recovery
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const data = response.data;
+    const recordsCount = Array.isArray(data?.data) ? data.data.length : (Array.isArray(data) ? data.length : (data?.data ? 1 : 0));
+    console.log(`📥 [API Response] ${response.config.method?.toUpperCase()} ${response.config.url} (Status: ${response.status}) - ${recordsCount} record(s)`, {
+      count: recordsCount,
+      response: data
+    });
+    return response;
+  },
   (error) => {
+    console.error(`❌ [API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}:`, error.response?.data || error.message);
     if (error.response && error.response.status === 401) {
       console.warn('🔒 Token invalid or expired, clearing auth data');
       sessionStorage.removeItem('token');
@@ -253,15 +271,63 @@ export const adminAPI = {
 
 // Attendance API
 export const attendanceAPI = {
-  // Mark attendance for today
-  markAttendance: async (status = 'Present', notes = '') => {
-    const response = await api.post('/attendance/mark', { status, notes });
+  // Mark attendance for today (automatically captures GPS location)
+  markAttendance: async (status = 'Present', notes = '', customLocation = null) => {
+    let loc = customLocation;
+    if (!loc && typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        loc = await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy
+            }),
+            (err) => {
+              console.warn('GPS location auto-detection skipped:', err.message);
+              resolve(null);
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+          );
+        });
+      } catch (e) {
+        console.warn('Location detection error:', e);
+      }
+    }
+
+    const payload = {
+      status,
+      notes,
+      ...(loc ? {
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        accuracy: loc.accuracy,
+        verificationMethod: 'geolocation'
+      } : {})
+    };
+
+    const response = await api.post('/attendance/mark', payload);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
+    return response.data;
+  },
+
+  // Mark attendance via AI Face Recognition / Face Lock Scanner
+  markFaceRecognition: async (payload) => {
+    const response = await api.post('/attendance/face-recognition', payload);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
     return response.data;
   },
 
   // Mark attendance with live QR / Geolocation verification
   markAttendanceVerified: async (verificationData) => {
     const response = await api.post('/attendance/mark-verified', verificationData);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
     return response.data;
   },
 
@@ -280,6 +346,9 @@ export const attendanceAPI = {
   // Check out
   checkOut: async () => {
     const response = await api.put('/attendance/checkout');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('attendance_updated', { detail: response.data }));
+    }
     return response.data;
   },
   
@@ -298,6 +367,12 @@ export const attendanceAPI = {
   // Get today's attendance status with active/inactive (admin only)
   getTodayAttendanceStatus: async () => {
     const response = await api.get('/attendance/today-status');
+    return response.data;
+  },
+
+  // Get attendance stats (present, absent, late, active)
+  getAttendanceStats: async () => {
+    const response = await api.get('/attendance/stats');
     return response.data;
   },
   
@@ -458,11 +533,23 @@ export const chatAPI = {
     return response.data;
   },
 
+  // Mark all messages across direct & group chats as read
+  markAllAsRead: async () => {
+    const response = await api.put('/messages/mark-all-read');
+    return response.data;
+  },
+
   // Upload file
-  uploadFile: async (formData) => {
+  uploadFile: async (formData, onProgress) => {
     const response = await api.post('/messages/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percent);
+        }
       }
     });
     return response.data;
@@ -790,15 +877,23 @@ export const advancedReportAPI = {
   }
 };
 
-// AI API
-export const aiAPI = {
-  getInsights: async () => {
-    const response = await api.get('/ai/insights');
+// Mobile Dashboard Configuration API
+export const dashboardConfigAPI = {
+  // Get dashboard cards configuration
+  getConfig: async (params = {}) => {
+    const response = await api.get('/dashboard-config', { params });
     return response.data;
   },
-  
-  chat: async (query) => {
-    const response = await api.post('/ai/chat', { query });
+
+  // Update dashboard cards configuration (Admin only)
+  updateConfig: async (cardsData) => {
+    const response = await api.put('/dashboard-config', cardsData);
+    return response.data;
+  },
+
+  // Reset to defaults (Admin only)
+  resetConfig: async () => {
+    const response = await api.post('/dashboard-config/reset');
     return response.data;
   }
 };

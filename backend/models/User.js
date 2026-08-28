@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -40,6 +40,12 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // FCM device tokens for push notifications (stored per device)
+  fcmTokens: [{
+    token: { type: String, required: true },
+    platform: { type: String, enum: ['android', 'ios', 'web'], default: 'android' },
+    updatedAt: { type: Date, default: Date.now }
+  }],
   settings: {
     appearance: {
       theme: {

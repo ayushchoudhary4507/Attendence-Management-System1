@@ -1,5 +1,6 @@
-  import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authAPI } from '../../services/api';
+import AttendanceProIcon from '../AttendanceProIcon';
 import './SignupPage.css';
 
 const SignupPage = ({ onLoginClick }) => {
@@ -85,7 +86,7 @@ const SignupPage = ({ onLoginClick }) => {
         {/* Left Side Feature Showcase Panel */}
         <div className="signup-showcase-panel">
           <div className="showcase-brand">
-            <div className="showcase-logo-icon">📋</div>
+            <AttendanceProIcon size={46} />
             <span className="showcase-brand-name">AttendancePro</span>
           </div>
 

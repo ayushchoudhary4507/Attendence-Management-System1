@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL, attendanceAPI } from '../../services/api';
+import { useNotifications } from '../../context/NotificationContext';
 import LiveQRGeoVerificationModal from './LiveQRGeoVerificationModal';
 import './Attendance.css';
 
 const Attendance = () => {
+  const { showToast } = useNotifications();
   // Role-based system: admin sees GPS + Standard check-in controls, employee sees simple check-in
   const storedUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
   const userRole = (storedUser.role || localStorage.getItem('role') || sessionStorage.getItem('role') || 'employee').toLowerCase();
@@ -14,7 +16,7 @@ const Attendance = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
-  
+
   // Refs for change detection
   const previousLeavesRef = useRef([]);
   const previousAttendanceRef = useRef(null);
@@ -33,12 +35,13 @@ const Attendance = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Admin-only: GPS & Standard Time verification state
-  const [adminCheckMode, setAdminCheckMode] = useState(null); // 'gps' | 'standard' | null
+  const [adminCheckMode, setAdminCheckMode] = useState(null); // 'gps' | 'standard' | 'qr' | null
   const [gpsStatus, setGpsStatus] = useState('idle'); // idle | fetching | success | error
   const [gpsCoords, setGpsCoords] = useState(null);
   const [standardTimeNote, setStandardTimeNote] = useState('');
   const [adminCheckLoading, setAdminCheckLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false); // QR/Barcode scan modal
+  const [qrModalTab, setQrModalTab] = useState('kiosk_qr');
 
   // Admin-only: Staff Attendance Records & Time Editing
   const [allStaffAttendance, setAllStaffAttendance] = useState([]);
@@ -79,10 +82,10 @@ const Attendance = () => {
     }
 
     setApplyLeaveLoading(true);
-    
+
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      
+
       const response = await fetch(`${API_BASE_URL}/attendance/leave/apply-auto`, {
         method: 'POST',
         headers: {
@@ -97,9 +100,9 @@ const Attendance = () => {
           autoApprove: true
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setShowLeaveForm(false);
         setShowLeaveSuccessPopup(true);
@@ -127,13 +130,13 @@ const Attendance = () => {
         window.location.href = '/login';
         return;
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/attendance/my-today`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.status === 401) {
         console.error('Token expired or invalid - please login again');
         setMessage('Session expired. Please login again.');
@@ -145,16 +148,16 @@ const Attendance = () => {
         window.location.href = '/login';
         return;
       }
-      
+
       const data = await response.json();
       if (data.success) {
         setTodayAttendance(data.data);
         setLastUpdated(new Date());
-        
+
         // Detect attendance changes
         const currentAttendance = data.data;
         const previousAttendance = previousAttendanceRef.current;
-        
+
         if (JSON.stringify(currentAttendance) !== JSON.stringify(previousAttendance)) {
           console.log('🔄 ATTENDANCE CHANGE DETECTED');
           console.log('📊 Previous:', previousAttendance?.status || 'No data');
@@ -162,7 +165,7 @@ const Attendance = () => {
           console.log('⏰ Changed at:', new Date().toLocaleTimeString());
           console.log('---');
         }
-        
+
         previousAttendanceRef.current = currentAttendance;
       }
     } catch (err) {
@@ -217,7 +220,7 @@ const Attendance = () => {
   const handleSaveAttendanceEdit = async (e) => {
     e.preventDefault();
     if (!editingRecord?._id) return;
-    
+
     try {
       setSavingEdit(true);
       const updatePayload = {
@@ -269,6 +272,33 @@ const Attendance = () => {
     if (isAdmin) {
       fetchStaffAttendance();
     }
+
+    const handleSync = (event) => {
+      console.log('🔄 [Attendance Page] Attendance updated event received, refreshing data...', event?.detail);
+      checkTodayAttendance();
+      if (isAdmin) fetchStaffAttendance();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkTodayAttendance();
+        if (isAdmin) fetchStaffAttendance();
+      }
+    };
+
+    window.addEventListener('attendance_updated', handleSync);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    const timer = setInterval(() => {
+      checkTodayAttendance();
+      if (isAdmin) fetchStaffAttendance();
+    }, 25000);
+
+    return () => {
+      window.removeEventListener('attendance_updated', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(timer);
+    };
   }, [isAdmin]);
 
   // Admin GPS Check-In
@@ -368,7 +398,7 @@ const Attendance = () => {
     }
   };
 
-  // Mark attendance (Check In)
+  // Mark attendance (Check In with Auto GPS detection)
   const markAttendance = async () => {
     const currentToken = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!currentToken) {
@@ -377,16 +407,46 @@ const Attendance = () => {
       window.location.href = '/login';
       return;
     }
-    
+
     setLoading(true);
     try {
+      let locationPayload = {};
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        try {
+          const coords = await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => resolve(pos.coords),
+              (err) => {
+                console.warn('Auto GPS capture skipped:', err.message);
+                resolve(null);
+              },
+              { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+            );
+          });
+          if (coords) {
+            locationPayload = {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              accuracy: coords.accuracy,
+              verificationMethod: 'geolocation'
+            };
+          }
+        } catch (locErr) {
+          console.warn('Geolocation error:', locErr);
+        }
+      }
+
       const response = await fetch(`${API_BASE_URL}/attendance/mark`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${currentToken}`
         },
-        body: JSON.stringify({ status, notes })
+        body: JSON.stringify({
+          status,
+          notes,
+          ...locationPayload
+        })
       });
 
       const data = await response.json();
@@ -395,9 +455,19 @@ const Attendance = () => {
         setMessage('Attendance marked successfully!');
         setMessageType('success');
         setTodayAttendance(data.data);
+        showToast(
+          '⏰ Attendance Marked Successfully!',
+          `Your attendance was recorded at ${new Date().toLocaleTimeString()} (${data.isLate ? 'Late Arrival ⏰' : 'On Time ✅'}).`,
+          'attendance',
+          { isLate: data.isLate, method: locationPayload.verificationMethod || 'Direct Check-In' }
+        );
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('attendance_updated', { detail: data.data }));
+        }
       } else {
         setMessage(data.message || 'Failed to mark attendance');
         setMessageType('error');
+        showToast('Attendance Notice', data.message || 'Failed to mark attendance', 'warning');
       }
     } catch (err) {
       setMessage('Server error. Please try again.');
@@ -417,7 +487,7 @@ const Attendance = () => {
       window.location.href = '/login';
       return;
     }
-    
+
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/attendance/checkout`, {
@@ -439,9 +509,16 @@ const Attendance = () => {
         const minutes = totalMinutes % 60;
         setMessage(`🎉 Checked out successfully! Total work time today: ${hours} Hours ${minutes} Minutes.`);
         setMessageType('success');
+        showToast(
+          '🏠 Clock-Out Confirmed',
+          `Checked out successfully! Total work time today: ${hours}h ${minutes}m.`,
+          'checkout',
+          { workHours: `${hours}h ${minutes}m` }
+        );
       } else {
         setMessage(data.message || 'Failed to check out');
         setMessageType('error');
+        showToast('Check-Out Notice', data.message || 'Failed to check out', 'warning');
       }
     } catch (err) {
       setMessage('Server error. Please try again.');
@@ -457,27 +534,27 @@ const Attendance = () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       if (!token) return;
-      
+
       const response = await fetch(`${API_BASE_URL}/attendance/leave/my-leaves`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.status === 401) {
         console.error('Token expired');
         return;
       }
-      
+
       const data = await response.json();
       if (data.success) {
         setMyLeaves(data.data || []);
         setLastUpdated(new Date());
-        
+
         // Detect changes and log automatically
         const currentLeaves = data.data || [];
         const previousLeaves = previousLeavesRef.current;
-        
+
         if (JSON.stringify(currentLeaves) !== JSON.stringify(previousLeaves)) {
           changeCountRef.current += 1;
           console.log(`🔄 CHANGE DETECTED #${changeCountRef.current}`);
@@ -488,7 +565,7 @@ const Attendance = () => {
           console.log('⏰ Updated at:', new Date().toLocaleTimeString());
           console.log('---');
         }
-        
+
         previousLeavesRef.current = currentLeaves;
       }
     } catch (err) {
@@ -499,18 +576,18 @@ const Attendance = () => {
   const formatTime = (dateString) => {
     if (!dateString) return '--:--';
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
   const calculateDuration = () => {
     if (!todayAttendance?.checkInTime) return '--';
     const checkIn = new Date(todayAttendance.checkInTime);
-    const checkOut = todayAttendance.checkOutTime 
-      ? new Date(todayAttendance.checkOutTime) 
+    const checkOut = todayAttendance.checkOutTime
+      ? new Date(todayAttendance.checkOutTime)
       : new Date();
     const diff = Math.floor((checkOut - checkIn) / (1000 * 60)); // minutes
     const hours = Math.floor(diff / 60);
@@ -534,18 +611,18 @@ const Attendance = () => {
         <div>
           <h1>Attendance & Leaves</h1>
           <p>Mark daily presence, track shift durations, and manage leave applications</p>
-          <div style={{ 
-            fontSize: '12px', 
-            color: '#6B7280', 
+          <div style={{
+            fontSize: '12px',
+            color: '#6B7280',
             marginTop: '5px',
             display: 'flex',
             alignItems: 'center',
             gap: '5px'
           }}>
-            <span style={{ 
-              width: '8px', 
-              height: '8px', 
-              background: '#10B981', 
+            <span style={{
+              width: '8px',
+              height: '8px',
+              background: '#10B981',
               borderRadius: '50%',
               animation: 'pulse 2s infinite'
             }}></span>
@@ -566,7 +643,7 @@ const Attendance = () => {
           </div>
         </div>
         <div style={{ position: 'relative' }}>
-          <button 
+          <button
             onClick={() => setShowLeaveDropdown(!showLeaveDropdown)}
             disabled={applyLeaveLoading}
             className="btn-apply-leave"
@@ -609,11 +686,11 @@ const Attendance = () => {
           </div>
           <div className="status-header-meta">
             <span className="current-date">
-              📅 {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
+              📅 {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
               })}
             </span>
           </div>
@@ -622,14 +699,14 @@ const Attendance = () => {
         {todayAttendance ? (
           <div className="attendance-details">
             <div className="status-badge-wrapper">
-              <span className="status-badge" style={{ 
+              <span className="status-badge" style={{
                 backgroundColor: getStatusColor(todayAttendance.status),
                 color: 'white'
               }}>
                 ● {todayAttendance.status}
               </span>
             </div>
-            
+
             <div className="time-stats">
               <div className="time-stat">
                 <span className="time-label">Check In</span>
@@ -656,7 +733,7 @@ const Attendance = () => {
             {/* Action Button */}
             <div className="action-section">
               {todayAttendance.isActive ? (
-                <button 
+                <button
                   className="btn-checkout"
                   onClick={checkOut}
                   disabled={loading}
@@ -680,7 +757,7 @@ const Attendance = () => {
             <div className="admin-checkin-header">
               <span className="admin-role-badge">🛡️ Admin Mode</span>
               <h3>Select Verification Method</h3>
-              <p>Choose how to record today's attendance — GPS capture, standard shift-time, or QR / Barcode scan</p>
+              <p>Choose how to record today's attendance — GPS capture, standard shift-time, or generate office QR code</p>
             </div>
 
             <div className="admin-checkin-methods">
@@ -712,16 +789,20 @@ const Attendance = () => {
                 <div className={`method-radio ${adminCheckMode === 'standard' ? 'active' : ''}`}></div>
               </div>
 
-              {/* QR / Barcode Scan Method */}
+              {/* Generate Office QR Code Method */}
               <div
                 className={`checkin-method-card ${adminCheckMode === 'qr' ? 'selected' : ''}`}
-                onClick={() => { setAdminCheckMode('qr'); setShowQRModal(true); }}
+                onClick={() => {
+                  setAdminCheckMode('qr');
+                  setQrModalTab('kiosk_qr');
+                  setShowQRModal(true);
+                }}
               >
-                <div className="method-icon qr-icon">📷</div>
+                <div className="method-icon qr-icon">🔲</div>
                 <div className="method-info">
-                  <h4>QR / Barcode Scan</h4>
-                  <p>Scan live rotating office QR code or enter token manually</p>
-                  <span className="method-tag qr-tag">Live QR</span>
+                  <h4>Generate Office QR Code</h4>
+                  <p>Display live rotating QR code for employee mobile check-ins</p>
+                  <span className="method-tag qr-tag">Office Kiosk QR</span>
                 </div>
                 <div className={`method-radio ${adminCheckMode === 'qr' ? 'active' : ''}`}></div>
               </div>
@@ -786,33 +867,29 @@ const Attendance = () => {
             {adminCheckMode === 'standard' && (
               <div className="method-detail-panel">
                 <div className="method-detail-header">
-                  <span>🕒 Standard Time Check-in</span>
+                  <span>Standard Time Check-in</span>
                   <span className="time-now-badge">{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                 </div>
                 <div className="shift-details-grid">
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">⏰</span>
                     <div>
                       <strong>Shift Start</strong>
                       <p>09:30 AM</p>
                     </div>
                   </div>
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">⚡</span>
                     <div>
                       <strong>Grace Period</strong>
                       <p>Until 09:45 AM</p>
                     </div>
                   </div>
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">🏁</span>
                     <div>
                       <strong>Shift End</strong>
                       <p>06:30 PM</p>
                     </div>
                   </div>
                   <div className="shift-detail-item">
-                    <span className="shift-detail-icon">📊</span>
                     <div>
                       <strong>Total Hours</strong>
                       <p>9 Hours / Day</p>
@@ -836,25 +913,46 @@ const Attendance = () => {
                 >
                   {adminCheckLoading ? (
                     <><div className="loading-spinner sm"></div> Marking Attendance...</>
-                  ) : '🕒 Confirm Standard Check-in'}
+                  ) : 'Confirm Standard Check-in'}
                 </button>
               </div>
             )}
 
-            {/* QR Scan - info hint when selected but modal closed */}
+            {/* Generate QR Code Panel Detail */}
             {adminCheckMode === 'qr' && !showQRModal && (
               <div className="method-detail-panel">
                 <div className="method-detail-header">
-                  <span>📷 QR / Barcode Verification</span>
-                  <span className="gps-success-badge" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>Live QR System</span>
+                  <span className="method-detail-title">🔲 Office QR Code Generator</span>
+                  <span className="gps-success-badge" style={{ background: '#ede9fe', border: '1px solid #c7d2fe', color: '#4f46e5' }}>Kiosk Mode</span>
                 </div>
-                <p className="method-hint">The QR verification hub includes GPS geo-fence check-in, live rotating office QR code display, and manual token entry — all in one modal.</p>
+                <p className="method-detail-desc">
+                  Generate a live rotating QR code for your reception, office entrance, or display screen. Employees can scan the code with their mobile app cameras to record their daily attendance instantly.
+                </p>
                 <button
                   className="btn-admin-checkin"
-                  style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white', boxShadow: '0 4px 15px rgba(99,102,241,0.35)', marginTop: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px 24px', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-                  onClick={() => setShowQRModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                    color: 'white',
+                    boxShadow: '0 4px 15px rgba(99,102,241,0.35)',
+                    marginTop: '14px',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '14px 24px',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => {
+                    setQrModalTab('kiosk_qr');
+                    setShowQRModal(true);
+                  }}
                 >
-                  📷 Open QR / Barcode Verification Hub
+                  🔲 Launch Live Office QR Code Screen
                 </button>
               </div>
             )}
@@ -872,8 +970,8 @@ const Attendance = () => {
               <div className="mark-attendance-form">
                 <div className="form-group">
                   <label>Status</label>
-                  <select 
-                    value={status} 
+                  <select
+                    value={status}
                     onChange={(e) => setStatus(e.target.value)}
                     className="status-select"
                   >
@@ -883,7 +981,7 @@ const Attendance = () => {
                     <option value="Leave">Leave</option>
                   </select>
                 </div>
-                
+
                 <div className="form-group">
                   <label>Notes (optional)</label>
                   <input
@@ -895,7 +993,7 @@ const Attendance = () => {
                   />
                 </div>
 
-                <button 
+                <button
                   className="btn-checkin"
                   onClick={markAttendance}
                   disabled={loading}
@@ -904,26 +1002,8 @@ const Attendance = () => {
                     <div className="loading-container">
                       <div className="loading-spinner"></div>
                     </div>
-                  ) : '✓ Standard Check In'}
+                  ) : '✓ Check In'}
                 </button>
-
-                <div style={{ marginTop: '12px' }}>
-                  <button 
-                    type="button"
-                    className="btn-checkin"
-                    style={{ 
-                      background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
-                    }}
-                    onClick={() => setShowQRModal(true)}
-                  >
-                    <span>⚡ AI Face Lock / QR / GPS Verification Hub</span>
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -997,7 +1077,7 @@ const Attendance = () => {
                 const att = emp.attendanceToday || {};
                 const checkInStr = att.checkInTime ? formatTime(att.checkInTime) : '--:--';
                 const checkOutStr = att.checkOutTime ? formatTime(att.checkOutTime) : (att.isActive ? '🟢 In Progress' : '--:--');
-                
+
                 // Calculate duration
                 let durationStr = '--';
                 if (att.checkInTime) {
@@ -1028,7 +1108,7 @@ const Attendance = () => {
                         {att.verificationMethod && (
                           <span className="method-pill">
                             {att.verificationMethod === 'gps' || att.verificationMethod === 'geolocation' ? '📍 GPS' :
-                             att.verificationMethod === 'qr_code' ? '📷 QR' : '🕒 Standard'}
+                              att.verificationMethod === 'qr_code' ? '📷 QR' : '🕒 Standard'}
                           </span>
                         )}
                       </div>
@@ -1048,6 +1128,44 @@ const Attendance = () => {
                         <strong className="time-val-strong">{durationStr}</strong>
                       </div>
                     </div>
+
+                    {att.location?.latitude && att.location?.longitude && (
+                      <div className="staff-location-preview" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        marginTop: '10px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontWeight: '600' }}>
+                          <span>📍</span>
+                          <span>GPS: {att.location.latitude.toFixed(4)}°, {att.location.longitude.toFixed(4)}°</span>
+                          {att.location.accuracy && <span style={{ color: '#94a3b8', fontSize: '11px' }}>(±{Math.round(att.location.accuracy)}m)</span>}
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps?q=${att.location.latitude},${att.location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: '#4f46e5',
+                            fontWeight: '700',
+                            textDecoration: 'none',
+                            background: '#ede9fe',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            border: '1px solid #c7d2fe'
+                          }}
+                          title="View exact location on Google Maps"
+                        >
+                          🗺️ View Map
+                        </a>
+                      </div>
+                    )}
 
                     {att.notes && (
                       <div className="staff-note-preview">
@@ -1168,52 +1286,28 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* Leave Form Modal */}
+      {/* Apply Leave Modal */}
       {showLeaveForm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            width: '100%',
-            maxWidth: '450px',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-          }}>
-            <h2 style={{ marginBottom: '20px', color: '#1F2937', fontSize: '22px' }}>
-               Apply for {appliedLeaveType} Leave
+        <div className="leave-modal-overlay">
+          <div className="leave-modal-card">
+            <h2 className="leave-modal-title">
+              Apply for {appliedLeaveType?.toLowerCase().endsWith('leave') ? appliedLeaveType : `${appliedLeaveType} Leave`}
             </h2>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+
+            <div className="leave-form-group">
+              <label className="leave-form-label">
                 Start Date:
               </label>
               <input
                 type="date"
                 value={leaveStartDate}
                 onChange={(e) => setLeaveStartDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '15px'
-                }}
+                className="leave-form-input"
               />
             </div>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+
+            <div className="leave-form-group">
+              <label className="leave-form-label">
                 End Date:
               </label>
               <input
@@ -1221,18 +1315,12 @@ const Attendance = () => {
                 value={leaveEndDate}
                 onChange={(e) => setLeaveEndDate(e.target.value)}
                 min={leaveStartDate}
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '15px'
-                }}
+                className="leave-form-input"
               />
             </div>
-            
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151' }}>
+
+            <div className="leave-form-group" style={{ marginBottom: '25px' }}>
+              <label className="leave-form-label">
                 Reason (optional):
               </label>
               <textarea
@@ -1240,48 +1328,24 @@ const Attendance = () => {
                 onChange={(e) => setLeaveReason(e.target.value)}
                 placeholder="Enter reason for leave..."
                 rows="3"
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  resize: 'vertical'
-                }}
+                className="leave-form-textarea"
               />
             </div>
-            
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+
+            <div className="leave-modal-actions">
               <button
+                type="button"
                 onClick={() => setShowLeaveForm(false)}
                 disabled={applyLeaveLoading}
-                style={{
-                  padding: '12px 24px',
-                  background: '#F3F4F6',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '15px',
-                  fontWeight: '500'
-                }}
+                className="btn-leave-cancel"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleApplyLeave}
                 disabled={applyLeaveLoading}
-                style={{
-                  padding: '12px 24px',
-                  background: '#10B981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: applyLeaveLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  opacity: applyLeaveLoading ? 0.7 : 1
-                }}
+                className="btn-leave-submit"
               >
                 {applyLeaveLoading ? (
                   <div className="loading-container">
@@ -1296,61 +1360,23 @@ const Attendance = () => {
 
       {/* Leave Success Popup */}
       {showLeaveSuccessPopup && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            textAlign: 'center',
-            maxWidth: '400px',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-          }}>
-            <div style={{
-              fontSize: '60px',
-              marginBottom: '15px'
-            }}>✅</div>
-            <h2 style={{
-              color: '#10B981',
-              marginBottom: '10px',
-              fontSize: '22px'
-            }}>Leave Applied Successfully!</h2>
-            <p style={{
-              color: '#6B7280',
-              marginBottom: '20px',
-              fontSize: '16px'
-            }}>
-              Your <strong>{appliedLeaveType} Leave</strong> for today has been submitted successfully.
+        <div className="leave-modal-overlay">
+          <div className="leave-success-card">
+            <div className="leave-success-icon">✅</div>
+            <h2 className="leave-success-title">Leave Applied Successfully!</h2>
+            <p className="leave-success-desc">
+              Your <strong>{appliedLeaveType?.toLowerCase().endsWith('leave') ? appliedLeaveType : `${appliedLeaveType} Leave`}</strong> for today has been submitted successfully.
             </p>
-            <p style={{
-              color: '#9CA3AF',
-              fontSize: '14px',
-              marginBottom: '25px'
-            }}>
-              Status: <span style={{ color: '#F59E0B', fontWeight: '600' }}>⏳ Pending (Waiting for Admin Approval)</span>
-            </p>
+            <div style={{ marginBottom: '25px' }}>
+              <span className="leave-success-status">
+                ⏳ Pending (Waiting for Admin Approval)
+              </span>
+            </div>
             <button
+              type="button"
               onClick={() => setShowLeaveSuccessPopup(false)}
-              style={{
-                padding: '12px 30px',
-                background: '#10B981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '600'
-              }}
+              className="btn-leave-submit"
+              style={{ width: '100%' }}
             >
               OK, Got it!
             </button>
@@ -1367,7 +1393,7 @@ const Attendance = () => {
               <span className="leaves-count-badge">{myLeaves.length} Total</span>
             </h2>
           </div>
-          
+
           <div className="leaves-list-grid">
             {myLeaves.map((leave) => (
               <div key={leave._id} className="leave-request-card">
@@ -1376,11 +1402,11 @@ const Attendance = () => {
                     <span className="leave-type-name">{leave.leaveType}</span>
                   </div>
                   <span className={`leave-status-pill ${leave.status?.toLowerCase()}`}>
-                    {leave.status === 'Approved' ? '✓ Approved' : 
-                     leave.status === 'Pending' ? '⏳ Pending' : '✕ Rejected'}
+                    {leave.status === 'Approved' ? '✓ Approved' :
+                      leave.status === 'Pending' ? '⏳ Pending' : '✕ Rejected'}
                   </span>
                 </div>
-                
+
                 <div className="leave-dates-row">
                   <div className="leave-date-col">
                     <span className="date-label">From</span>
@@ -1395,7 +1421,7 @@ const Attendance = () => {
                     <strong className="date-val">{leave.totalDays} {leave.totalDays === 1 ? 'Day' : 'Days'}</strong>
                   </div>
                 </div>
-                
+
                 {leave.reason && (
                   <div className="leave-reason-box">
                     <span className="reason-label">Reason:</span>
@@ -1411,10 +1437,13 @@ const Attendance = () => {
       {/* Live Verification Modal (GPS / QR / Face Lock) */}
       <LiveQRGeoVerificationModal
         isOpen={showQRModal}
+        initialTab={qrModalTab}
         onClose={() => { setShowQRModal(false); setAdminCheckMode(null); }}
         onSuccess={(attendanceData) => {
           setTodayAttendance(attendanceData);
-          setMessage('✅ Verification successful! Attendance marked.');
+          checkTodayAttendance();
+          if (isAdmin) fetchStaffAttendance();
+          setMessage('✅ AI Face Verification successful! Attendance synchronized.');
           setMessageType('success');
           setShowQRModal(false);
           setAdminCheckMode(null);

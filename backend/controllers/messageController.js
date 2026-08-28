@@ -59,6 +59,46 @@ const getUsers = async (req, res) => {
   }
 };
 
+// Helper to detect/normalize messageType
+const detectMessageType = (fileUrl, fileName, mimeType, explicitType) => {
+  if (explicitType && ['image', 'video', 'audio', 'voice', 'pdf', 'document'].includes(explicitType)) {
+    return explicitType;
+  }
+
+  if (!fileUrl && !fileName) {
+    return 'text';
+  }
+
+  const mime = (mimeType || '').toLowerCase();
+  const name = (fileName || fileUrl || '').toLowerCase();
+
+  if (explicitType === 'voice' || name.includes('voice_message') || name.includes('voice-record')) {
+    return 'voice';
+  }
+
+  if (mime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(name)) {
+    return 'image';
+  }
+  if (mime.startsWith('video/') || /\.(mp4|webm|ogg|mov|mkv|avi)$/i.test(name)) {
+    return 'video';
+  }
+  if (mime.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg)$/i.test(name)) {
+    return 'audio';
+  }
+  if (mime === 'application/pdf' || /\.pdf$/i.test(name)) {
+    return 'pdf';
+  }
+  if (
+    mime.includes('word') || mime.includes('excel') || mime.includes('spreadsheet') ||
+    mime.includes('presentation') || mime.includes('powerpoint') ||
+    /\.(doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar)$/i.test(name)
+  ) {
+    return 'document';
+  }
+
+  return 'document';
+};
+
 // Get chat history between current user and another user
 const getMessages = async (req, res) => {
   try {
@@ -110,23 +150,32 @@ const getMessages = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      messages: messages.map(msg => ({
-        id: msg._id,
-        senderId: msg.senderId?._id || msg.senderId,
-        senderName: msg.senderId?.name || 'Unknown User',
-        senderEmail: msg.senderId?.email || '',
-        receiverId: msg.receiverId?._id || msg.receiverId,
-        receiverName: msg.receiverId?.name || 'Unknown User',
-        message: msg.message,
-        messageType: msg.messageType || (msg.fileUrl ? (msg.fileType?.startsWith('image/') ? 'image' : 'file') : 'text'),
-        fileUrl: msg.fileUrl || null,
-        fileName: msg.fileName || null,
-        fileType: msg.fileType || null,
-        timestamp: (msg.timestamp || msg.createdAt || new Date()).toISOString(),
-        createdAt: (msg.createdAt || msg.timestamp || new Date()).toISOString(),
-        read: msg.read,
-        readAt: msg.readAt
-      }))
+      messages: messages.map(msg => {
+        const computedType = msg.messageType && msg.messageType !== 'file'
+          ? msg.messageType
+          : detectMessageType(msg.fileUrl, msg.fileName, msg.mimeType || msg.fileType, msg.messageType);
+
+        return {
+          id: msg._id,
+          senderId: msg.senderId?._id || msg.senderId,
+          senderName: msg.senderId?.name || 'Unknown User',
+          senderEmail: msg.senderId?.email || '',
+          receiverId: msg.receiverId?._id || msg.receiverId,
+          receiverName: msg.receiverId?.name || 'Unknown User',
+          message: msg.message,
+          messageType: computedType,
+          fileUrl: msg.fileUrl || null,
+          fileName: msg.fileName || null,
+          fileType: msg.fileType || msg.mimeType || null,
+          fileSize: msg.fileSize || 0,
+          mimeType: msg.mimeType || msg.fileType || null,
+          duration: msg.duration || 0,
+          timestamp: (msg.timestamp || msg.createdAt || new Date()).toISOString(),
+          createdAt: (msg.createdAt || msg.timestamp || new Date()).toISOString(),
+          read: msg.read,
+          readAt: msg.readAt
+        };
+      })
     });
   } catch (error) {
     console.error('Get messages error:', error);
@@ -142,11 +191,10 @@ const getMessages = async (req, res) => {
 const sendMessage = async (req, res) => {
   try {
     console.log('📩 sendMessage called:', req.body);
-    const { receiverId, message, fileUrl, fileName, fileType, messageType } = req.body;
+    const { receiverId, message, fileUrl, fileName, fileType, mimeType, fileSize, duration, messageType } = req.body;
     // Get sender ID from middleware (req.userId is set by authMiddleware)
     const senderIdRaw = req.userId || req.user?._id || req.user?.id;
     const senderIdStr = senderIdRaw?.toString();
-    console.log('👤 Sender ID:', senderIdStr, 'req.userId:', req.userId, 'req.user:', req.user?._id);
 
     if (!senderIdStr) {
       return res.status(401).json({
@@ -155,7 +203,7 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    if (!receiverId || (!message && !fileUrl)) {
+    if (!receiverId || (!fileUrl && (!message || !message.trim()))) {
       return res.status(400).json({
         success: false,
         message: 'Receiver ID and message content or file attachment are required'
@@ -189,16 +237,25 @@ const sendMessage = async (req, res) => {
       });
     }
 
+    // Compute messageType
+    const effectiveMimeType = mimeType || fileType || null;
+    const computedMessageType = detectMessageType(fileUrl, fileName, effectiveMimeType, messageType);
+
     // Determine default message text if empty but fileUrl present
-    const messageText = message ? message.trim() : (fileName ? `📎 ${fileName}` : 'Attachment');
-    
-    // Determine messageType if not explicitly passed
-    let computedMessageType = messageType || 'text';
-    if (fileUrl) {
-      if (fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl || fileName)) {
-        computedMessageType = 'image';
+    let messageText = message ? message.trim() : '';
+    if (!messageText) {
+      if (computedMessageType === 'voice') {
+        messageText = '🎤 Voice Message';
+      } else if (computedMessageType === 'image') {
+        messageText = '📷 Photo';
+      } else if (computedMessageType === 'video') {
+        messageText = '🎥 Video';
+      } else if (computedMessageType === 'audio') {
+        messageText = '🎵 Audio';
+      } else if (fileName) {
+        messageText = `📎 ${fileName}`;
       } else {
-        computedMessageType = 'file';
+        messageText = 'Attachment';
       }
     }
 
@@ -211,7 +268,10 @@ const sendMessage = async (req, res) => {
       messageType: computedMessageType,
       fileUrl: fileUrl || null,
       fileName: fileName || null,
-      fileType: fileType || null,
+      fileType: effectiveMimeType,
+      mimeType: effectiveMimeType,
+      fileSize: fileSize || 0,
+      duration: duration || 0,
       timestamp: serverDate,
       read: false
     });
@@ -226,16 +286,23 @@ const sendMessage = async (req, res) => {
 
     // Create notification in database for the receiver
     console.log('📩 Creating message notification in database for receiver:', receiverId);
+    const notificationSummary = computedMessageType === 'image' ? '📷 Photo'
+      : computedMessageType === 'video' ? '🎥 Video'
+      : computedMessageType === 'voice' ? '🎤 Voice Message'
+      : computedMessageType === 'audio' ? '🎵 Audio'
+      : computedMessageType === 'pdf' ? '📄 PDF Document'
+      : computedMessageType === 'document' ? '📁 Document'
+      : messageText.substring(0, 50) + (messageText.length > 50 ? '...' : '');
+
     const messageNotification = await Notification.create({
       type: 'message',
       title: `New Message from ${newMessage.senderId.name}`,
-      message: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+      message: notificationSummary,
       senderId: senderId,
       senderName: newMessage.senderId.name,
       receiverId: receiverObjectId,
       link: '/chat'
     });
-    console.log('✅ Message notification saved to database:', messageNotification._id);
 
     // Emit real-time message & notification to the receiver via socket
     const io = req.app.get('io');
@@ -256,6 +323,9 @@ const sendMessage = async (req, res) => {
         fileUrl: newMessage.fileUrl,
         fileName: newMessage.fileName,
         fileType: newMessage.fileType,
+        mimeType: newMessage.mimeType,
+        fileSize: newMessage.fileSize,
+        duration: newMessage.duration,
         timestamp: isoTimestamp,
         createdAt: isoTimestamp,
         read: newMessage.read
@@ -269,7 +339,7 @@ const sendMessage = async (req, res) => {
           id: messageNotification._id,
           type: 'message',
           title: `New Message from ${newMessage.senderId.name}`,
-          message: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+          message: notificationSummary,
           senderId: senderIdStr,
           senderName: newMessage.senderId.name,
           receiverId: receiverId,
@@ -277,9 +347,6 @@ const sendMessage = async (req, res) => {
           createdAt: isoTimestamp,
           read: false
         });
-        console.log(`📢 Message notification emitted to receiver ${receiverId}`);
-      } else {
-        console.log(`ℹ️ Receiver ${receiverId} is not online, notification saved to database only`);
       }
     }
 
@@ -298,6 +365,9 @@ const sendMessage = async (req, res) => {
         fileUrl: newMessage.fileUrl,
         fileName: newMessage.fileName,
         fileType: newMessage.fileType,
+        mimeType: newMessage.mimeType,
+        fileSize: newMessage.fileSize,
+        duration: newMessage.duration,
         timestamp: isoTimestamp,
         createdAt: isoTimestamp,
         read: newMessage.read
@@ -337,6 +407,7 @@ const getUnreadCount = async (req, res) => {
 
     const count = await Message.countDocuments({
       receiverId: currentUserId,
+      senderId: { $ne: currentUserId },
       read: false
     });
 
@@ -345,6 +416,7 @@ const getUnreadCount = async (req, res) => {
       {
         $match: {
           receiverId: currentUserId,
+          senderId: { $ne: currentUserId },
           read: false
         }
       },
@@ -457,6 +529,9 @@ const getConversations = async (req, res) => {
             messageType: '$lastMessage.messageType',
             fileUrl: '$lastMessage.fileUrl',
             fileName: '$lastMessage.fileName',
+            fileSize: '$lastMessage.fileSize',
+            mimeType: '$lastMessage.mimeType',
+            duration: '$lastMessage.duration',
             timestamp: '$lastMessage.timestamp',
             senderId: '$lastMessage.senderId'
           },
@@ -539,6 +614,14 @@ const markAsRead = async (req, res) => {
       }
     );
 
+    // Also remove / mark as read corresponding message notifications from Notification model
+    const Notification = require('../models/Notification');
+    await Notification.deleteMany({
+      type: 'message',
+      receiverId: currentUserId,
+      senderId: senderId
+    });
+
     res.status(200).json({
       success: true,
       message: 'Messages marked as read',
@@ -554,11 +637,70 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// Mark all direct & group messages as read for current user
+const markAllMessagesAsRead = async (req, res) => {
+  try {
+    const currentUserIdRaw = req.userId || req.user?._id || req.user?.id;
+    const currentUserIdStr = currentUserIdRaw?.toString();
+
+    if (!currentUserIdStr) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+
+    const currentUserId = new mongoose.Types.ObjectId(currentUserIdStr);
+
+    // 1. Mark all direct messages as read
+    await Message.updateMany(
+      { receiverId: currentUserId, read: false },
+      { $set: { read: true, readAt: new Date() } }
+    );
+
+    // 2. Mark all group messages in user's groups as read
+    const Group = require('../models/Group');
+    const GroupMessage = require('../models/GroupMessage');
+    const userGroups = await Group.find({ 'members.userId': currentUserId });
+    const groupIds = userGroups.map(g => g._id);
+
+    if (groupIds.length > 0) {
+      await GroupMessage.updateMany(
+        {
+          groupId: { $in: groupIds },
+          'readBy.userId': { $ne: currentUserId }
+        },
+        {
+          $push: {
+            readBy: {
+              userId: currentUserId,
+              readAt: new Date()
+            }
+          }
+        }
+      );
+    }
+
+    // 3. Remove all message notifications for this user
+    const Notification = require('../models/Notification');
+    await Notification.deleteMany({
+      type: 'message',
+      receiverId: currentUserId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'All messages marked as read'
+    });
+  } catch (error) {
+    console.error('Mark all messages as read error:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark all as read', error: error.message });
+  }
+};
+
 module.exports = {
   getUsers,
   getMessages,
   sendMessage,
   getUnreadCount,
   getConversations,
-  markAsRead
+  markAsRead,
+  markAllMessagesAsRead
 };

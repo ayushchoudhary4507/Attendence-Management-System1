@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
 const User = require('../models/User');
@@ -5,45 +6,356 @@ const Notification = require('../models/Notification');
 const Leave = require('../models/Leave');
 const Holiday = require('../models/Holiday');
 
-// Helper function to emit notification via socket
+// Helper function to get start and end of today spanning local date and UTC date safely
+const getTodayDateRange = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+
+  const startLocal = new Date(y, m, d, 0, 0, 0, 0);
+  const endLocal = new Date(y, m, d + 1, 0, 0, 0, 0);
+
+  const startUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  const endUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+
+  const start = new Date(Math.min(startLocal.getTime(), startUtc.getTime()));
+  const end = new Date(Math.max(endLocal.getTime(), endUtc.getTime()));
+  return { start, end };
+};
+
+// Helper function to check if check-in is late arrival (after 09:30 AM)
+const isLateArrival = (dateObj = new Date()) => {
+  const d = new Date(dateObj);
+  const hours = d.getHours();
+  const minutes = d.getMinutes();
+  return hours > 9 || (hours === 9 && minutes > 30);
+};
+
+// Helper function to emit notification and real-time attendance stats via socket
 const emitNotification = (io, userId, notification) => {
   if (io) {
     io.emit('receive_notification', { userId, notification });
   }
 };
 
+// Centralized helper to create notifications in DB and emit realtime socket events to all admins and the employee
+const createAndBroadcastAttendanceNotification = async (req, {
+  attendance,
+  employee,
+  user,
+  action = 'checkin', // 'checkin', 'checkout', 'admin_marked'
+  method = 'manual', // 'manual', 'geolocation', 'qr_code', 'face_recognition', 'admin_override'
+  isLate = false,
+  workHours = null,
+  customMessage = null
+}) => {
+  try {
+    const io = req.app?.get('io') || global._io;
+    const empName = employee?.name || user?.name || 'Employee';
+    const empEmail = employee?.email || user?.email || '';
+    const empId = employee?._id || user?._id;
+    const userId = user?._id || employee?._id;
+
+    // Determine readable method label and icon
+    let methodLabel = 'Direct Check-In';
+    let icon = '⏰';
+    const lowerMethod = (method || '').toString().toLowerCase();
+
+    if (lowerMethod.includes('face')) {
+      methodLabel = 'AI Face Recognition';
+      icon = '👤';
+    } else if (lowerMethod.includes('qr')) {
+      methodLabel = 'Live QR Code';
+      icon = '📱';
+    } else if (lowerMethod.includes('geo') || lowerMethod.includes('gps')) {
+      methodLabel = 'GPS Geolocation';
+      icon = '📍';
+    } else if (lowerMethod.includes('admin')) {
+      methodLabel = 'Admin Override';
+      icon = '🛡️';
+    }
+
+    const timeStr = (action === 'checkout' && attendance?.checkOutTime)
+      ? new Date(attendance.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+      : (attendance?.checkInTime ? new Date(attendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+
+    let title = '';
+    let message = '';
+    let notifType = 'attendance';
+
+    if (action === 'checkout') {
+      title = `🏠 Clocked Out: ${empName}`;
+      message = customMessage || `${empName} has clocked out at ${timeStr}${workHours !== null && workHours !== undefined ? ` (Total Worked: ${workHours} hrs)` : ''}.`;
+      notifType = 'checkout';
+    } else if (action === 'admin_marked') {
+      title = `🛡️ Attendance Marked: ${empName}`;
+      message = customMessage || `Attendance for ${empName} was marked by Administrator at ${timeStr}.`;
+      notifType = 'attendance';
+    } else {
+      title = `${icon} ${methodLabel} Check-In: ${empName}`;
+      const statusSuffix = isLate ? ' (Late Arrival ⏰)' : ' (On Time ✅)';
+      message = customMessage || `${empName} marked attendance via ${methodLabel} at ${timeStr}${statusSuffix}.`;
+      notifType = 'attendance';
+    }
+
+    // 1. Create DB notification for all Admins
+    const admins = await User.find({ role: 'admin' }).select('_id');
+    const createdAdminNotifs = [];
+
+    for (const admin of admins) {
+      try {
+        const notif = await Notification.create({
+          type: notifType,
+          title,
+          message,
+          employeeId: empId,
+          employeeName: empName,
+          employeeEmail: empEmail,
+          senderId: userId,
+          senderName: empName,
+          receiverId: admin._id,
+          link: '/employees'
+        });
+        createdAdminNotifs.push({ notif, adminId: admin._id.toString() });
+      } catch (err) {
+        console.error('Error saving admin notification in DB:', err.message);
+      }
+    }
+
+    // 2. Also create DB notification for the Employee (if user account exists)
+    let empUserNotif = null;
+    if (userId) {
+      try {
+        empUserNotif = await Notification.create({
+          type: notifType,
+          title: action === 'checkout' ? '🏠 Clock-Out Confirmed' : `${icon} Attendance Marked (${methodLabel})`,
+          message: action === 'checkout'
+            ? `You have successfully clocked out at ${timeStr}${workHours !== null && workHours !== undefined ? ` (Work Hours: ${workHours} hrs)` : ''}.`
+            : `Your attendance was recorded at ${timeStr} via ${methodLabel}${isLate ? ' (Late Arrival)' : ' (On Time)'}.`,
+          employeeId: empId,
+          employeeName: empName,
+          employeeEmail: empEmail,
+          senderId: userId,
+          senderName: 'System',
+          receiverId: userId,
+          link: '/attendance'
+        });
+      } catch (err) {
+        console.error('Error saving employee notification in DB:', err.message);
+      }
+    }
+
+    // 3. Emit via Socket.io to online users
+    if (io) {
+      const onlineUsersMap = io.onlineUsers;
+
+      // Emit to each admin
+      for (const { notif, adminId } of createdAdminNotifs) {
+        const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
+        if (adminOnline && adminOnline.isOnline) {
+          io.to(adminOnline.socketId).emit('newNotification', {
+            id: notif._id,
+            type: notifType,
+            title: notif.title,
+            message: notif.message,
+            senderId: userId,
+            senderName: empName,
+            employeeId: empId,
+            employeeName: empName,
+            employeeEmail: empEmail,
+            receiverId: adminId,
+            receiverRole: 'admin',
+            verificationMethod: method,
+            isLate,
+            action,
+            checkInTime: attendance?.checkInTime,
+            checkOutTime: attendance?.checkOutTime,
+            link: '/employees',
+            createdAt: notif.createdAt,
+            read: false
+          });
+          console.log(`📢 [Socket] Attendance notification emitted to Admin ${adminId}`);
+        }
+      }
+
+      // Emit to employee if online
+      if (empUserNotif && userId) {
+        const empOnline = onlineUsersMap ? onlineUsersMap.get(userId.toString()) : null;
+        if (empOnline && empOnline.isOnline) {
+          io.to(empOnline.socketId).emit('newNotification', {
+            id: empUserNotif._id,
+            type: notifType,
+            title: empUserNotif.title,
+            message: empUserNotif.message,
+            senderId: userId,
+            senderName: 'System',
+            employeeId: empId,
+            employeeName: empName,
+            employeeEmail: empEmail,
+            receiverId: userId.toString(),
+            receiverRole: 'employee',
+            verificationMethod: method,
+            isLate,
+            action,
+            checkInTime: attendance?.checkInTime,
+            checkOutTime: attendance?.checkOutTime,
+            link: '/attendance',
+            createdAt: empUserNotif.createdAt,
+            read: false
+          });
+          console.log(`📢 [Socket] Attendance notification emitted to Employee ${userId}`);
+        }
+      }
+
+      // 4. Global Broadcast Event for all active clients
+      const broadcastPayload = {
+        id: Date.now(),
+        type: notifType,
+        title,
+        message,
+        action,
+        method: methodLabel,
+        verificationMethod: method,
+        isLate,
+        employee: {
+          _id: empId,
+          name: empName,
+          email: empEmail
+        },
+        attendance,
+        createdAt: new Date()
+      };
+
+      io.emit('attendance_marked', broadcastPayload);
+      console.log(`📢 [Socket Broadcast] attendance_marked emitted for ${empName}`);
+    }
+  } catch (err) {
+    console.error('Error in createAndBroadcastAttendanceNotification:', err);
+  }
+};
+
+// Broadcast real-time attendance updates to web dashboard and mobile app
+const broadcastAttendanceUpdate = async (req, attendanceRecord, employee, action = 'marked') => {
+  try {
+    const io = req.app?.get('io');
+    if (io) {
+      const { start, end } = getTodayDateRange();
+      const totalEmployees = await Employee.countDocuments({ status: 'Active' });
+      const todayAttendances = await Attendance.find({
+        date: { $gte: start, $lt: end }
+      }).populate('employeeId', 'name email employeeId designation');
+
+      const presentCount = todayAttendances.filter(a => a.status === 'Present').length;
+      const onLeaveCount = todayAttendances.filter(a => a.status === 'Leave').length;
+      const lateCount = todayAttendances.filter(a => a.checkInTime && isLateArrival(a.checkInTime)).length;
+      const activeNowCount = todayAttendances.filter(a => a.isActive).length;
+      const absentCount = Math.max(0, totalEmployees - presentCount - onLeaveCount);
+
+      const stats = {
+        total: totalEmployees,
+        present: presentCount,
+        absent: absentCount,
+        late: lateCount,
+        lateArrival: lateCount,
+        onLeave: onLeaveCount,
+        activeNow: activeNowCount,
+        lastUpdated: new Date()
+      };
+
+      console.log('📡 [Realtime Sync] Emitting attendance_updated and attendance_stats_updated:', stats);
+      io.emit('attendance_updated', {
+        action,
+        attendance: attendanceRecord,
+        employee: {
+          _id: employee?._id,
+          name: employee?.name,
+          email: employee?.email,
+          employeeId: employee?.employeeId
+        },
+        stats
+      });
+      io.emit('attendance_stats_updated', stats);
+    }
+  } catch (err) {
+    console.error('Error broadcasting attendance update:', err);
+  }
+};
+
+
 // @desc    Mark attendance for today
 // @route   POST /api/attendance/mark
 // @access  Private (Employee only)
 const markAttendance = async (req, res) => {
   try {
-    const { status = 'Present', notes = '' } = req.body;
-    const userId = req.user.id;
+    console.log('----------------------------------------------------');
+    console.log('📥 [Attendance Flow] POST /api/attendance/mark');
+    console.log('Request Body:', JSON.stringify(req.body));
+    
+    const { 
+      status: rawStatus, 
+      attendanceStatus, 
+      notes = '', 
+      attendanceMethod, 
+      verificationMethod: rawMethod,
+      latitude, 
+      longitude, 
+      accuracy,
+      address,
+      checkInTime: rawCheckIn,
+      checkIn: rawCheckInAlt,
+      date: rawDate
+    } = req.body;
 
-    // Find the employee associated with this user
-    const user = await User.findById(userId);
-    if (!user) {
+    const status = rawStatus || attendanceStatus || 'Present';
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
+
+    // Resolve user and employee
+    let user = null;
+    let employee = null;
+
+    if (userId) {
+      user = await User.findById(userId);
+      if (!user) {
+        employee = await Employee.findById(userId);
+      }
+    }
+
+    if (!user && (req.body.email || req.body.userEmail)) {
+      const email = (req.body.email || req.body.userEmail).trim();
+      user = await User.findOne({ email: new RegExp(`^${email}$`, 'i') });
+      employee = employee || await Employee.findOne({ email: new RegExp(`^${email}$`, 'i') });
+    }
+
+    if (!employee && (req.body.employeeId || req.body.id)) {
+      const empId = req.body.employeeId || req.body.id;
+      if (mongoose.isValidObjectId(empId)) {
+        employee = await Employee.findById(empId);
+      }
+    }
+
+    if (user && !employee) {
+      employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
+    } else if (employee && !user) {
+      user = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
+    }
+
+    if (!employee && !user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'Employee or User profile not found. Please verify authentication.'
       });
     }
 
-    // Find employee by email (matching user email with employee email)
-    const employee = await Employee.findOne({ email: user.email });
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee profile not found. Please contact admin.'
-      });
-    }
+    // Ensure we have IDs for both
+    const finalEmployeeId = employee?._id || user?._id;
+    const finalUserId = user?._id || employee?._id;
+    const employeeName = employee?.name || user?.name || 'Employee';
+    const employeeEmail = employee?.email || user?.email || '';
 
     // Check if today is a holiday
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { start: today, end: tomorrow } = getTodayDateRange();
     const year = today.getFullYear();
-    
-    console.log('Checking for holiday on:', today, 'year:', year);
     
     try {
       const holiday = await Holiday.findOne({
@@ -53,7 +365,6 @@ const markAttendance = async (req, res) => {
       });
 
       if (holiday) {
-        console.log('Holiday found:', holiday.name);
         return res.status(400).json({
           success: false,
           message: `Today is a holiday: ${holiday.name}. Attendance not required.`,
@@ -61,69 +372,103 @@ const markAttendance = async (req, res) => {
           holiday: holiday
         });
       }
-      console.log('No holiday found for today');
     } catch (holidayError) {
       console.error('Error checking holiday:', holidayError);
-      // Continue even if holiday check fails
     }
 
     // Check if attendance already marked for today
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const existingAttendance = await Attendance.findOne({
-      employeeId: employee._id,
+      $or: [
+        { employeeId: finalEmployeeId },
+        { userId: finalUserId }
+      ],
       date: { $gte: today, $lt: tomorrow }
-    });
+    }).populate('employeeId', 'name email employeeId designation');
 
     if (existingAttendance) {
-      return res.status(400).json({
-        success: false,
+      console.log('⚠️ [Attendance Flow] Duplicate check: attendance already exists for today');
+      return res.status(200).json({
+        success: true,
+        alreadyMarked: true,
         message: 'Attendance already marked for today',
-        data: existingAttendance
+        data: existingAttendance,
+        attendance: existingAttendance
       });
+    }
+
+    // Always use authoritative real-time server timestamp (UTC) for live check-in
+    const checkInDate = new Date();
+    const isLate = isLateArrival(checkInDate);
+
+    // Normalize verification method
+    let method = rawMethod || attendanceMethod || 'manual';
+    const lowerMethod = method.toString().toLowerCase();
+    if (lowerMethod.includes('face')) {
+      method = 'face_recognition';
+    } else if (lowerMethod.includes('gps') || lowerMethod.includes('geo')) {
+      method = 'geolocation';
+    } else if (lowerMethod.includes('qr')) {
+      method = 'qr_code';
+    }
+
+    const finalLat = latitude || req.body.lat || req.body.location?.latitude || req.body.location?.lat;
+    const finalLng = longitude || req.body.lng || req.body.long || req.body.location?.longitude || req.body.location?.lng;
+    const finalAccuracy = accuracy || req.body.location?.accuracy || req.body.acc || null;
+    const finalAddress = address || req.body.location?.address || 'Mobile App GPS Check-in';
+
+    const locationData = (finalLat && finalLng) ? {
+      latitude: parseFloat(finalLat),
+      longitude: parseFloat(finalLng),
+      accuracy: finalAccuracy ? parseFloat(finalAccuracy) : null,
+      address: finalAddress,
+      isWithinOfficeRadius: true
+    } : (req.body.location || null);
+
+    if (locationData && (!method || method === 'manual')) {
+      method = 'geolocation';
     }
 
     // Create new attendance record
     const attendance = await Attendance.create({
-      employeeId: employee._id,
-      userId: userId,
+      employeeId: finalEmployeeId,
+      userId: finalUserId,
       date: new Date(),
       status,
-      checkInTime: new Date(),
+      checkInTime: checkInDate,
       isActive: true,
-      notes
+      notes: notes || (isLate ? 'Standard Check-in (Late Arrival)' : 'Standard Check-in'),
+      verificationMethod: method,
+      location: locationData
     });
 
-    // Create notification for admin
-    console.log('📩 Creating attendance notification for admin...');
-    const admins = await User.find({ role: 'admin' }).select('_id');
-    
-    // Create notification for each admin
-    for (const admin of admins) {
-      await Notification.create({
-        type: 'attendance',
-        title: 'Attendance Marked',
-        message: `${employee.name} (${employee.email}) has marked attendance for today at ${new Date().toLocaleTimeString()}`,
-        employeeId: employee._id,
-        employeeName: employee.name,
-        employeeEmail: employee.email,
-        senderId: userId,
-        receiverId: admin._id
-      });
-    }
-    console.log('✅ Attendance notifications created for admins');
+    const populatedAttendance = await Attendance.findById(attendance._id)
+      .populate('employeeId', 'name email employeeId designation profileImage');
+
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee: employee || { _id: finalEmployeeId, name: employeeName, email: employeeEmail },
+      user,
+      action: 'checkin',
+      method,
+      isLate
+    });
+
+    // Broadcast realtime update
+    await broadcastAttendanceUpdate(req, populatedAttendance, employee || { _id: finalEmployeeId, name: employeeName, email: employeeEmail }, 'marked');
 
     res.status(201).json({
       success: true,
-      message: 'Attendance marked successfully',
-      data: attendance
+      message: `Attendance marked successfully (${isLate ? 'Late Arrival' : 'On Time'})`,
+      data: populatedAttendance,
+      attendance: populatedAttendance,
+      isLate
     });
   } catch (error) {
     console.error('Mark attendance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -133,28 +478,32 @@ const markAttendance = async (req, res) => {
 // @access  Private (Employee only)
 const checkOut = async (req, res) => {
   try {
-    const userId = req.user.id;
+    console.log('----------------------------------------------------');
+    console.log('📤 [Attendance Flow] PUT /api/attendance/checkout');
+    const userId = req.user.id || req.user.userId;
 
-    // Find the employee associated with this user
-    const user = await User.findById(userId);
-    const employee = await Employee.findOne({ email: user.email });
-    
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: 'Employee profile not found'
-      });
+    let user = await User.findById(userId);
+    let employee = null;
+    if (user) {
+      employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
+    } else {
+      employee = await Employee.findById(userId);
+      if (employee) {
+        user = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
+      }
     }
 
-    // Find today's attendance
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (!user && !employee) {
+      return res.status(404).json({ success: false, message: 'User or Employee profile not found' });
+    }
+
+    const { start: today, end: tomorrow } = getTodayDateRange();
+    const idFilters = [];
+    if (employee) idFilters.push({ employeeId: employee._id });
+    if (user) idFilters.push({ userId: user._id });
 
     const attendance = await Attendance.findOne({
-      employeeId: employee._id,
+      $or: idFilters,
       date: { $gte: today, $lt: tomorrow }
     });
 
@@ -165,25 +514,40 @@ const checkOut = async (req, res) => {
       });
     }
 
-    // Update checkout time and calculate work hours
     const checkOutTime = new Date();
-    const workHours = (checkOutTime - attendance.checkInTime) / (1000 * 60 * 60); // hours
+    const workHours = (checkOutTime - new Date(attendance.checkInTime)) / (1000 * 60 * 60);
 
     attendance.checkOutTime = checkOutTime;
-    attendance.workHours = parseFloat(workHours.toFixed(2));
+    attendance.workHours = parseFloat(Math.max(0, workHours).toFixed(2));
     attendance.isActive = false;
     await attendance.save();
+
+    const populatedAttendance = await Attendance.findById(attendance._id)
+      .populate('employeeId', 'name email employeeId designation');
+
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee,
+      user,
+      action: 'checkout',
+      method: attendance.verificationMethod || 'manual',
+      workHours: attendance.workHours
+    });
+
+    // Real-time synchronization broadcast across all devices/apps
+    await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'checked_out');
 
     res.json({
       success: true,
       message: 'Checked out successfully',
-      data: attendance
+      data: populatedAttendance
     });
   } catch (error) {
-    console.error('Check out error:', error);
+    console.error('Checkout error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -193,30 +557,39 @@ const checkOut = async (req, res) => {
 // @access  Private (Employee only)
 const getMyTodayAttendance = async (req, res) => {
   try {
-    console.log('=== getMyTodayAttendance DEBUG ===');
-    console.log('req.user:', req.user);
     const userId = req.user.id || req.user.userId;
-    console.log('userId:', userId);
+    console.log('🔍 [Attendance Flow] GET /api/attendance/my-today for userId:', userId);
 
-    const user = await User.findById(userId);
-    console.log('user found:', user ? 'YES' : 'NO');
-    
-    const employee = await Employee.findOne({ email: user.email });
-    console.log('employee found:', employee ? 'YES' : 'NO');
-    
-    if (!employee) {
+    let user = await User.findById(userId);
+    let employee = null;
+    if (user) {
+      employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
+    } else {
+      employee = await Employee.findById(userId);
+      if (employee) {
+        user = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
+      }
+    }
+
+    if (!user && !employee) {
       return res.status(404).json({
         success: false,
-        message: 'Employee profile not found'
+        message: 'User or Employee profile not found'
       });
     }
 
-    console.log('Calling Attendance.getTodayAttendance with:', employee._id);
-    console.log('Attendance model:', Attendance);
-    console.log('Attendance.getTodayAttendance:', Attendance.getTodayAttendance);
-    
-    const attendance = await Attendance.getTodayAttendance(employee._id);
-    console.log('attendance result:', attendance);
+    const { start: today, end: tomorrow } = getTodayDateRange();
+
+    const idFilters = [];
+    if (user) idFilters.push({ userId: user._id });
+    if (employee) idFilters.push({ employeeId: employee._id });
+
+    const attendance = await Attendance.findOne({
+      $or: idFilters,
+      date: { $gte: today, $lt: tomorrow }
+    }).populate('employeeId', 'name email employeeId designation');
+
+    console.log('✅ [Attendance Flow] Today attendance for', user?.email || employee?.email, '=>', attendance ? attendance.status : 'None');
 
     res.json({
       success: true,
@@ -225,7 +598,6 @@ const getMyTodayAttendance = async (req, res) => {
     });
   } catch (error) {
     console.error('Get today attendance error:', error);
-    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Server error: ' + error.message
@@ -238,35 +610,37 @@ const getMyTodayAttendance = async (req, res) => {
 // @access  Private (Admin/Employee)
 const getTodayAllAttendance = async (req, res) => {
   try {
-    // Allow both admin and employee roles
-    const isAdmin = req.user.role === 'admin';
-    const userId = req.user.userId || req.user.id;
+    const { start: today, end: tomorrow } = getTodayDateRange();
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Get all employees and users with profile images
+    const [employees, users] = await Promise.all([
+      Employee.find().sort({ createdAt: -1 }),
+      User.find({}, 'name email profileImage')
+    ]);
 
-    // Get all employees
-    const employees = await Employee.find().sort({ createdAt: -1 });
+    const userImageByEmail = {};
+    users.forEach(u => {
+      if (u.email && u.profileImage) {
+        userImageByEmail[u.email.toLowerCase().trim()] = u.profileImage;
+      }
+    });
 
     // Get today's attendance records
     const attendances = await Attendance.find({
       date: { $gte: today, $lt: tomorrow }
-    }).populate('employeeId', 'name email employeeId designation');
+    }).populate('employeeId', 'name email employeeId designation profileImage');
 
-    // Map attendance to employees (handle both populated and non-populated employeeId)
-    const attendanceMap = {};
+    // Map attendance to employees by employeeId, userId, and email
+    const attendanceByEmpId = {};
+    const attendanceByUserId = {};
+    const attendanceByEmail = {};
+
     attendances.forEach(att => {
-      let empIdStr = null;
-      if (att.employeeId && typeof att.employeeId === 'object' && att.employeeId._id) {
-        empIdStr = att.employeeId._id.toString();
-      } else if (att.employeeId) {
-        empIdStr = att.employeeId.toString();
-      }
-      if (empIdStr) {
-        attendanceMap[empIdStr] = att;
+      const empIdStr = att.employeeId?._id ? att.employeeId._id.toString() : (att.employeeId ? att.employeeId.toString() : null);
+      if (empIdStr) attendanceByEmpId[empIdStr] = att;
+      if (att.userId) attendanceByUserId[att.userId.toString()] = att;
+      if (att.employeeId?.email) {
+        attendanceByEmail[att.employeeId.email.toLowerCase().trim()] = att;
       }
     });
 
@@ -284,31 +658,50 @@ const getTodayAllAttendance = async (req, res) => {
     // Create response with attendance status
     const employeesWithAttendance = employees.map(emp => {
       const empObj = emp.toObject();
-      const att = attendanceMap[emp._id.toString()];
-      const hasAttendance = !!att;
+      const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+      const attendance = attendanceByEmpId[emp._id.toString()] ||
+                         attendanceByUserId[emp._id.toString()] ||
+                         (emp.userId ? attendanceByUserId[emp.userId.toString()] : null) ||
+                         attendanceByEmail[empEmail];
+
+      const isPresent = attendance && (attendance.status === 'Present' || attendance.status === 'present' || attendance.isActive);
+      const isLate = attendance?.checkInTime ? isLateArrival(attendance.checkInTime) : false;
+      const profileImage = empObj.profileImage || (empEmail ? userImageByEmail[empEmail] : '') || attendance?.employeeId?.profileImage || '';
       
       return {
         ...empObj,
-        attendanceStatus: hasAttendance ? 'active' : 'inactive',
-        attendanceToday: att ? {
-          ...att.toObject(),
-          status: normStat(att.status)
-        } : null
+        profileImage,
+        attendanceStatus: isPresent ? 'active' : 'inactive',
+        attendanceToday: attendance ? {
+          ...attendance.toObject(),
+          status: normStat(attendance.status),
+          isLate
+        } : null,
+        isCheckedIn: attendance ? attendance.isActive : false,
+        checkInTime: attendance ? attendance.checkInTime : null,
+        checkOutTime: attendance ? attendance.checkOutTime : null,
+        isLate
       };
     });
+
+    const presentCount = employeesWithAttendance.filter(e => e.attendanceToday && (e.attendanceToday.status === 'Present' || e.attendanceToday.status === 'present')).length;
+    const lateCount = employeesWithAttendance.filter(e => e.isLate).length;
+    const activeCount = employeesWithAttendance.filter(e => e.isCheckedIn).length;
 
     res.json({
       success: true,
       count: employeesWithAttendance.length,
-      activeCount: employeesWithAttendance.filter(e => e.attendanceStatus === 'active').length,
-      inactiveCount: employeesWithAttendance.filter(e => e.attendanceStatus === 'inactive').length,
+      presentCount,
+      lateCount,
+      activeCount,
+      inactiveCount: employeesWithAttendance.length - activeCount,
       data: employeesWithAttendance
     });
   } catch (error) {
     console.error('Get today all attendance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -318,38 +711,37 @@ const getTodayAllAttendance = async (req, res) => {
 // @access  Private
 const getTodayAttendanceStatus = async (req, res) => {
   try {
-    const isAdmin = req.user.role === 'admin';
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: today, end: tomorrow } = getTodayDateRange();
 
-    let employees;
-    
     // All logged-in users see all employees
-    employees = await Employee.find().sort({ createdAt: -1 });
+    const [employees, users] = await Promise.all([
+      Employee.find().sort({ createdAt: -1 }),
+      User.find({}, 'name email profileImage')
+    ]);
+
+    const userImageByEmail = {};
+    users.forEach(u => {
+      if (u.email && u.profileImage) {
+        userImageByEmail[u.email.toLowerCase().trim()] = u.profileImage;
+      }
+    });
 
     // Get today's attendance records
     const attendances = await Attendance.find({
       date: { $gte: today, $lt: tomorrow }
-    }).populate('employeeId', 'name email employeeId designation');
+    }).populate('employeeId', 'name email employeeId designation profileImage');
 
-    // Map attendance to employees
-    // Handle both: populated employeeId (object) and raw ObjectId (string/ObjectId)
-    const attendanceMap = {};
+    // Map attendance to employees by employeeId, userId, and email
+    const attendanceByEmpId = {};
+    const attendanceByUserId = {};
+    const attendanceByEmail = {};
+
     attendances.forEach(att => {
-      let empIdStr = null;
-      if (att.employeeId && typeof att.employeeId === 'object' && att.employeeId._id) {
-        // Populated: employeeId is Employee document
-        empIdStr = att.employeeId._id.toString();
-      } else if (att.employeeId) {
-        // Not populated or populate failed: employeeId is raw ObjectId
-        empIdStr = att.employeeId.toString();
-      }
-      if (empIdStr) {
-        attendanceMap[empIdStr] = att;
+      const empIdStr = att.employeeId?._id ? att.employeeId._id.toString() : (att.employeeId ? att.employeeId.toString() : null);
+      if (empIdStr) attendanceByEmpId[empIdStr] = att;
+      if (att.userId) attendanceByUserId[att.userId.toString()] = att;
+      if (att.employeeId?.email) {
+        attendanceByEmail[att.employeeId.email.toLowerCase().trim()] = att;
       }
     });
 
@@ -368,9 +760,16 @@ const getTodayAttendanceStatus = async (req, res) => {
     // Create response with active/inactive status
     const employeesWithStatus = employees.map(emp => {
       const empObj = emp.toObject();
-      const attendance = attendanceMap[emp._id.toString()];
+      const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+      const attendance = attendanceByEmpId[emp._id.toString()] ||
+                         attendanceByUserId[emp._id.toString()] ||
+                         (emp.userId ? attendanceByUserId[emp.userId.toString()] : null) ||
+                         attendanceByEmail[empEmail];
+
+      const isPresent = attendance && (attendance.status === 'Present' || attendance.status === 'present' || attendance.isActive);
+      const isLate = attendance?.checkInTime ? isLateArrival(attendance.checkInTime) : false;
+      const profileImage = empObj.profileImage || (empEmail ? userImageByEmail[empEmail] : '') || attendance?.employeeId?.profileImage || '';
       
-      // Determine status: checked in = active, checked out or no attendance = inactive
       let status = 'inactive';
       if (attendance) {
         status = attendance.isActive ? 'active' : 'inactive';
@@ -378,33 +777,41 @@ const getTodayAttendanceStatus = async (req, res) => {
       
       return {
         ...empObj,
+        profileImage,
         attendanceStatus: status,
         attendanceToday: attendance ? {
           ...attendance.toObject(),
-          status: normalizeStatus(attendance.status)  // Always PascalCase for website compatibility
+          status: normalizeStatus(attendance.status),  // Always PascalCase for website compatibility
+          isLate
         } : null,
         isCheckedIn: attendance ? attendance.isActive : false,
         checkInTime: attendance ? attendance.checkInTime : null,
-        checkOutTime: attendance ? attendance.checkOutTime : null
+        checkOutTime: attendance ? attendance.checkOutTime : null,
+        isLate
       };
     });
+
+    const presentCount = employeesWithStatus.filter(e => e.attendanceToday && (e.attendanceToday.status === 'Present' || e.attendanceToday.status === 'present')).length;
+    const lateCount = employeesWithStatus.filter(e => e.isLate).length;
+    const activeCount = employeesWithStatus.filter(e => e.attendanceStatus === 'active').length;
 
     res.json({
       success: true,
       count: employeesWithStatus.length,
-      activeCount: employeesWithStatus.filter(e => e.attendanceStatus === 'active').length,
-      inactiveCount: employeesWithStatus.filter(e => e.attendanceStatus === 'inactive').length,
+      presentCount,
+      lateCount,
+      activeCount,
+      inactiveCount: employeesWithStatus.length - activeCount,
       data: employeesWithStatus
     });
   } catch (error) {
     console.error('Get today attendance status error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
-
 // @desc    Get attendance history for an employee
 // @route   GET /api/attendance/history/:employeeId
 // @access  Private
@@ -413,7 +820,24 @@ const getAttendanceHistory = async (req, res) => {
     const { employeeId } = req.params;
     const { startDate, endDate } = req.query;
 
-    let query = { employeeId };
+    console.log('🔍 [Attendance Flow] GET /api/attendance/history for ID:', employeeId);
+
+    const emp = mongoose.isValidObjectId(employeeId) ? await Employee.findById(employeeId) : null;
+    const usr = mongoose.isValidObjectId(employeeId) ? await User.findById(employeeId) : null;
+
+    const idFilters = [{ employeeId: employeeId }, { userId: employeeId }];
+    if (emp) {
+      idFilters.push({ employeeId: emp._id });
+      const matchingUser = await User.findOne({ email: new RegExp(`^${emp.email.trim()}$`, 'i') });
+      if (matchingUser) idFilters.push({ userId: matchingUser._id });
+    }
+    if (usr) {
+      idFilters.push({ userId: usr._id });
+      const matchingEmp = await Employee.findOne({ email: new RegExp(`^${usr.email.trim()}$`, 'i') });
+      if (matchingEmp) idFilters.push({ employeeId: matchingEmp._id });
+    }
+
+    let query = { $or: idFilters };
 
     if (startDate && endDate) {
       query.date = {
@@ -424,7 +848,7 @@ const getAttendanceHistory = async (req, res) => {
 
     const attendances = await Attendance.find(query)
       .sort({ date: -1 })
-      .populate('employeeId', 'name email employeeId');
+      .populate('employeeId', 'name email employeeId designation');
 
     res.json({
       success: true,
@@ -435,7 +859,7 @@ const getAttendanceHistory = async (req, res) => {
     console.error('Get attendance history error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -446,10 +870,10 @@ const getAttendanceHistory = async (req, res) => {
 const adminMarkAttendance = async (req, res) => {
   try {
     const { employeeId, status = 'Present', notes = '' } = req.body;
-    const adminUserId = req.user.id;
+    const adminUserId = req.user?.id || req.user?.userId;
 
     // Check if user is admin
-    if (req.user.role !== 'admin') {
+    if (req.user?.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
@@ -465,15 +889,14 @@ const adminMarkAttendance = async (req, res) => {
       });
     }
 
+    const matchingUser = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
+    const finalUserId = matchingUser?._id || adminUserId;
+
     // Check if attendance already marked for today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: today, end: tomorrow } = getTodayDateRange();
 
     const existingAttendance = await Attendance.findOne({
-      employeeId: employee._id,
+      $or: [{ employeeId: employee._id }, { userId: finalUserId }],
       date: { $gte: today, $lt: tomorrow }
     });
 
@@ -488,24 +911,38 @@ const adminMarkAttendance = async (req, res) => {
     // Create new attendance record
     const attendance = await Attendance.create({
       employeeId: employee._id,
-      userId: adminUserId,
+      userId: finalUserId,
       date: new Date(),
       status,
       checkInTime: new Date(),
       isActive: true,
-      notes: notes || `Marked by admin: ${req.user.email}`
+      notes: notes || `Marked by admin: ${req.user?.email || 'Admin'}`
     });
+
+    const populatedAttendance = await Attendance.findById(attendance._id)
+      .populate('employeeId', 'name email employeeId designation');
+
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee,
+      user: matchingUser,
+      action: 'admin_marked',
+      method: 'admin_override'
+    });
+
+    await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'admin_marked');
 
     res.status(201).json({
       success: true,
       message: `Attendance marked for ${employee.name}`,
-      data: attendance
+      data: populatedAttendance
     });
   } catch (error) {
     console.error('Admin mark attendance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -524,45 +961,84 @@ const getAttendanceByDate = async (req, res) => {
       });
     }
     
-    const selectedDate = new Date(date);
-    selectedDate.setHours(0, 0, 0, 0);
-    
-    const nextDay = new Date(selectedDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    let startSearch, endSearch;
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+      const parts = date.split('T')[0].split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+
+      const startLocal = new Date(y, m, d, 0, 0, 0, 0);
+      const endLocal = new Date(y, m, d + 1, 0, 0, 0, 0);
+      const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+      const endUtc = new Date(Date.UTC(y, m, d + 1, 0, 0, 0, 0));
+
+      startSearch = new Date(Math.min(startLocal.getTime(), startUtc.getTime()));
+      endSearch = new Date(Math.max(endLocal.getTime(), endUtc.getTime()));
+    } else {
+      const d = new Date(date);
+      startSearch = new Date(d);
+      startSearch.setHours(0, 0, 0, 0);
+      endSearch = new Date(startSearch);
+      endSearch.setDate(endSearch.getDate() + 1);
+    }
     
     console.log('=== Get Attendance By Date ===');
-    console.log('Selected date:', selectedDate);
+    console.log('Search date window:', { startSearch, endSearch });
     
-    // Get all employees
-    const employees = await Employee.find().sort({ createdAt: -1 });
+    // Get all employees and users with profile images
+    const [employees, users] = await Promise.all([
+      Employee.find().sort({ createdAt: -1 }),
+      User.find({}, 'name email profileImage')
+    ]);
+
+    const userImageByEmail = {};
+    users.forEach(u => {
+      if (u.email && u.profileImage) {
+        userImageByEmail[u.email.toLowerCase().trim()] = u.profileImage;
+      }
+    });
     
     // Get attendance records for selected date
     const attendances = await Attendance.find({
-      date: { $gte: selectedDate, $lt: nextDay }
-    }).populate('employeeId', 'name email employeeId designation');
+      date: { $gte: startSearch, $lt: endSearch }
+    }).populate('employeeId', 'name email employeeId designation profileImage');
     
     console.log('Found attendances:', attendances.length);
     
-    // Map attendance to employees
-    const attendanceMap = {};
+    // Map attendance to employees by empId, userId, and email
+    const attendanceByEmpId = {};
+    const attendanceByUserId = {};
+    const attendanceByEmail = {};
+
     attendances.forEach(att => {
-      if (att.employeeId && att.employeeId._id) {
-        attendanceMap[att.employeeId._id.toString()] = att;
+      const empIdStr = att.employeeId?._id ? att.employeeId._id.toString() : (att.employeeId ? att.employeeId.toString() : null);
+      if (empIdStr) attendanceByEmpId[empIdStr] = att;
+      if (att.userId) attendanceByUserId[att.userId.toString()] = att;
+      if (att.employeeId?.email) {
+        attendanceByEmail[att.employeeId.email.toLowerCase().trim()] = att;
       }
     });
     
     // Create response with attendance status
     const employeesWithAttendance = employees.map(emp => {
       const empObj = emp.toObject();
-      const attendance = attendanceMap[emp._id.toString()];
+      const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+      const attendance = attendanceByEmpId[emp._id.toString()] ||
+                         attendanceByUserId[emp._id.toString()] ||
+                         (emp.userId ? attendanceByUserId[emp.userId.toString()] : null) ||
+                         attendanceByEmail[empEmail];
       
       let status = 'inactive';
       if (attendance) {
         status = attendance.isActive ? 'active' : 'inactive';
       }
+
+      const profileImage = empObj.profileImage || (empEmail ? userImageByEmail[empEmail] : '') || attendance?.employeeId?.profileImage || '';
       
       return {
         ...empObj,
+        profileImage,
         attendanceStatus: status,
         attendanceData: attendance ? {
           ...attendance.toObject(),
@@ -575,13 +1051,13 @@ const getAttendanceByDate = async (req, res) => {
     });
     
     // Calculate stats
-    const presentCount = attendances.filter(a => a.status === 'Present').length;
-    const absentCount = employees.length - presentCount;
-    const onLeaveCount = attendances.filter(a => a.status === 'Leave').length;
+    const presentCount = attendances.filter(a => a.status === 'Present' || a.status === 'present').length;
+    const absentCount = Math.max(0, employees.length - presentCount);
+    const onLeaveCount = attendances.filter(a => a.status === 'Leave' || a.status === 'leave').length;
     
     res.json({
       success: true,
-      date: selectedDate,
+      date: date,
       total: employees.length,
       present: presentCount,
       absent: absentCount,
@@ -592,7 +1068,7 @@ const getAttendanceByDate = async (req, res) => {
     console.error('Get attendance by date error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -602,55 +1078,47 @@ const getAttendanceByDate = async (req, res) => {
 // @access  Private (All authenticated users)
 const getAttendanceStats = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: today, end: tomorrow } = getTodayDateRange();
 
     // Get all active employees count
     const totalEmployees = await Employee.countDocuments({ status: 'Active' });
 
-    // Get today's attendance count
-    const presentCount = await Attendance.countDocuments({
-      date: { $gte: today, $lt: tomorrow }
-    });
-
-    // Calculate absent count
-    const absentCount = totalEmployees - presentCount;
-    
-    // Debug logging
-    console.log('=== Attendance Stats Debug ===');
-    console.log('Date:', today);
-    console.log('Total Active Employees:', totalEmployees);
-    console.log('Present Today:', presentCount);
-    console.log('Absent Today:', absentCount);
-    
-    // Get all employees and their attendance status for detailed view
-    const allEmployees = await Employee.find({ status: 'Active' });
+    // Get today's attendance records with populated fields
     const todayAttendances = await Attendance.find({
       date: { $gte: today, $lt: tomorrow }
-    }).populate('employeeId', 'name email');
-    
-    console.log('All Active Employees:', allEmployees.map(e => ({ id: e._id.toString(), name: e.name })));
-    console.log('Today Attendances:', todayAttendances.map(a => ({ 
-      employeeId: a.employeeId?._id?.toString(), 
-      name: a.employeeId?.name,
-      status: a.status 
-    })));
+    }).populate('employeeId', 'name email employeeId designation');
+
+    const presentCount = todayAttendances.filter(a => a.status === 'Present').length;
+    const onLeaveCount = todayAttendances.filter(a => a.status === 'Leave').length;
+    const lateCount = todayAttendances.filter(a => a.checkInTime && isLateArrival(a.checkInTime)).length;
+    const activeNowCount = todayAttendances.filter(a => a.isActive).length;
+    const absentCount = Math.max(0, totalEmployees - presentCount - onLeaveCount);
+
+    console.log('=== Attendance Stats Synchronized ===', {
+      total: totalEmployees,
+      present: presentCount,
+      absent: absentCount,
+      late: lateCount,
+      onLeave: onLeaveCount,
+      activeNow: activeNowCount
+    });
 
     res.json({
       success: true,
       date: today,
       total: totalEmployees,
       present: presentCount,
-      absent: absentCount > 0 ? absentCount : 0
+      absent: absentCount,
+      late: lateCount,
+      lateArrival: lateCount,
+      onLeave: onLeaveCount,
+      activeNow: activeNowCount
     });
   } catch (error) {
     console.error('Get attendance stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error: ' + error.message
     });
   }
 };
@@ -1266,12 +1734,15 @@ const getLiveQRToken = async (req, res) => {
 // @access  Private (Employee)
 const markAttendanceVerified = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.id || req.user.userId;
     const { status = 'Present', notes = '', verificationMethod = 'geolocation', qrToken, location } = req.body;
 
     const user = await User.findById(userId);
-    const employee = await Employee.findOne({ email: user.email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
 
+    const employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
     if (!employee) {
       return res.status(404).json({
         success: false,
@@ -1280,21 +1751,21 @@ const markAttendanceVerified = async (req, res) => {
     }
 
     // Check if attendance already marked today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: today, end: tomorrow } = getTodayDateRange();
 
     const existingAttendance = await Attendance.findOne({
-      employeeId: employee._id,
+      $or: [{ employeeId: employee._id }, { userId: user._id }],
       date: { $gte: today, $lt: tomorrow }
-    });
+    }).populate('employeeId', 'name email employeeId designation');
 
     if (existingAttendance) {
-      return res.status(400).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
+        alreadyMarked: true,
         message: 'Attendance already marked for today',
-        data: existingAttendance
+        data: existingAttendance,
+        checkInTime: existingAttendance.checkInTime,
+        status: existingAttendance.status
       });
     }
 
@@ -1312,15 +1783,18 @@ const markAttendanceVerified = async (req, res) => {
       isWithinOfficeRadius = distanceInMeters <= OFFICE_LOCATION.radiusMeters;
     }
 
+    const checkInDate = new Date();
+    const isLate = isLateArrival(checkInDate);
+
     // Create verified attendance record
     const attendance = await Attendance.create({
       employeeId: employee._id,
-      userId: userId,
+      userId: user._id,
       date: new Date(),
       status,
-      checkInTime: new Date(),
+      checkInTime: checkInDate,
       isActive: true,
-      notes,
+      notes: notes || (isLate ? 'Verified Check-in (Late Arrival)' : 'Verified Check-in'),
       verificationMethod,
       qrToken: qrToken || null,
       location: {
@@ -1333,33 +1807,201 @@ const markAttendanceVerified = async (req, res) => {
       }
     });
 
-    // Create rich notification for admins
-    const admins = await User.find({ role: 'admin' }).select('_id');
-    const methodLabel = verificationMethod === 'qr_code' ? '📱 QR Code' : verificationMethod === 'geolocation' ? '📍 GPS Location' : (verificationMethod === 'face_recognition' || verificationMethod === 'face_lock') ? '👤 AI Face Lock' : '✓ Verified';
-    
-    for (const admin of admins) {
-      await Notification.create({
-        type: 'attendance',
-        title: `Attendance Marked via ${methodLabel}`,
-        message: `${employee.name} checked in via ${methodLabel} (${isWithinOfficeRadius ? 'Inside Office Zone' : (distanceInMeters ? `${distanceInMeters}m away` : 'Remote')}) at ${new Date().toLocaleTimeString()}`,
-        employeeId: employee._id,
-        employeeName: employee.name,
-        employeeEmail: employee.email,
-        senderId: userId,
-        receiverId: admin._id
-      });
-    }
+    const populatedAttendance = await Attendance.findById(attendance._id)
+      .populate('employeeId', 'name email employeeId designation');
+
+    const methodLabel = verificationMethod === 'qr_code' 
+      ? '📱 QR Code' 
+      : verificationMethod === 'geolocation' 
+      ? '📍 GPS Location' 
+      : (verificationMethod === 'face_recognition' || verificationMethod === 'face_lock') 
+      ? '👤 AI Face Lock' 
+      : '✓ Verified';
+
+    // Create rich notification for admins and employee and broadcast realtime socket event
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee,
+      user,
+      action: 'checkin',
+      method: verificationMethod,
+      isLate,
+      customMessage: `${employee.name} checked in via ${methodLabel} (${isWithinOfficeRadius ? 'Inside Office Zone' : (distanceInMeters ? `${distanceInMeters}m away` : 'Remote')}) at ${checkInDate.toLocaleTimeString()} (${isLate ? 'Late Arrival' : 'On Time'})`
+    });
+
+    // Broadcast realtime update
+    await broadcastAttendanceUpdate(req, populatedAttendance, employee, 'verified_marked');
 
     res.status(201).json({
       success: true,
-      message: `Attendance marked successfully via ${methodLabel}!`,
-      data: attendance
+      message: `Attendance marked successfully via ${methodLabel}! (${isLate ? 'Late Arrival' : 'On Time'})`,
+      data: populatedAttendance,
+      isLate,
+      checkInTime: populatedAttendance.checkInTime,
+      status: populatedAttendance.status
     });
   } catch (error) {
     console.error('Mark verified attendance error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error while marking verified attendance'
+    });
+  }
+};
+
+// @desc    Mark attendance via Face Recognition / Face Lock Scanner (Device / Kiosk / App / Web)
+// @route   POST /api/attendance/face-recognition OR POST /api/attendance/face-mark
+// @access  Public (Device with Employee Info) OR Private (Employee session)
+const markFaceRecognitionAttendance = async (req, res) => {
+  try {
+    console.log('----------------------------------------------------');
+    console.log('🤖 [Face Recognition Flow] Step 1: Received Face Attendance Request');
+    console.log('Request Headers Authorization:', req.headers.authorization ? 'Bearer provided' : 'None');
+    console.log('Request Body:', req.body);
+
+    const {
+      employeeId: bodyEmployeeId,
+      userId: bodyUserId,
+      email: bodyEmail,
+      status = 'Present',
+      notes = '',
+      location = null,
+      verificationMethod = 'face_recognition',
+      checkInTime = new Date()
+    } = req.body;
+
+    let targetUserId = req.user ? (req.user.id || req.user.userId) : bodyUserId;
+    let employee = null;
+    let user = null;
+
+    // Resolve user & employee
+    if (targetUserId) {
+      user = await User.findById(targetUserId);
+    }
+    
+    if (bodyEmail) {
+      const emailRegex = new RegExp(`^${bodyEmail.trim()}$`, 'i');
+      if (!user) user = await User.findOne({ email: emailRegex });
+      if (!employee) employee = await Employee.findOne({ email: emailRegex });
+    }
+
+    if (bodyEmployeeId && !employee) {
+      if (typeof bodyEmployeeId === 'string' && bodyEmployeeId.match(/^[0-9a-fA-F]{24}$/)) {
+        employee = await Employee.findById(bodyEmployeeId);
+      }
+      if (!employee) {
+        employee = await Employee.findOne({ employeeId: bodyEmployeeId });
+      }
+    }
+
+    if (user && !employee) {
+      employee = await Employee.findOne({ email: new RegExp(`^${user.email.trim()}$`, 'i') });
+    }
+
+    if (employee && !user) {
+      user = await User.findOne({ email: new RegExp(`^${employee.email.trim()}$`, 'i') });
+    }
+
+    console.log('🤖 [Face Recognition Flow] Step 2: Employee/User Resolved:', {
+      employee: employee ? `${employee.name} (${employee._id})` : 'NOT FOUND',
+      user: user ? `${user.name} (${user._id})` : 'NOT FOUND'
+    });
+
+    if (!employee && !user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee record not found for face recognition match. Please check Employee ID or Email.'
+      });
+    }
+
+    const resolvedEmployeeId = employee ? employee._id : null;
+    const resolvedUserId = user ? user._id : (employee ? employee._id : targetUserId);
+
+    // Duplicate check for today
+    const { start: todayStart, end: todayEnd } = getTodayDateRange();
+
+    const idFilters = [];
+    if (resolvedEmployeeId) idFilters.push({ employeeId: resolvedEmployeeId });
+    if (resolvedUserId) idFilters.push({ userId: resolvedUserId });
+    
+    const existingAttendance = await Attendance.findOne({
+      $and: [
+        { date: { $gte: todayStart, $lt: todayEnd } },
+        { $or: idFilters }
+      ]
+    }).populate('employeeId', 'name email employeeId designation');
+
+    if (existingAttendance) {
+      console.log('⚠️ [Face Recognition Flow] Duplicate Check: Attendance already exists for today:', existingAttendance._id);
+      
+      return res.status(200).json({
+        success: true,
+        alreadyMarked: true,
+        message: `Attendance already recorded for ${employee?.name || user?.name || 'Employee'} today.`,
+        data: existingAttendance,
+        checkInTime: existingAttendance.checkInTime,
+        checkOutTime: existingAttendance.checkOutTime,
+        status: existingAttendance.status,
+        isLate: existingAttendance.checkInTime ? isLateArrival(existingAttendance.checkInTime) : false
+      });
+    }
+
+    // Step 3: Save to Database
+    const effectiveCheckInTime = new Date(checkInTime || Date.now());
+    const isLate = isLateArrival(effectiveCheckInTime);
+
+    const attendance = await Attendance.create({
+      employeeId: resolvedEmployeeId || resolvedUserId,
+      userId: resolvedUserId,
+      date: new Date(),
+      status: status || 'Present',
+      checkInTime: effectiveCheckInTime,
+      isActive: true,
+      notes: notes || (isLate ? 'Verified via AI Face Recognition (Late Arrival)' : 'Verified via AI Face Recognition Scanner'),
+      verificationMethod: verificationMethod || 'face_recognition',
+      location: {
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
+        accuracy: location?.accuracy || null,
+        address: location?.address || 'AI Face Recognition Device Capture',
+        isWithinOfficeRadius: true
+      }
+    });
+
+    const populatedAttendance = await Attendance.findById(attendance._id)
+      .populate('employeeId', 'name email employeeId designation');
+
+    console.log('✅ [Face Recognition Flow] Step 3: Saved successfully in database with ID:', attendance._id);
+
+    // Step 4: Admin Notifications & Alerts
+    const empName = employee?.name || user?.name || 'Employee';
+
+    await createAndBroadcastAttendanceNotification(req, {
+      attendance: populatedAttendance,
+      employee: employee || user,
+      user: user || employee,
+      action: 'checkin',
+      method: verificationMethod || 'face_recognition',
+      isLate
+    });
+
+    // Step 5: Broadcast Real-time event across Mobile & Web
+    console.log('📡 [Face Recognition Flow] Step 4 & 5: Broadcasting Realtime Synchronization...');
+    await broadcastAttendanceUpdate(req, populatedAttendance, employee || user, 'face_recognition_marked');
+
+    return res.status(201).json({
+      success: true,
+      message: `👤 Face Recognition Matched! Attendance marked for ${empName} (${isLate ? 'Late Arrival' : 'On Time'}).`,
+      data: populatedAttendance,
+      isLate,
+      checkInTime: populatedAttendance.checkInTime,
+      status: populatedAttendance.status
+    });
+  } catch (error) {
+    console.error('❌ [Face Recognition Flow] Error marking face recognition attendance:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error marking face recognition attendance: ' + error.message
     });
   }
 };
@@ -1405,10 +2047,15 @@ const updateAttendance = async (req, res) => {
 
     await attendance.save();
 
+    const populated = await Attendance.findById(attendance._id)
+      .populate('employeeId', 'name email employeeId designation');
+
+    await broadcastAttendanceUpdate(req, populated, populated.employeeId, 'updated');
+
     res.json({
       success: true,
       message: 'Attendance record and time updated successfully',
-      data: attendance
+      data: populated
     });
   } catch (error) {
     console.error('Update attendance error:', error);
@@ -1422,6 +2069,7 @@ const updateAttendance = async (req, res) => {
 module.exports = {
   markAttendance,
   markAttendanceVerified,
+  markFaceRecognitionAttendance,
   getLiveQRToken,
   getOfficeLocation,
   checkOut,

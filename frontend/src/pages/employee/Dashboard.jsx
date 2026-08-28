@@ -3,8 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import TaskManager from '../../components/admin/TaskManager';
 import MyTasks from '../../components/employee/MyTasks';
 import AdminLeavePopup from '../../components/admin/AdminLeavePopup';
+import LiveQRGeoVerificationModal from '../../components/employee/LiveQRGeoVerificationModal';
 import { attendanceAPI } from '../../services/api';
 import { useTheme } from '../../context/ThemeContext';
+import { useNotifications } from '../../context/NotificationContext';
 import '../../components/admin/TaskManager.css';
 import '../../components/employee/MyTasks.css';
 import './Dashboard.css';
@@ -25,8 +27,10 @@ const getEmployeeAvatar = (emp) => {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(emp?.name || 'User')}&background=4F46E5&color=fff&size=45`;
 };
 
-const Dashboard = ({ onLogout, userRole }) => {
+const Dashboard = ({ userRole, onLogout }) => {
   const navigate = useNavigate();
+  const { showToast } = useNotifications();
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Get current logged in user info
   const [currentUser, setCurrentUser] = useState(null);
@@ -59,6 +63,7 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showFaceModal, setShowFaceModal] = useState(false);
   const [taskStats, setTaskStats] = useState({
     total: 0,
     pending: 0,
@@ -71,6 +76,7 @@ const Dashboard = ({ onLogout, userRole }) => {
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
     absent: 0,
+    late: 0,
     total: 0,
     totalWorkHours: 0,
     activeNow: 0
@@ -137,11 +143,18 @@ const Dashboard = ({ onLogout, userRole }) => {
       const res = await attendanceAPI.markAttendance('Present', 'Clocked in from Dashboard');
       if (res && (res.success || res.data)) {
         setMyTodayAttendance(res.data);
+        showToast(
+          '⏰ Clock-In Successful!',
+          `You clocked in successfully at ${new Date().toLocaleTimeString()} (${res.isLate ? 'Late Arrival ⏰' : 'On Time ✅'}).`,
+          'attendance',
+          { isLate: res.isLate, method: 'Direct Check-In' }
+        );
       }
       await fetchDashboardData();
     } catch (err) {
       console.error('Clock in error:', err);
       setApiError(err.message || 'Failed to clock in');
+      showToast('Clock-In Error', err.message || 'Failed to clock in', 'error');
     } finally {
       setClockLoading(false);
     }
@@ -167,6 +180,13 @@ const Dashboard = ({ onLogout, userRole }) => {
         const checkOutStr = checkOutDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         const formattedWorkTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes} mins`;
 
+        showToast(
+          '🏠 Clock-Out Confirmed',
+          `Checked out successfully at ${checkOutStr}! Work time: ${formattedWorkTime}.`,
+          'checkout',
+          { workHours: formattedWorkTime }
+        );
+
         setWorkSummaryModal({
           show: true,
           hours,
@@ -180,6 +200,7 @@ const Dashboard = ({ onLogout, userRole }) => {
     } catch (err) {
       console.error('Clock out error:', err);
       setApiError(err.message || 'Failed to clock out');
+      showToast('Clock-Out Error', err.message || 'Failed to clock out', 'error');
     } finally {
       setClockLoading(false);
     }
@@ -188,9 +209,36 @@ const Dashboard = ({ onLogout, userRole }) => {
   // Centralized theme
   const { isDarkMode, toggleTheme } = useTheme();
 
+  // Setup initial load, background polling, and real-time invalidation listeners
   useEffect(() => {
     fetchDashboardData(true);
-  }, []);
+
+    const handleAttendanceSync = (event) => {
+      console.log('🔄 [Dashboard Sync] attendance_updated event received:', event.detail);
+      fetchDashboardData(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ [Dashboard Sync] App/Tab active - fetching latest attendance');
+        fetchDashboardData(false);
+      }
+    };
+
+    window.addEventListener('attendance_updated', handleAttendanceSync);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Fallback sync every 25 seconds
+    const intervalId = setInterval(() => {
+      fetchDashboardData(false);
+    }, 25000);
+
+    return () => {
+      window.removeEventListener('attendance_updated', handleAttendanceSync);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [currentUser]);
 
   const fetchDashboardData = async (isInitial = false) => {
     try {
@@ -295,14 +343,17 @@ const Dashboard = ({ onLogout, userRole }) => {
       let activeCount = 0;
       let presentCount = statsData?.present || 0;
       let absentCount = statsData?.absent || 0;
+      let lateCount = statsData?.late || 0;
 
       if (todayStatusData?.success && todayStatusData.data) {
-        const calculatedPresent = todayStatusData.data.filter(emp => emp.attendanceToday).length;
+        const calculatedPresent = todayStatusData.data.filter(emp => emp.attendanceToday && emp.attendanceToday.status === 'Present').length;
         const calculatedAbsent = todayStatusData.data.filter(emp => !emp.attendanceToday).length;
+        const calculatedLate = todayStatusData.data.filter(emp => emp.isLate || (emp.checkInTime && (new Date(emp.checkInTime).getHours() > 9 || (new Date(emp.checkInTime).getHours() === 9 && new Date(emp.checkInTime).getMinutes() > 30)))).length;
         
         if (calculatedAbsent > 0 || calculatedPresent > 0) {
           presentCount = calculatedPresent;
           absentCount = calculatedAbsent;
+          lateCount = calculatedLate || lateCount;
         }
 
         const statusMap = {};
@@ -333,23 +384,43 @@ const Dashboard = ({ onLogout, userRole }) => {
         });
         setAttendanceStatus(statusMap);
 
-        const details = todayStatusData.data.map(emp => ({
-          _id: emp._id,
-          name: emp.name,
-          email: emp.email,
-          designation: emp.designation,
-          status: emp.attendanceToday ? 'Present' : 'Absent',
-          isActive: emp.attendanceStatus === 'active',
-          checkInTime: emp.checkInTime,
-          checkOutTime: emp.checkOutTime,
-          workHours: emp.attendanceToday?.workHours || 0
-        }));
+        const empImageMap = {};
+        if (empData?.data && Array.isArray(empData.data)) {
+          empData.data.forEach(e => {
+            if (e.profileImage) {
+              if (e.email) empImageMap[e.email.toLowerCase().trim()] = e.profileImage;
+              if (e._id) empImageMap[e._id.toString()] = e.profileImage;
+            }
+          });
+        }
+
+        const details = todayStatusData.data.map(emp => {
+          const empEmail = emp.email ? emp.email.toLowerCase().trim() : '';
+          const empIdStr = emp._id ? emp._id.toString() : '';
+          const profileImage = emp.profileImage || (empEmail ? empImageMap[empEmail] : '') || (empIdStr ? empImageMap[empIdStr] : '') || '';
+
+          return {
+            _id: emp._id,
+            name: emp.name,
+            email: emp.email,
+            designation: emp.designation,
+            profileImage,
+            status: emp.attendanceToday ? emp.attendanceToday.status || 'Present' : 'Absent',
+            isActive: emp.attendanceStatus === 'active',
+            checkInTime: emp.checkInTime,
+            checkOutTime: emp.checkOutTime,
+            location: emp.attendanceToday?.location || null,
+            isLate: emp.isLate || (emp.checkInTime && (new Date(emp.checkInTime).getHours() > 9 || (new Date(emp.checkInTime).getHours() === 9 && new Date(emp.checkInTime).getMinutes() > 30))),
+            workHours: emp.attendanceToday?.workHours || 0
+          };
+        });
         setAttendanceDetails(details);
       }
 
       setAttendanceStats({
         present: presentCount,
         absent: absentCount,
+        late: lateCount,
         activeNow: activeCount,
         totalWorkHours: totalHours.toFixed(1)
       });
@@ -448,6 +519,20 @@ const Dashboard = ({ onLogout, userRole }) => {
     }
   };
 
+  const colorGradients = {
+    '#7E22CE': 'linear-gradient(90deg, #7E22CE, #A855F7)',
+    '#1D4ED8': 'linear-gradient(90deg, #1D4ED8, #3B82F6)',
+    '#15803D': 'linear-gradient(90deg, #15803D, #22C55E)',
+    '#C2410C': 'linear-gradient(90deg, #C2410C, #F97316)',
+    '#BE185D': 'linear-gradient(90deg, #BE185D, #EC4899)',
+    '#0E7490': 'linear-gradient(90deg, #0E7490, #06B6D4)',
+    '#0369A1': 'linear-gradient(90deg, #0369A1, #0EA5E9)',
+    '#6B21A8': 'linear-gradient(90deg, #6B21A8, #8B5CF6)',
+    '#B91C1C': 'linear-gradient(90deg, #B91C1C, #EF4444)',
+    '#6D28D9': 'linear-gradient(90deg, #6D28D9, #8B5CF6)',
+    '#047857': 'linear-gradient(90deg, #047857, #10B981)',
+  };
+
   const StatCard = ({ title, value, icon, bg, border, titleColor, iconBg, iconColor, linkTo, onClick }) => {
     const navigate = useNavigate();
 
@@ -459,13 +544,20 @@ const Dashboard = ({ onLogout, userRole }) => {
       }
     };
 
+    const cardAccent = iconColor || titleColor || '#6366F1';
+    const cardGradient = colorGradients[cardAccent] || `linear-gradient(90deg, ${cardAccent}, #6366F1)`;
+
     return (
       <div 
         className={`stat-card ${linkTo || onClick ? 'stat-card-clickable' : ''}`}
-        style={!isDarkMode ? { 
-          background: bg || 'var(--card-bg, #FFFFFF)', 
-          borderColor: border || 'var(--border-color, #E5E7EB)' 
-        } : {}}
+        style={{
+          ...(!isDarkMode ? { 
+            background: bg || 'var(--card-bg, #FFFFFF)', 
+            borderColor: border || 'var(--border-color, #E5E7EB)' 
+          } : {}),
+          '--card-accent': cardAccent,
+          '--card-gradient': cardGradient
+        }}
         onClick={handleClick}
       >
         <div className="stat-card-top">
@@ -539,7 +631,7 @@ const Dashboard = ({ onLogout, userRole }) => {
             </div>
           )}
 
-          {/* Clock In / Clock Out Quick Action Button in Header (Employee Only) */}
+          {/* Clock In / Clock Out Quick Action Button in Header */}
           {!isAdmin && (!myTodayAttendance || !myTodayAttendance.checkInTime) && (
             <button
               onClick={handleClockIn}
@@ -630,15 +722,15 @@ const Dashboard = ({ onLogout, userRole }) => {
                 : `Checked in at ${new Date(myTodayAttendance.checkInTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}. Click Clock Out when you finish.`}
             </p>
           </div>
-          <div className="clock-card-actions">
+          <div className="clock-card-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             {(!myTodayAttendance || !myTodayAttendance?.checkInTime) && (
-              <button
-                onClick={handleClockIn}
-                disabled={clockLoading}
-                className="btn-clockin"
-              >
-                {clockLoading ? 'Clocking In...' : 'Clock In'}
-              </button>
+                <button
+                  onClick={handleClockIn}
+                  disabled={clockLoading}
+                  className="btn-clockin"
+                >
+                  {clockLoading ? 'Clocking In...' : 'Clock In'}
+                </button>
             )}
 
             {myTodayAttendance?.checkInTime && !myTodayAttendance?.checkOutTime && (
@@ -1336,6 +1428,30 @@ const Dashboard = ({ onLogout, userRole }) => {
                           Check-in: {new Date(emp.checkInTime).toLocaleTimeString()}
                         </p>
                       )}
+                      {emp.location?.latitude && emp.location?.longitude && (
+                        <a
+                          href={`https://www.google.com/maps?q=${emp.location.latitude},${emp.location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: '11px',
+                            color: '#2563EB',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            marginTop: '5px',
+                            background: '#EFF6FF',
+                            border: '1px solid #BFDBFE',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontWeight: '700'
+                          }}
+                          title="Click to view detected GPS location on Google Maps"
+                        >
+                          📍 {emp.location.latitude.toFixed(4)}°, {emp.location.longitude.toFixed(4)}° • View Map
+                        </a>
+                      )}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span 
@@ -1411,6 +1527,18 @@ const Dashboard = ({ onLogout, userRole }) => {
           </div>
         </div>
       )}
+
+      {/* Face Scanner Verification Modal */}
+      <LiveQRGeoVerificationModal
+        isOpen={showFaceModal}
+        onClose={() => setShowFaceModal(false)}
+        onSuccess={(attData) => {
+          setMyTodayAttendance(attData);
+          setShowFaceModal(false);
+          fetchDashboardData(false);
+        }}
+        user={currentUser}
+      />
     </div>
   );
 };

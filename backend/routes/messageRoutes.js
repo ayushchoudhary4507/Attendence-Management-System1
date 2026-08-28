@@ -9,7 +9,8 @@ const {
   sendMessage,
   getUnreadCount,
   getConversations,
-  markAsRead
+  markAsRead,
+  markAllMessagesAsRead
 } = require('../controllers/messageController');
 
 /**
@@ -280,23 +281,47 @@ const {
  *         description: Unauthorized
  */
 
-// Configure multer for file uploads
+// Configure multer for file uploads (supports up to 50MB for media/documents)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    // Sanitize extension and preserve it
+    const ext = path.extname(file.originalname) || '';
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
 });
 
+const ALLOWED_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|svg|bmp|mp4|webm|ogg|mov|mkv|avi|mp3|wav|m4a|aac|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar)$/i;
+
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
   fileFilter: (req, file, cb) => {
-    // Accept all files
-    cb(null, true);
+    const originalName = file.originalname || '';
+    const mime = file.mimetype || '';
+    
+    // Accept audio/video/image MIME types or known extensions
+    if (
+      mime.startsWith('image/') ||
+      mime.startsWith('video/') ||
+      mime.startsWith('audio/') ||
+      mime === 'application/pdf' ||
+      mime.includes('word') ||
+      mime.includes('excel') ||
+      mime.includes('spreadsheet') ||
+      mime.includes('presentation') ||
+      mime.includes('powerpoint') ||
+      mime.includes('zip') ||
+      mime.includes('octet-stream') ||
+      ALLOWED_EXTENSIONS.test(originalName)
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported file type: ${originalName}. Please upload a supported image, video, audio, or document file.`));
+    }
   }
 });
 
@@ -324,32 +349,51 @@ router.get('/:userId', getMessages);
 // Send a message
 router.post('/', sendMessage);
 
+// Mark all direct & group messages as read
+router.put('/mark-all-read', markAllMessagesAsRead);
+
 // Mark all messages from a user as read
 router.put('/read/:userId', markAsRead);
 
-// Upload file
-router.post('/upload', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
-    
-    const fileUrl = `/uploads/${req.file.filename}`;
-    
-    res.json({
-      success: true,
-      message: 'File uploaded successfully',
-      data: {
-        fileUrl,
-        fileName: req.file.originalname,
-        fileType: req.file.mimetype,
-        size: req.file.size
+// Upload file endpoint with multer error handler
+router.post('/upload', (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, message: 'File size exceeds 50MB limit.' });
       }
-    });
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).json({ success: false, message: 'Failed to upload file' });
-  }
+      return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ success: false, message: err.message || 'File upload failed' });
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+      
+      const fileUrl = `/uploads/${req.file.filename}`;
+      const originalName = req.file.originalname || req.file.filename;
+      const mimeType = req.file.mimetype || 'application/octet-stream';
+      const fileSize = req.file.size || 0;
+      
+      res.json({
+        success: true,
+        message: 'File uploaded successfully',
+        data: {
+          fileUrl,
+          fileName: originalName,
+          fileType: mimeType,
+          mimeType: mimeType,
+          fileSize: fileSize,
+          size: fileSize
+        }
+      });
+    } catch (error) {
+      console.error('Error processing uploaded file:', error);
+      res.status(500).json({ success: false, message: 'Failed to process uploaded file' });
+    }
+  });
 });
 
 // Debug: Catch all unmatched routes in this router

@@ -7,33 +7,26 @@ class AIAnalyticsEngine {
     async getExecutiveSummary(dataContext, userQuery = null) {
         const provider = process.env.AI_PROVIDER || 'gemini';
         
-        try {
-            logger.info(`Orchestrating AI response using ${provider} provider. Query: ${userQuery || 'General Insights'}`);
-            
-            if (provider === 'openai') {
-                return await openaiService.getInsights(dataContext, userQuery);
-            } else {
-                return await geminiService.getInsights(dataContext, userQuery);
-            }
-        } catch (error) {
-            logger.error(`AI Orchestration failed for ${provider}: ${error.message}`);
-            
-            // Try fallback provider if primary fails
+        // If query is provided, attempt cloud AI first, otherwise fall back to intelligent rule engine
+        if (process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY) {
             try {
-                if (provider === 'gemini' && process.env.OPENAI_API_KEY) {
-                    logger.info('Attempting secondary AI provider: openai');
+                logger.info(`Orchestrating AI response using ${provider}. Query: ${userQuery || 'General Insights'}`);
+                
+                if (provider === 'openai' && process.env.OPENAI_API_KEY) {
                     return await openaiService.getInsights(dataContext, userQuery);
+                } else if (process.env.GEMINI_API_KEY) {
+                    return await geminiService.getInsights(dataContext, userQuery);
                 }
-            } catch (secondaryError) {
-                logger.error(`Secondary AI provider also failed: ${secondaryError.message}`);
+            } catch (error) {
+                logger.warn(`Cloud AI provider (${provider}) failed: ${error.message}. Switching to Natural Language Intelligence Engine.`);
             }
-
-            // Ultimate fallback to basic rule-based analytics
-            if (userQuery) {
-                return "The AI service is currently unavailable to answer specific questions, but here is a basic summary of the data: " + fallbackService.generateBasicSummary(dataContext);
-            }
-            return fallbackService.generateBasicSummary(dataContext);
         }
+
+        // Native High-Precision Natural Language Intelligence Engine (Answers any query using live database context)
+        if (userQuery) {
+            return fallbackService.answerQuery(userQuery, dataContext);
+        }
+        return fallbackService.generateBasicSummary(dataContext);
     }
 }
 

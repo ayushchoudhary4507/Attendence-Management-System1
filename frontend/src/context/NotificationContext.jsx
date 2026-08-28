@@ -55,6 +55,7 @@ export const NotificationProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [toastNotifications, setToastNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all', 'leave_request', 'user_activity', 'project_update', 'message'
@@ -86,6 +87,28 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
+  // Fetch unread messages count from direct messages + groups
+  const fetchUnreadMessageCount = useCallback(async () => {
+    try {
+      const [directRes, groupRes] = await Promise.allSettled([
+        apiCall('GET', '/messages/unread-count'),
+        apiCall('GET', '/groups/unread-count')
+      ]);
+
+      let total = 0;
+      if (directRes.status === 'fulfilled' && directRes.value?.success) {
+        total += (directRes.value.totalUnread || directRes.value.unreadCount || 0);
+      }
+      if (groupRes.status === 'fulfilled' && groupRes.value?.success && groupRes.value?.unreadCounts) {
+        const groupSum = Object.values(groupRes.value.unreadCounts).reduce((acc, c) => acc + (Number(c) || 0), 0);
+        total += groupSum;
+      }
+      setUnreadMessageCount(total);
+    } catch (err) {
+      console.error('Error fetching unread message count:', err);
+    }
+  }, []);
+
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
     try {
@@ -111,20 +134,26 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   // Show toast notification popup
-  const showToast = useCallback((title, message, type = 'info') => {
+  const showToast = useCallback((title, message, type = 'info', meta = {}) => {
     const toast = {
       id: Date.now() + Math.random(),
       title: title || 'Notification',
       message: message || '',
       type: type || 'info',
+      meta: meta || {},
       createdAt: new Date()
     };
-    setToastNotifications(prev => [toast, ...prev].slice(0, 5));
+    setToastNotifications(prev => {
+      // Prevent rapid duplicate toast within the top 3 items
+      const isDuplicate = prev.slice(0, 3).some(t => t.title === toast.title && t.message === toast.message);
+      if (isDuplicate) return prev;
+      return [toast, ...prev].slice(0, 6);
+    });
     playNotificationSound();
-    // Auto-dismiss after 5 seconds
+    // Auto-dismiss after 6 seconds
     setTimeout(() => {
       setToastNotifications(prev => prev.filter(t => t.id !== toast.id));
-    }, 5000);
+    }, 6000);
   }, [playNotificationSound]);
 
   // Keep refs updated for use in socket handlers
@@ -182,12 +211,18 @@ export const NotificationProvider = ({ children }) => {
       const showT = showToastRef.current;
       if (!addNotif || !showT) return;
 
-      // Filter: only show if this notification is for the current user
+      // Filter: only show if this notification is for the current user or admin
       const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
       const currentUserId = currentUser.id || currentUser._id;
+      const currentUserRole = currentUser.role;
+
       if (data.receiverId && String(data.receiverId) !== String(currentUserId)) {
-        console.log('Notification not for this user, skipping');
-        return;
+        if (currentUserRole === 'admin' && data.receiverRole === 'admin') {
+          // Allowed for admin
+        } else {
+          console.log('Notification not for this user, skipping');
+          return;
+        }
       }
 
       // Check for duplicate (same ID already exists)
@@ -217,7 +252,62 @@ export const NotificationProvider = ({ children }) => {
         source: data.source || 'socket'
       };
       addNotif(notification);
-      showT(data.title, data.message, data.type || 'other');
+      showT(data.title, data.message, data.type || 'other', {
+        isLate: data.isLate,
+        employeeName: data.employeeName || data.senderName,
+        verificationMethod: data.verificationMethod
+      });
+    });
+
+    // ===== ATTENDANCE BROADCAST REAL-TIME HANDLER =====
+    newSocket.on('attendance_marked', (data) => {
+      console.log('🔔 [Socket] attendance_marked received:', data);
+      const addNotif = addNotificationRef.current;
+      const showT = showToastRef.current;
+      if (!addNotif || !showT) return;
+
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const currentUserId = currentUser.id || currentUser._id;
+      const currentUserEmail = (currentUser.email || '').toLowerCase().trim();
+      const currentUserRole = currentUser.role;
+
+      const isForCurrentAdmin = currentUserRole === 'admin';
+      const isForCurrentEmployee = (data.employee?._id && String(data.employee._id) === String(currentUserId)) ||
+                                   (data.employee?.email && data.employee.email.toLowerCase().trim() === currentUserEmail);
+
+      // Only display toast if user is admin OR the employee who marked attendance
+      if (!isForCurrentAdmin && !isForCurrentEmployee) {
+        return;
+      }
+
+      const notifId = data.id || `att_${Date.now()}`;
+      if (isDuplicateNotification(notificationsRef, notifId)) {
+        return;
+      }
+
+      const title = data.title || (data.action === 'checkout' ? `🏠 Clock-Out: ${data.employee?.name}` : `⏰ Attendance: ${data.employee?.name}`);
+      const message = data.message || `${data.employee?.name} marked attendance via ${data.method || 'System'}.`;
+      const notifType = data.action === 'checkout' ? 'checkout' : (data.verificationMethod || 'attendance');
+
+      addNotif({
+        id: notifId,
+        type: notifType,
+        title,
+        message,
+        employeeName: data.employee?.name,
+        employeeEmail: data.employee?.email,
+        verificationMethod: data.verificationMethod,
+        isLate: data.isLate,
+        createdAt: data.createdAt || new Date(),
+        read: false,
+        source: 'socket-attendance'
+      });
+
+      showT(title, message, notifType, {
+        isLate: data.isLate,
+        employeeName: data.employee?.name,
+        method: data.method || data.verificationMethod
+      });
     });
 
     // Handle leave status update (for employees)
@@ -335,20 +425,98 @@ export const NotificationProvider = ({ children }) => {
       showT(data.notification?.title || 'Notification', data.notification?.message || '', data.notification?.type || 'info');
     });
 
+    // ===== REAL-TIME CHAT & MESSAGE NOTIFICATIONS =====
+    newSocket.on('receive_message', (data) => {
+      console.log('💬 Socket receive_message in NotificationContext:', data);
+      fetchUnreadMessageCount();
+
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const currentUserId = currentUser.id || currentUser._id;
+
+      if (String(data.receiverId) === String(currentUserId)) {
+        if (window.location.pathname !== '/chat') {
+          const msgType = data.messageType;
+          const snippet = msgType === 'image' ? '📷 Sent a photo'
+            : msgType === 'video' ? '🎥 Sent a video'
+            : msgType === 'voice' ? '🎤 Sent a voice message'
+            : msgType === 'audio' ? '🎵 Sent an audio file'
+            : msgType === 'pdf' ? `📄 PDF: ${data.fileName || 'Document'}`
+            : msgType === 'document' ? `📁 Document: ${data.fileName || 'File'}`
+            : (data.message && data.message.length > 60 ? data.message.substring(0, 60) + '...' : (data.message || 'Sent a message'));
+
+          showToastRef.current?.(
+            `New message from ${data.senderName || 'User'}`,
+            snippet,
+            'message'
+          );
+        }
+      }
+    });
+
+    newSocket.on('receive_group_message', (data) => {
+      console.log('👥 Socket receive_group_message in NotificationContext:', data);
+      fetchUnreadMessageCount();
+
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const currentUserId = currentUser.id || currentUser._id;
+
+      if (String(data.senderId) !== String(currentUserId)) {
+        if (window.location.pathname !== '/chat') {
+          const msgType = data.messageType;
+          const sender = data.senderName || 'Someone';
+          const snippet = msgType === 'image' ? `${sender}: 📷 Photo`
+            : msgType === 'video' ? `${sender}: 🎥 Video`
+            : msgType === 'voice' ? `${sender}: 🎤 Voice Note`
+            : msgType === 'audio' ? `${sender}: 🎵 Audio`
+            : msgType === 'pdf' ? `${sender}: 📄 ${data.fileName || 'PDF Document'}`
+            : msgType === 'document' ? `${sender}: 📁 ${data.fileName || 'Document'}`
+            : `${sender}: ${data.message && data.message.length > 50 ? data.message.substring(0, 50) + '...' : (data.message || 'New message')}`;
+
+          showToastRef.current?.(
+            `Group Message (${sender})`,
+            snippet,
+            'message'
+          );
+        }
+      }
+    });
+
+    newSocket.on('message_read', (data) => {
+      fetchUnreadMessageCount();
+      fetchNotifications();
+      if (data?.senderId) {
+        setNotifications(prev => prev.filter(n => !(n.type === 'message' && String(n.senderId) === String(data.senderId))));
+      }
+    });
+
+    newSocket.on('group_message_read', (data) => {
+      fetchUnreadMessageCount();
+      fetchNotifications();
+      if (data?.groupId) {
+        setNotifications(prev => prev.filter(n => !(n.type === 'message' && String(n.groupId) === String(data.groupId))));
+      }
+    });
+
     socketRefInternal.current = newSocket;
     setSocket(newSocket);
     fetchNotifications();
+    fetchUnreadMessageCount();
 
     return () => {
       newSocket.off('newNotification');
+      newSocket.off('attendance_marked');
       newSocket.off('leave_status_updated');
       newSocket.off('new_leave_request');
       newSocket.off('new_message_notification');
       newSocket.off('receive_notification');
+      newSocket.off('receive_message');
+      newSocket.off('receive_group_message');
+      newSocket.off('message_read');
+      newSocket.off('group_message_read');
       newSocket.close();
       socketRefInternal.current = null;
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, fetchUnreadMessageCount]);
 
   // Run socket init on mount AND when login event fires
   useEffect(() => {
@@ -464,6 +632,10 @@ export const NotificationProvider = ({ children }) => {
     notifications,
     filteredNotifications,
     unreadCount,
+    unreadMessageCount,
+    fetchUnreadMessageCount,
+    fetchNotifications,
+    setUnreadMessageCount,
     toastNotifications,
     isConnected,
     filter,

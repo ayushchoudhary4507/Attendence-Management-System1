@@ -13,7 +13,6 @@ const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 require('dotenv').config();
 
-
 const logger = require('./utils/logger');
 const connectDB = require('./utils/db');
 const { errorHandler } = require('./utils/errorHandler');
@@ -43,7 +42,7 @@ app.use(cors({
     origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'Cache-Control', 'Pragma', 'Expires']
 }));
 
 // Serve uploaded files statically
@@ -59,20 +58,31 @@ app.use(helmet({
     crossOriginResourcePolicy: false, // Allow cross-origin images
 }));
 
-// Rate Limiting
+// Rate Limiting — global
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // limit each IP to 1000 requests per windowMs
+    max: 1000, // limit each IP to 1000 requests per 15 min
     message: 'Too many requests from this IP, please try again after 15 minutes'
 });
 app.use('/api/', limiter);
 
+// Rate Limiting — OTP endpoints (stricter: 5 requests per 15 min per IP)
+const otpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // max 5 OTP requests per IP per window
+    message: 'Too many OTP requests from this IP. Please wait 15 minutes before trying again.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/auth/send', otpLimiter);
+app.use('/api/auth/resend', otpLimiter);
+
 // Logging Middleware
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
-app.use(express.json({ limit: '10mb' })); // Increased limit for AI data
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Debug: Log all incoming requests (optional, handled by morgan now)
+// Debug: Log all incoming requests
 if (process.env.NODE_ENV === 'development') {
     app.use((req, res, next) => {
         logger.debug(`📥 ${req.method} ${req.originalUrl}`);
@@ -85,9 +95,9 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Attendence Management Systemnn1',
+      title: 'Attendance Management System API',
       version: '1.0.0',
-      description: 'API documentation for the Attendence Management System backend',
+      description: 'API documentation for the Attendance Management System backend',
     },
     servers: [
       {
@@ -100,8 +110,6 @@ const swaggerOptions = {
 };
 
 const specs = swaggerJsdoc(swaggerOptions);
-
-// Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Import routes
@@ -128,6 +136,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const payslipRoutes = require('./routes/payslipRoutes');
 const advancedReportRoutes = require('./routes/advancedReportRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const dashboardConfigRoutes = require('./routes/dashboardConfigRoutes');
 
 // Use routes
 app.use('/api/login', loginRoutes);
@@ -137,6 +146,7 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/dashboard-config', dashboardConfigRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -158,8 +168,8 @@ app.use('/api/health', healthRoutes);
 app.use(errorHandler);
 
 // Socket.io real-time messaging
-const onlineUsers = new Map(); // userId -> { socketId, lastSeen }
-const typingUsers = new Map(); // userId -> { receiverId, timeout }
+const onlineUsers = new Map(); // userId -> { socketId, lastSeen, isOnline }
+const typingUsers = new Map(); // userId -> timeout
 
 // Expose io globally so controllers can emit notifications
 global._io = io;
@@ -218,8 +228,6 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // The message should already be saved to DB via API
-      // We just need to broadcast it to the receiver
       const serverIsoTime = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
       const messageData = {
         id: id || tempId,
@@ -232,6 +240,9 @@ io.on('connection', (socket) => {
         fileUrl: data.fileUrl || null,
         fileName: data.fileName || null,
         fileType: data.fileType || null,
+        mimeType: data.mimeType || data.fileType || null,
+        fileSize: data.fileSize || 0,
+        duration: data.duration || 0,
         timestamp: serverIsoTime,
         createdAt: serverIsoTime,
         read: false
@@ -243,15 +254,24 @@ io.on('connection', (socket) => {
         io.to(receiver.socketId).emit('receive_message', messageData);
         console.log(`Message delivered to receiver ${receiverId}`);
 
+        // Format notification message according to media type
+        const notifMsg = messageData.messageType === 'image' ? '📷 Photo'
+          : messageData.messageType === 'video' ? '🎥 Video'
+          : messageData.messageType === 'voice' ? '🎤 Voice Message'
+          : messageData.messageType === 'audio' ? '🎵 Audio'
+          : messageData.messageType === 'pdf' ? `📄 ${messageData.fileName || 'PDF Document'}`
+          : messageData.messageType === 'document' ? `📁 ${messageData.fileName || 'Document'}`
+          : (message && message.length > 50 ? message.substring(0, 50) + '...' : (message || 'New Message'));
+
         // Also send notification to receiver with receiverId for filtering
         io.to(receiver.socketId).emit('newNotification', {
           id: Date.now(),
           type: 'message',
           title: `New message from ${senderName}`,
-          message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+          message: notifMsg,
           senderId,
           senderName,
-          receiverId, // Include receiverId so frontend can verify
+          receiverId,
           createdAt: new Date()
         });
         console.log(`Message notification sent to receiver ${receiverId}`);
@@ -376,6 +396,9 @@ io.on('connection', (socket) => {
         fileUrl: data.fileUrl || null,
         fileName: data.fileName || null,
         fileType: data.fileType || null,
+        mimeType: data.mimeType || data.fileType || null,
+        fileSize: data.fileSize || 0,
+        duration: data.duration || 0,
         timestamp: timestamp || new Date(),
         read: false
       };
@@ -394,11 +417,19 @@ io.on('connection', (socket) => {
             if (memberId !== senderId) {
               const memberOnline = onlineUsers.get(memberId);
               if (memberOnline && memberOnline.isOnline) {
+                const groupNotifMsg = messageData.messageType === 'image' ? '📷 Photo'
+                  : messageData.messageType === 'video' ? '🎥 Video'
+                  : messageData.messageType === 'voice' ? '🎤 Voice Message'
+                  : messageData.messageType === 'audio' ? '🎵 Audio'
+                  : messageData.messageType === 'pdf' ? `📄 ${messageData.fileName || 'PDF Document'}`
+                  : messageData.messageType === 'document' ? `📁 ${messageData.fileName || 'Document'}`
+                  : (message && message.length > 50 ? message.substring(0, 50) + '...' : (message || 'New Message'));
+
                 io.to(memberOnline.socketId).emit('newNotification', {
                   id: Date.now(),
                   type: 'message',
                   title: `${senderName} in ${group.name || 'Group'}`,
-                  message: message.length > 50 ? message.substring(0, 50) + '...' : message,
+                  message: groupNotifMsg,
                   groupId,
                   senderId,
                   senderName,
@@ -517,7 +548,6 @@ io.on('connection', (socket) => {
 
     const targetUser = onlineUsers.get(userId);
     if (targetUser && targetUser.isOnline) {
-      // Emit both event names for compatibility
       io.to(targetUser.socketId).emit('newNotification', notification);
       io.to(targetUser.socketId).emit('receive_notification', { userId, notification });
       console.log(`Notification sent to user ${userId}:`, notification.title);
@@ -585,10 +615,8 @@ io.on('connection', (socket) => {
           if (onlineUsers.has(socket.userId) && !onlineUsers.get(socket.userId).isOnline) {
             onlineUsers.delete(socket.userId);
           }
-        }, 60000); // Remove after 1 minute
+        }, 60000);
       }
-      
-
       
       // Broadcast offline status
       io.emit('user_status', {

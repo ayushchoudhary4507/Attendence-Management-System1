@@ -280,11 +280,12 @@ router.get('/unread-count', auth, async (req, res) => {
     const groupIds = groups.map(g => g._id.toString());
 
     // Count unread messages per group
-    // A message is unread if the current user's ID is NOT in the readBy array
+    // A message is unread if the current user is not the sender and NOT in the readBy array
     const unreadCounts = await GroupMessage.aggregate([
       {
         $match: {
-          groupId: { $in: groupIds.map(id => new mongoose.Types.ObjectId(id)) }
+          groupId: { $in: groupIds.map(id => new mongoose.Types.ObjectId(id)) },
+          senderId: { $ne: new mongoose.Types.ObjectId(userId) }
         }
       },
       {
@@ -516,7 +517,18 @@ router.get('/:groupId/messages', auth, async (req, res) => {
 
     res.json({
       success: true,
-      messages: messages.reverse() // Return in chronological order
+      messages: messages.reverse().map(msg => {
+        const msgObj = msg.toObject ? msg.toObject() : msg;
+        const senderObj = msgObj.senderId;
+        const senderIdStr = (senderObj && typeof senderObj === 'object') ? (senderObj._id?.toString() || senderObj.id?.toString()) : senderObj?.toString();
+        const senderNameStr = msgObj.senderName || (senderObj && typeof senderObj === 'object' ? senderObj.name : '') || 'Member';
+        return {
+          ...msgObj,
+          id: msgObj._id,
+          senderId: senderIdStr,
+          senderName: senderNameStr
+        };
+      })
     });
   } catch (error) {
     console.error('Error fetching group messages:', error);
@@ -524,13 +536,36 @@ router.get('/:groupId/messages', auth, async (req, res) => {
   }
 });
 
+// Helper to detect/normalize messageType in group routes
+const detectGroupMessageType = (fileUrl, fileName, mimeType, explicitType) => {
+  if (explicitType && ['image', 'video', 'audio', 'voice', 'pdf', 'document'].includes(explicitType)) {
+    return explicitType;
+  }
+  if (!fileUrl && !fileName) return 'text';
+  const mime = (mimeType || '').toLowerCase();
+  const name = (fileName || fileUrl || '').toLowerCase();
+  if (explicitType === 'voice' || name.includes('voice_message') || name.includes('voice-record')) return 'voice';
+  if (mime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(name)) return 'image';
+  if (mime.startsWith('video/') || /\.(mp4|webm|ogg|mov|mkv|avi)$/i.test(name)) return 'video';
+  if (mime.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg)$/i.test(name)) return 'audio';
+  if (mime === 'application/pdf' || /\.pdf$/i.test(name)) return 'pdf';
+  if (
+    mime.includes('word') || mime.includes('excel') || mime.includes('spreadsheet') ||
+    mime.includes('presentation') || mime.includes('powerpoint') ||
+    /\.(doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar)$/i.test(name)
+  ) {
+    return 'document';
+  }
+  return 'document';
+};
+
 // @route   POST /api/groups/:groupId/messages
 // @desc    Send message to group (via API - socket handles real-time)
 // @access  Private
 router.post('/:groupId/messages', auth, async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { message, messageType, fileUrl, fileName, fileType } = req.body;
+    const { message, messageType, fileUrl, fileName, fileType, mimeType, fileSize, duration } = req.body;
     const senderId = req.user.userId;
     const senderName = req.user.name || req.user.email;
 
@@ -552,14 +587,17 @@ router.post('/:groupId/messages', auth, async (req, res) => {
       return res.status(403).json({ success: false, message: 'You are not a member of this group' });
     }
 
-    const messageText = message ? message.trim() : (fileName ? `📎 ${fileName}` : 'Attachment');
-    let computedMessageType = messageType || 'text';
-    if (fileUrl) {
-      if (fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileUrl || fileName)) {
-        computedMessageType = 'image';
-      } else {
-        computedMessageType = 'file';
-      }
+    const effectiveMimeType = mimeType || fileType || null;
+    const computedMessageType = detectGroupMessageType(fileUrl, fileName, effectiveMimeType, messageType);
+
+    let messageText = message ? message.trim() : '';
+    if (!messageText) {
+      if (computedMessageType === 'voice') messageText = '🎤 Voice Message';
+      else if (computedMessageType === 'image') messageText = '📷 Photo';
+      else if (computedMessageType === 'video') messageText = '🎥 Video';
+      else if (computedMessageType === 'audio') messageText = '🎵 Audio';
+      else if (fileName) messageText = `📎 ${fileName}`;
+      else messageText = 'Attachment';
     }
 
     // Create message
@@ -571,7 +609,10 @@ router.post('/:groupId/messages', auth, async (req, res) => {
       messageType: computedMessageType,
       fileUrl: fileUrl || null,
       fileName: fileName || null,
-      fileType: fileType || null,
+      fileType: effectiveMimeType,
+      mimeType: effectiveMimeType,
+      fileSize: fileSize || 0,
+      duration: duration || 0,
       timestamp: new Date(),
       readBy: [{ userId: senderId, readAt: new Date() }]
     });
@@ -590,10 +631,20 @@ router.post('/:groupId/messages', auth, async (req, res) => {
     // Populate sender info
     await groupMessage.populate('senderId', 'name email');
 
+    const msgObj = groupMessage.toObject ? groupMessage.toObject() : groupMessage;
+    const senderObj = msgObj.senderId;
+    const senderIdStr = (senderObj && typeof senderObj === 'object') ? (senderObj._id?.toString() || senderObj.id?.toString()) : senderObj?.toString();
+    const senderNameStr = msgObj.senderName || (senderObj && typeof senderObj === 'object' ? senderObj.name : '') || 'Member';
+
     res.status(201).json({
       success: true,
       message: 'Message sent successfully',
-      data: groupMessage
+      data: {
+        ...msgObj,
+        id: msgObj._id,
+        senderId: senderIdStr,
+        senderName: senderNameStr
+      }
     });
   } catch (error) {
     console.error('❌ Error sending group message:', error);
@@ -1263,6 +1314,48 @@ router.patch('/:groupId/make-admin/:userId', auth, async (req, res) => {
   } catch (error) {
     console.error('Error promoting member:', error);
     res.status(500).json({ success: false, message: 'Failed to promote member', error: error.message });
+  }
+});
+
+// @route   PATCH /api/groups/:groupId/mark-read
+// @desc    Mark all messages in a group as read for current user
+// @access  Private
+router.patch('/:groupId/mark-read', auth, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user.userId;
+
+    // Push userId to readBy for all group messages in this group
+    await GroupMessage.updateMany(
+      {
+        groupId: new mongoose.Types.ObjectId(groupId),
+        'readBy.userId': { $ne: new mongoose.Types.ObjectId(userId) }
+      },
+      {
+        $push: {
+          readBy: {
+            userId: new mongoose.Types.ObjectId(userId),
+            readAt: new Date()
+          }
+        }
+      }
+    );
+
+    // Also delete/remove group notifications for this user
+    const Notification = require('../models/Notification');
+    await Notification.deleteMany({
+      type: 'message',
+      receiverId: new mongoose.Types.ObjectId(userId),
+      groupId: new mongoose.Types.ObjectId(groupId)
+    });
+
+    res.json({
+      success: true,
+      message: 'Group messages marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking group messages as read:', error);
+    res.status(500).json({ success: false, message: 'Failed to mark group messages as read', error: error.message });
   }
 });
 

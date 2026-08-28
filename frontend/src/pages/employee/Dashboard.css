@@ -53,7 +53,7 @@ body.dark-theme .theme-toggle-btn {
 /* Stats Grid - Modern Pastel Cards Matching Screenshot */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -61,7 +61,7 @@ body.dark-theme .theme-toggle-btn {
 /* Stat Card */
 .stat-card {
   border-radius: 16px;
-  padding: 16px 18px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -73,9 +73,33 @@ body.dark-theme .theme-toggle-btn {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
+.stat-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 4px !important;
+  background: var(--card-gradient, var(--card-accent, #6366F1)) !important;
+  box-shadow: 0 0 12px var(--card-accent, rgba(99, 102, 241, 0.4)) !important;
+  border-radius: 16px 16px 0 0 !important;
+  transform: scaleX(0) !important;
+  transform-origin: center !important;
+  opacity: 0 !important;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease, box-shadow 0.35s ease !important;
+  z-index: 2 !important;
+}
+
 .stat-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+}
+
+.stat-card:hover::before {
+  transform: scaleX(1) !important;
+  opacity: 1 !important;
+  height: 4.5px !important;
+  box-shadow: 0 0 18px var(--card-accent, rgba(99, 102, 241, 0.8)) !important;
 }
 
 .stat-card-clickable {
@@ -85,7 +109,7 @@ body.dark-theme .theme-toggle-btn {
 .stat-card-top {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .stat-card-bottom {
@@ -121,20 +145,33 @@ body.dark-theme .theme-toggle-btn {
 
 .stat-text-group {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  overflow: hidden;
 }
 
 .stat-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .stat-value {
-  margin: 4px 0 0 0;
-  font-size: 24px;
+  margin: 3px 0 0 0;
+  font-size: 22px;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 /* Quick Actions Card */
@@ -1724,6 +1761,28 @@ body.dark-theme .stat-card,
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
   border-radius: 16px !important;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+body.dark-theme .stat-card::before,
+.dashboard-home.dark .stat-card::before,
+.dark .stat-card::before,
+[data-theme="dark"] .stat-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 4px !important;
+  background: var(--card-gradient, var(--card-accent, #6366F1)) !important;
+  box-shadow: 0 0 14px var(--card-accent, rgba(99, 102, 241, 0.6)) !important;
+  border-radius: 16px 16px 0 0 !important;
+  transform: scaleX(0) !important;
+  transform-origin: center !important;
+  opacity: 0 !important;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease, box-shadow 0.35s ease !important;
+  z-index: 2 !important;
 }
 
 body.dark-theme .stat-card:hover,
@@ -1731,8 +1790,18 @@ body.dark-theme .stat-card:hover,
 .dark .stat-card:hover,
 [data-theme="dark"] .stat-card:hover {
   transform: translateY(-3px) scale(1.01) !important;
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  box-shadow: 0 18px 40px -4px rgba(79, 70, 229, 0.25), 0 0 0 1px rgba(99, 102, 241, 0.3) inset !important;
+  border-color: var(--card-accent, rgba(99, 102, 241, 0.4)) !important;
+  box-shadow: 0 18px 40px -4px rgba(0, 0, 0, 0.6), 0 0 15px -2px var(--card-accent, rgba(99, 102, 241, 0.3)), 0 0 0 1px var(--card-accent, rgba(99, 102, 241, 0.3)) inset !important;
+}
+
+body.dark-theme .stat-card:hover::before,
+.dashboard-home.dark .stat-card:hover::before,
+.dark .stat-card:hover::before,
+[data-theme="dark"] .stat-card:hover::before {
+  transform: scaleX(1) !important;
+  opacity: 1 !important;
+  height: 4.5px !important;
+  box-shadow: 0 0 20px var(--card-accent, rgba(99, 102, 241, 1)) !important;
 }
 
 body.dark-theme .stat-title,
@@ -1740,8 +1809,15 @@ body.dark-theme .stat-title,
 .dark .stat-title,
 [data-theme="dark"] .stat-title {
   color: #94A3B8 !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.4px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
 }
 
 body.dark-theme .stat-value,
@@ -1749,9 +1825,10 @@ body.dark-theme .stat-value,
 .dark .stat-value,
 [data-theme="dark"] .stat-value {
   color: #F8FAFC !important;
-  font-size: 26px !important;
+  font-size: 22px !important;
   font-weight: 800 !important;
   letter-spacing: -0.02em !important;
+  line-height: 1.1 !important;
 }
 
 body.dark-theme .clock-card,

@@ -160,6 +160,7 @@ const Employees = ({ onLogout, userRole }) => {
                 attStatus === 'half day' || 
                 attStatus === 'half-day' ||
                 emp.attendanceToday.isActive === true ||
+                emp.attendanceStatus === 'active' ||
                 !!emp.attendanceToday.checkInTime
               );
               statusMap[empId] = hasAttendance ? 'Present' : 'Absent';
@@ -174,6 +175,28 @@ const Employees = ({ onLogout, userRole }) => {
     };
 
     fetchAttendanceStatus();
+
+    const handleSync = () => {
+      console.log('🔄 [Employees Page] Real-time sync triggered - fetching latest attendance status');
+      fetchAttendanceStatus();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAttendanceStatus();
+      }
+    };
+
+    window.addEventListener('attendance_updated', handleSync);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    const timer = setInterval(fetchAttendanceStatus, 25000);
+
+    return () => {
+      window.removeEventListener('attendance_updated', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(timer);
+    };
   }, [employees]);
 
   const fetchEmployees = async (showLoader = false) => {

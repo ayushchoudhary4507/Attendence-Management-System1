@@ -61,9 +61,10 @@ const NotificationPanel = ({ isOpen, onClose, mode = 'absolute' }) => {
       </div>
       
       <div className="notification-filters">
-        {['all', 'leave_request', 'user_activity', 'project_update', 'message', 'shift_assigned', 'salary_generated'].map(f => {
+        {['all', 'attendance', 'leave_request', 'user_activity', 'project_update', 'message', 'shift_assigned', 'salary_generated'].map(f => {
           const filterLabels = {
             all: 'All',
+            attendance: '⏰ Attendance',
             leave_request: '📅 Leave',
             user_activity: '👤 Activity',
             project_update: '📊 Project',
