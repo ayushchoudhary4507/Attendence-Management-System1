@@ -144,7 +144,7 @@ const Employees = ({ onLogout, userRole }) => {
           });
         }
         
-        // Create attendance status map
+        // Create attendance status map (case-insensitive status check)
         const statusMap = {};
         if (attendanceData.success && attendanceData.data) {
           attendanceData.data.forEach(emp => {
@@ -153,7 +153,15 @@ const Employees = ({ onLogout, userRole }) => {
             if (leaveMap[empId]) {
               statusMap[empId] = 'On Leave';
             } else {
-              const hasAttendance = emp.attendanceToday && emp.attendanceToday.status === 'Present';
+              // Case-insensitive: accepts 'Present', 'present', 'PRESENT', etc.
+              const attStatus = emp.attendanceToday?.status?.toString()?.toLowerCase();
+              const hasAttendance = !!emp.attendanceToday && (
+                attStatus === 'present' || 
+                attStatus === 'half day' || 
+                attStatus === 'half-day' ||
+                emp.attendanceToday.isActive === true ||
+                !!emp.attendanceToday.checkInTime
+              );
               statusMap[empId] = hasAttendance ? 'Present' : 'Absent';
             }
           });

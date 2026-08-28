@@ -256,21 +256,44 @@ const getTodayAllAttendance = async (req, res) => {
       date: { $gte: today, $lt: tomorrow }
     }).populate('employeeId', 'name email employeeId designation');
 
-    // Map attendance to employees
+    // Map attendance to employees (handle both populated and non-populated employeeId)
     const attendanceMap = {};
     attendances.forEach(att => {
-      attendanceMap[att.employeeId._id.toString()] = att;
+      let empIdStr = null;
+      if (att.employeeId && typeof att.employeeId === 'object' && att.employeeId._id) {
+        empIdStr = att.employeeId._id.toString();
+      } else if (att.employeeId) {
+        empIdStr = att.employeeId.toString();
+      }
+      if (empIdStr) {
+        attendanceMap[empIdStr] = att;
+      }
     });
+
+    // Helper to normalize attendance status to PascalCase
+    const normStat = (raw) => {
+      if (!raw) return 'Present';
+      const lower = raw.toString().toLowerCase();
+      if (lower === 'present') return 'Present';
+      if (lower === 'absent') return 'Absent';
+      if (lower.includes('half')) return 'Half Day';
+      if (lower.includes('leave')) return 'Leave';
+      return raw.charAt(0).toUpperCase() + raw.slice(1);
+    };
 
     // Create response with attendance status
     const employeesWithAttendance = employees.map(emp => {
       const empObj = emp.toObject();
-      const hasAttendance = !!attendanceMap[emp._id.toString()];
+      const att = attendanceMap[emp._id.toString()];
+      const hasAttendance = !!att;
       
       return {
         ...empObj,
         attendanceStatus: hasAttendance ? 'active' : 'inactive',
-        attendanceToday: attendanceMap[emp._id.toString()] || null
+        attendanceToday: att ? {
+          ...att.toObject(),
+          status: normStat(att.status)
+        } : null
       };
     });
 
@@ -314,12 +337,33 @@ const getTodayAttendanceStatus = async (req, res) => {
     }).populate('employeeId', 'name email employeeId designation');
 
     // Map attendance to employees
+    // Handle both: populated employeeId (object) and raw ObjectId (string/ObjectId)
     const attendanceMap = {};
     attendances.forEach(att => {
-      if (att.employeeId && att.employeeId._id) {
-        attendanceMap[att.employeeId._id.toString()] = att;
+      let empIdStr = null;
+      if (att.employeeId && typeof att.employeeId === 'object' && att.employeeId._id) {
+        // Populated: employeeId is Employee document
+        empIdStr = att.employeeId._id.toString();
+      } else if (att.employeeId) {
+        // Not populated or populate failed: employeeId is raw ObjectId
+        empIdStr = att.employeeId.toString();
+      }
+      if (empIdStr) {
+        attendanceMap[empIdStr] = att;
       }
     });
+
+    // Helper to normalize attendance status to PascalCase
+    const normalizeStatus = (raw) => {
+      if (!raw) return 'Present';
+      const lower = raw.toString().toLowerCase();
+      if (lower === 'present') return 'Present';
+      if (lower === 'absent') return 'Absent';
+      if (lower === 'half day' || lower === 'half-day' || lower === 'half_day') return 'Half Day';
+      if (lower === 'leave' || lower === 'on leave' || lower === 'on-leave') return 'Leave';
+      // Return PascalCase of original
+      return raw.charAt(0).toUpperCase() + raw.slice(1);
+    };
 
     // Create response with active/inactive status
     const employeesWithStatus = employees.map(emp => {
@@ -337,7 +381,7 @@ const getTodayAttendanceStatus = async (req, res) => {
         attendanceStatus: status,
         attendanceToday: attendance ? {
           ...attendance.toObject(),
-          status: attendance.status || 'Present'  // Add status field
+          status: normalizeStatus(attendance.status)  // Always PascalCase for website compatibility
         } : null,
         isCheckedIn: attendance ? attendance.isActive : false,
         checkInTime: attendance ? attendance.checkInTime : null,

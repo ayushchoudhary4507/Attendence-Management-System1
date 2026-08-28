@@ -307,7 +307,15 @@ const Dashboard = ({ onLogout, userRole }) => {
 
         const statusMap = {};
         todayStatusData.data.forEach(emp => {
-          const hasAttendance = emp.attendanceToday && emp.attendanceToday.status === 'Present';
+          // Case-insensitive status check: 'present', 'Present', etc.
+          const attStatus = emp.attendanceToday?.status?.toString()?.toLowerCase();
+          const hasAttendance = !!emp.attendanceToday && (
+            attStatus === 'present' ||
+            attStatus === 'half day' ||
+            attStatus === 'half-day' ||
+            emp.attendanceToday.isActive === true ||
+            !!emp.attendanceToday.checkInTime
+          );
           statusMap[emp._id] = hasAttendance ? 'Present' : 'Absent';
 
           if (emp.attendanceToday && emp.attendanceStatus === 'active') {
