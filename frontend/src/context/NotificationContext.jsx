@@ -211,13 +211,22 @@ export const NotificationProvider = ({ children }) => {
       const showT = showToastRef.current;
       if (!addNotif || !showT) return;
 
-      // Filter: only show if this notification is for the current user or admin
+      // Filter: check role from authenticated user state
       const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
       const currentUserId = currentUser.id || currentUser._id;
       const currentUserRole = currentUser.role;
 
+      // Attendance & Employee Login notifications are strictly for Admins only
+      const isAttendanceEvent = data.type === 'attendance' || data.type === 'checkout' || data.notificationType === 'attendance_marked';
+      const isLoginAlert = data.type === 'employee_login' || data.notificationType === 'employee_login';
+
+      if ((isAttendanceEvent || isLoginAlert) && currentUserRole !== 'admin') {
+        console.log('Skipping admin-only notification for employee:', data.type);
+        return;
+      }
+
       if (data.receiverId && String(data.receiverId) !== String(currentUserId)) {
-        if (currentUserRole === 'admin' && data.receiverRole === 'admin') {
+        if (currentUserRole === 'admin' && (data.receiverRole === 'admin' || !data.receiverRole)) {
           // Allowed for admin
         } else {
           console.log('Notification not for this user, skipping');
@@ -255,11 +264,15 @@ export const NotificationProvider = ({ children }) => {
       showT(data.title, data.message, data.type || 'other', {
         isLate: data.isLate,
         employeeName: data.employeeName || data.senderName,
-        verificationMethod: data.verificationMethod
+        employeeId: data.employeeId,
+        attendanceDate: data.attendanceDate,
+        attendanceTime: data.attendanceTime,
+        attendanceType: data.attendanceType,
+        verificationMethod: data.verificationMethod || data.attendanceType
       });
     });
 
-    // ===== ATTENDANCE BROADCAST REAL-TIME HANDLER =====
+    // ===== ATTENDANCE BROADCAST REAL-TIME HANDLER (ADMIN ONLY POPUP) =====
     newSocket.on('attendance_marked', (data) => {
       console.log('🔔 [Socket] attendance_marked received:', data);
       const addNotif = addNotificationRef.current;
@@ -267,16 +280,13 @@ export const NotificationProvider = ({ children }) => {
       if (!addNotif || !showT) return;
 
       const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
-      const currentUserId = currentUser.id || currentUser._id;
-      const currentUserEmail = (currentUser.email || '').toLowerCase().trim();
       const currentUserRole = currentUser.role;
 
-      const isForCurrentAdmin = currentUserRole === 'admin';
-      const isForCurrentEmployee = (data.employee?._id && String(data.employee._id) === String(currentUserId)) ||
-                                   (data.employee?.email && data.employee.email.toLowerCase().trim() === currentUserEmail);
-
-      // Only display toast if user is admin OR the employee who marked attendance
-      if (!isForCurrentAdmin && !isForCurrentEmployee) {
+      // STRICT ROLE-BASED POPUP LOGIC:
+      // If logged-in user's role == "admin" -> Show attendance popup notification
+      // Else (role == "employee") -> DO NOT show attendance popup notification
+      if (currentUserRole !== 'admin') {
+        console.log('Skipping attendance popup: User role is not admin (role:', currentUserRole, ')');
         return;
       }
 
@@ -285,7 +295,7 @@ export const NotificationProvider = ({ children }) => {
         return;
       }
 
-      const title = data.title || (data.action === 'checkout' ? `🏠 Clock-Out: ${data.employee?.name}` : `⏰ Attendance: ${data.employee?.name}`);
+      const title = data.title || (data.action === 'checkout' ? `🏠 Clocked Out: ${data.employee?.name}` : `⏰ Attendance Marked: ${data.employee?.name}`);
       const message = data.message || `${data.employee?.name} marked attendance via ${data.method || 'System'}.`;
       const notifType = data.action === 'checkout' ? 'checkout' : (data.verificationMethod || 'attendance');
 
@@ -296,8 +306,11 @@ export const NotificationProvider = ({ children }) => {
         message,
         employeeName: data.employee?.name,
         employeeEmail: data.employee?.email,
+        employeeId: data.employee?.employeeId || data.employee?._id,
         verificationMethod: data.verificationMethod,
         isLate: data.isLate,
+        attendanceDate: data.attendanceDate,
+        attendanceTime: data.attendanceTime,
         createdAt: data.createdAt || new Date(),
         read: false,
         source: 'socket-attendance'
@@ -306,7 +319,9 @@ export const NotificationProvider = ({ children }) => {
       showT(title, message, notifType, {
         isLate: data.isLate,
         employeeName: data.employee?.name,
-        method: data.method || data.verificationMethod
+        employeeId: data.employee?.employeeId || data.employee?._id,
+        method: data.method || data.verificationMethod,
+        verificationMethod: data.verificationMethod
       });
     });
 
@@ -396,11 +411,18 @@ export const NotificationProvider = ({ children }) => {
 
       const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
       const currentUserId = currentUser.id || currentUser._id;
-      if (data.receiverId && String(data.receiverId) !== String(currentUserId)) {
+      const currentUserRole = currentUser.role;
+
+      const notifType = data.notification?.type || data.type;
+      if ((notifType === 'attendance' || notifType === 'checkout' || notifType === 'employee_login') && currentUserRole !== 'admin') {
         return;
       }
 
-      const notifId = data.notification?.id || data.notification?._id;
+      if (data.receiverId && String(data.receiverId) !== String(currentUserId)) {
+        if (currentUserRole !== 'admin') return;
+      }
+
+      const notifId = data.notification?.id || data.notification?._id || data.id;
       if (isDuplicateNotification(notificationsRef, notifId)) {
         console.log('Duplicate notification (receive_notification), skipping:', notifId);
         return;
@@ -422,7 +444,7 @@ export const NotificationProvider = ({ children }) => {
           source: 'socket-legacy'
         });
       }
-      showT(data.notification?.title || 'Notification', data.notification?.message || '', data.notification?.type || 'info');
+      showT(data.notification?.title || data.title || 'Notification', data.notification?.message || data.message || '', notifType || 'info');
     });
 
     // ===== REAL-TIME CHAT & MESSAGE NOTIFICATIONS =====

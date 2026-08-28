@@ -1,4 +1,4 @@
-﻿const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
@@ -261,15 +261,12 @@ const loginController = async (req, res) => {
               read: false
             });
             console.log(`📢 Employee login notification emitted to online admin ${adminId}`);
-          } else {
-            // Admin is offline — queue for FCM push
-            offlineAdmins.push(admin);
           }
         }
 
-        // Send FCM push to offline admins (graceful — skipped if no service account)
-        if (offlineAdmins.length > 0) {
-          sendLoginNotificationToAdmins(offlineAdmins, {
+        // Send FCM push to all admin devices (Mobile app receives push when user logs in via Web or Mobile)
+        if (admins.length > 0) {
+          sendLoginNotificationToAdmins(admins, {
             title: notifTitle,
             message: notifMessage,
             employeeName: user.name,

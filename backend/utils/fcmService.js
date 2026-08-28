@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FCM Push Notification Service
  * 
  * Sends Firebase Cloud Messaging push notifications to admin devices.
@@ -184,4 +184,68 @@ const sendLoginNotificationToAdmins = async (adminUsers, notifData) => {
   console.log(`📲 FCM push sent to ${allTokens.length} admin tokens — success: ${result.sent}, failed: ${result.failed}`);
 };
 
-module.exports = { sendLoginNotificationToAdmins, sendPushToTokens, initFirebaseAdmin };
+/**
+ * Send attendance notification push to all admin devices.
+ * Only called for admins who are currently OFFLINE on socket.
+ * @param {Object[]} adminUsers - Array of admin User documents (with fcmTokens)
+ * @param {Object} notifData - { title, message, employeeName, employeeId, attendanceDate, attendanceTime, attendanceType, verificationMethod, isLate, action }
+ */
+const sendAttendanceNotificationToAdmins = async (adminUsers, notifData) => {
+  const {
+    title = 'Attendance Marked',
+    message = '',
+    employeeName = '',
+    employeeId = '',
+    employeeEmail = '',
+    attendanceDate = '',
+    attendanceTime = '',
+    attendanceType = 'Direct',
+    verificationMethod = 'direct',
+    isLate = false,
+    action = 'checkin'
+  } = notifData;
+
+  // Collect all valid FCM tokens from offline admins
+  const allTokens = [];
+  for (const admin of adminUsers) {
+    if (admin.fcmTokens && admin.fcmTokens.length > 0) {
+      admin.fcmTokens.forEach(t => {
+        if (t.token && t.token.length > 10) {
+          allTokens.push(t.token);
+        }
+      });
+    }
+  }
+
+  if (allTokens.length === 0) {
+    return;
+  }
+
+  const result = await sendPushToTokens(allTokens, {
+    title,
+    body: message,
+    data: {
+      type: 'attendance_marked',
+      notificationType: 'attendance_marked',
+      employeeName,
+      employeeEmail,
+      employeeId: String(employeeId),
+      attendanceDate: String(attendanceDate),
+      attendanceTime: String(attendanceTime),
+      attendanceType: String(attendanceType),
+      verificationMethod: String(verificationMethod),
+      isLate: String(isLate),
+      action: String(action),
+      link: '/employees'
+    }
+  });
+
+  console.log(`📲 FCM attendance push sent to ${allTokens.length} admin tokens — success: ${result.sent}, failed: ${result.failed}`);
+};
+
+module.exports = { 
+  sendLoginNotificationToAdmins, 
+  sendAttendanceNotificationToAdmins, 
+  sendPushToTokens, 
+  initFirebaseAdmin 
+};

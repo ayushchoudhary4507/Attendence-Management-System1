@@ -39,7 +39,7 @@ const emitNotification = (io, userId, notification) => {
   }
 };
 
-// Centralized helper to create notifications in DB and emit realtime socket events to all admins and the employee
+// Centralized helper to create notifications in DB and emit realtime socket events to all admins
 const createAndBroadcastAttendanceNotification = async (req, {
   attendance,
   employee,
@@ -52,9 +52,11 @@ const createAndBroadcastAttendanceNotification = async (req, {
 }) => {
   try {
     const io = req.app?.get('io') || global._io;
+    const { sendAttendanceNotificationToAdmins } = require('../utils/fcmService');
     const empName = employee?.name || user?.name || 'Employee';
     const empEmail = employee?.email || user?.email || '';
     const empId = employee?._id || user?._id;
+    const empDisplayId = employee?.employeeId || (empId ? empId.toString().substring(empId.toString().length - 6).toUpperCase() : '');
     const userId = user?._id || employee?._id;
 
     // Determine readable method label and icon
@@ -76,9 +78,23 @@ const createAndBroadcastAttendanceNotification = async (req, {
       icon = '🛡️';
     }
 
-    const timeStr = (action === 'checkout' && attendance?.checkOutTime)
-      ? new Date(attendance.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
-      : (attendance?.checkInTime ? new Date(attendance.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
+    const attendanceDateObj = (action === 'checkout' && attendance?.checkOutTime)
+      ? new Date(attendance.checkOutTime)
+      : (attendance?.checkInTime ? new Date(attendance.checkInTime) : new Date());
+
+    const timeStr = attendanceDateObj.toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const formattedDate = attendanceDateObj.toLocaleDateString('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
 
     let title = '';
     let message = '';
@@ -86,21 +102,31 @@ const createAndBroadcastAttendanceNotification = async (req, {
 
     if (action === 'checkout') {
       title = `🏠 Clocked Out: ${empName}`;
-      message = customMessage || `${empName} has clocked out at ${timeStr}${workHours !== null && workHours !== undefined ? ` (Total Worked: ${workHours} hrs)` : ''}.`;
+      message = customMessage || `${empName}${empDisplayId ? ` (${empDisplayId})` : ''} clocked out at ${timeStr}${workHours !== null && workHours !== undefined ? ` (Work Hours: ${workHours} hrs)` : ''}.`;
       notifType = 'checkout';
     } else if (action === 'admin_marked') {
       title = `🛡️ Attendance Marked: ${empName}`;
-      message = customMessage || `Attendance for ${empName} was marked by Administrator at ${timeStr}.`;
+      message = customMessage || `Attendance for ${empName}${empDisplayId ? ` (${empDisplayId})` : ''} was marked by Administrator at ${timeStr}.`;
       notifType = 'attendance';
     } else {
       title = `${icon} ${methodLabel} Check-In: ${empName}`;
       const statusSuffix = isLate ? ' (Late Arrival ⏰)' : ' (On Time ✅)';
-      message = customMessage || `${empName} marked attendance via ${methodLabel} at ${timeStr}${statusSuffix}.`;
+      message = customMessage || `${empName}${empDisplayId ? ` (${empDisplayId})` : ''} marked attendance via ${methodLabel} at ${timeStr}${statusSuffix}.`;
       notifType = 'attendance';
     }
 
-    // 1. Create DB notification for all Admins
-    const admins = await User.find({ role: 'admin' }).select('_id');
+    console.log('--- ATTENDANCE ADMIN NOTIFICATION LOG ---');
+    console.log('Employee Name:', empName);
+    console.log('Employee ID:', empDisplayId);
+    console.log('Date:', formattedDate);
+    console.log('Time:', timeStr);
+    console.log('Method:', methodLabel);
+    console.log('Message:', message);
+    console.log('Target Role: admin ONLY');
+    console.log('-----------------------------------------');
+
+    // 1. Create DB notification ONLY for Admin users
+    const admins = await User.find({ role: 'admin' }).select('_id email fcmTokens');
     const createdAdminNotifs = [];
 
     for (const admin of admins) {
@@ -115,103 +141,59 @@ const createAndBroadcastAttendanceNotification = async (req, {
           senderId: userId,
           senderName: empName,
           receiverId: admin._id,
+          receiverRole: 'admin',
           link: '/employees'
         });
-        createdAdminNotifs.push({ notif, adminId: admin._id.toString() });
+        createdAdminNotifs.push({ notif, admin });
       } catch (err) {
-        console.error('Error saving admin notification in DB:', err.message);
+        console.error('Error saving admin attendance notification in DB:', err.message);
       }
     }
 
-    // 2. Also create DB notification for the Employee (if user account exists)
-    let empUserNotif = null;
-    if (userId) {
-      try {
-        empUserNotif = await Notification.create({
-          type: notifType,
-          title: action === 'checkout' ? '🏠 Clock-Out Confirmed' : `${icon} Attendance Marked (${methodLabel})`,
-          message: action === 'checkout'
-            ? `You have successfully clocked out at ${timeStr}${workHours !== null && workHours !== undefined ? ` (Work Hours: ${workHours} hrs)` : ''}.`
-            : `Your attendance was recorded at ${timeStr} via ${methodLabel}${isLate ? ' (Late Arrival)' : ' (On Time)'}.`,
-          employeeId: empId,
-          employeeName: empName,
-          employeeEmail: empEmail,
-          senderId: userId,
-          senderName: 'System',
-          receiverId: userId,
-          link: '/attendance'
-        });
-      } catch (err) {
-        console.error('Error saving employee notification in DB:', err.message);
-      }
-    }
-
-    // 3. Emit via Socket.io to online users
+    // 2. Emit via Socket.io strictly to online Admin users; track offline admins for FCM
+    const offlineAdmins = [];
     if (io) {
       const onlineUsersMap = io.onlineUsers;
 
-      // Emit to each admin
-      for (const { notif, adminId } of createdAdminNotifs) {
+      for (const { notif, admin } of createdAdminNotifs) {
+        const adminId = admin._id.toString();
         const adminOnline = onlineUsersMap ? onlineUsersMap.get(adminId) : null;
         if (adminOnline && adminOnline.isOnline) {
           io.to(adminOnline.socketId).emit('newNotification', {
             id: notif._id,
             type: notifType,
+            notificationType: 'attendance_marked',
             title: notif.title,
             message: notif.message,
-            senderId: userId,
-            senderName: empName,
-            employeeId: empId,
+            employeeId: empDisplayId || empId,
             employeeName: empName,
             employeeEmail: empEmail,
-            receiverId: adminId,
-            receiverRole: 'admin',
+            attendanceDate: formattedDate,
+            attendanceTime: timeStr,
+            attendanceType: methodLabel,
             verificationMethod: method,
             isLate,
             action,
             checkInTime: attendance?.checkInTime,
             checkOutTime: attendance?.checkOutTime,
+            receiverId: adminId,
+            receiverRole: 'admin',
             link: '/employees',
             createdAt: notif.createdAt,
             read: false
           });
           console.log(`📢 [Socket] Attendance notification emitted to Admin ${adminId}`);
+        } else {
+          offlineAdmins.push(admin);
         }
       }
 
-      // Emit to employee if online
-      if (empUserNotif && userId) {
-        const empOnline = onlineUsersMap ? onlineUsersMap.get(userId.toString()) : null;
-        if (empOnline && empOnline.isOnline) {
-          io.to(empOnline.socketId).emit('newNotification', {
-            id: empUserNotif._id,
-            type: notifType,
-            title: empUserNotif.title,
-            message: empUserNotif.message,
-            senderId: userId,
-            senderName: 'System',
-            employeeId: empId,
-            employeeName: empName,
-            employeeEmail: empEmail,
-            receiverId: userId.toString(),
-            receiverRole: 'employee',
-            verificationMethod: method,
-            isLate,
-            action,
-            checkInTime: attendance?.checkInTime,
-            checkOutTime: attendance?.checkOutTime,
-            link: '/attendance',
-            createdAt: empUserNotif.createdAt,
-            read: false
-          });
-          console.log(`📢 [Socket] Attendance notification emitted to Employee ${userId}`);
-        }
-      }
-
-      // 4. Global Broadcast Event for all active clients
+      // 3. Broadcast Event tagged strictly for admin consumers
       const broadcastPayload = {
-        id: Date.now(),
+        id: `att_${Date.now()}`,
         type: notifType,
+        notificationType: 'attendance_marked',
+        targetRole: 'admin',
         title,
         message,
         action,
@@ -221,14 +203,34 @@ const createAndBroadcastAttendanceNotification = async (req, {
         employee: {
           _id: empId,
           name: empName,
-          email: empEmail
+          email: empEmail,
+          employeeId: empDisplayId
         },
+        attendanceDate: formattedDate,
+        attendanceTime: timeStr,
         attendance,
         createdAt: new Date()
       };
 
       io.emit('attendance_marked', broadcastPayload);
-      console.log(`📢 [Socket Broadcast] attendance_marked emitted for ${empName}`);
+      console.log(`📢 [Socket Broadcast] attendance_marked emitted (targetRole: admin) for ${empName}`);
+    }
+
+    // 4. Send FCM Push Notification to all Admin devices (Web & Flutter mobile)
+    if (admins.length > 0) {
+      sendAttendanceNotificationToAdmins(admins, {
+        title,
+        message,
+        employeeName: empName,
+        employeeId: empDisplayId,
+        employeeEmail: empEmail,
+        attendanceDate: formattedDate,
+        attendanceTime: timeStr,
+        attendanceType: methodLabel,
+        verificationMethod: method,
+        isLate,
+        action
+      }).catch(err => console.error('FCM attendance push error (non-critical):', err.message));
     }
   } catch (err) {
     console.error('Error in createAndBroadcastAttendanceNotification:', err);

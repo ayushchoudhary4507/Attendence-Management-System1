@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const User = require('../models/User');
@@ -378,12 +378,11 @@ router.post('/verify', async (req, res) => {
               createdAt: loginDateObj,
               read: false
             });
-          } else {
-            offlineAdmins.push(admin);
           }
+          offlineAdmins.push(admin);
         }
-        if (offlineAdmins.length > 0) {
-          sendLoginNotificationToAdmins(offlineAdmins, {
+        if (admins.length > 0) {
+          sendLoginNotificationToAdmins(admins, {
             title: notifTitle,
             message: notifMessage,
             employeeName: user.name,
